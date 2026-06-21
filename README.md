@@ -54,6 +54,13 @@ Portal: http://localhost:3000 · Login demo: `admin@s4b.mx` / `demo1234`
 docker compose -f infra/docker-compose.yml up --build
 ```
 
+### Despliegue (Supabase + Vercel + NaN Builders)
+Stack productivo: **Supabase** (Postgres + pgvector para el RAG), **Vercel**
+(portal Next.js) y **NaN Builders** (ruta de modelos open/volumen). Guía paso a
+paso en [`infra/DEPLOY.md`](infra/DEPLOY.md); migración pgvector en
+[`infra/supabase/001_pgvector.sql`](infra/supabase/001_pgvector.sql).
+Para usar Supabase como vector DB: `VECTOR_STORE=pgvector` + `DATABASE_URL` de Supabase.
+
 ## El diferenciador: Privacy Model Router
 
 Cada `/chat` ejecuta este pipeline (sin que el usuario elija modelo):
