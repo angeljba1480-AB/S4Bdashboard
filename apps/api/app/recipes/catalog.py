@@ -26,6 +26,29 @@ CATEGORIES: list[dict] = [
     {"id": "dia_a_dia", "label": "Día a día"},
 ]
 
+# Mexican states — used by region-aware recipes (trámites/impuestos vary by
+# estado and municipio).
+ESTADOS_MX = [
+    "Aguascalientes", "Baja California", "Baja California Sur", "Campeche",
+    "Chiapas", "Chihuahua", "Ciudad de México", "Coahuila", "Colima", "Durango",
+    "Estado de México", "Guanajuato", "Guerrero", "Hidalgo", "Jalisco",
+    "Michoacán", "Morelos", "Nayarit", "Nuevo León", "Oaxaca", "Puebla",
+    "Querétaro", "Quintana Roo", "San Luis Potosí", "Sinaloa", "Sonora",
+    "Tabasco", "Tamaulipas", "Tlaxcala", "Veracruz", "Yucatán", "Zacatecas",
+]
+
+
+def _estado_input() -> dict:
+    return {"key": "estado", "type": "choice", "label": "Estado", "options": ESTADOS_MX, "required": True}
+
+
+def _municipio_input() -> dict:
+    return {"key": "municipio", "type": "text", "label": "Municipio / alcaldía", "required": True}
+
+
+_REGION_DISCLAIMER = ("⚠️ Los requisitos, costos y plazos cambian por estado y municipio. "
+                      "Esto es una guía; confirma siempre con tu autoridad local.")
+
 
 def _r(**kw) -> dict:
     """Recipe with sensible defaults so the catalog stays terse and scalable."""
@@ -138,6 +161,122 @@ RECIPES: list[dict] = [
                {"key": "gastos", "type": "text", "label": "Gastos del día"}],
        produces="tu corte de caja",
        prompt="Corte de caja: ventas {ventas}, gastos {gastos}."),
+
+    # ===== Más casos sembrados =====
+    # ---- Crecer el negocio ----
+    _r(id="guion_ventas", category="crecer", name="Guion de ventas",
+       description="Un guion para vender por teléfono o en persona.",
+       inputs=[{"key": "producto", "type": "text", "label": "Producto/servicio", "required": True},
+               {"key": "cliente_tipo", "type": "text", "label": "Tipo de cliente"}],
+       produces="un guion de ventas",
+       prompt="Guion de ventas para vender {producto} a {cliente_tipo}."),
+    _r(id="correo_frio", category="crecer", name="Correo de prospección",
+       description="Correo en frío para conseguir una reunión.",
+       inputs=[{"key": "prospecto", "type": "text", "label": "Empresa/persona objetivo", "required": True},
+               {"key": "oferta", "type": "text", "label": "Qué ofreces", "required": True}],
+       produces="un correo de prospección",
+       prompt="Correo en frío a {prospecto} ofreciendo {oferta}, con llamada a la acción para reunión."),
+    _r(id="promo_temporada", category="crecer", name="Promoción de temporada",
+       description="Idea y texto de una promoción para fechas clave.",
+       inputs=[{"key": "negocio", "type": "text", "label": "Tu negocio", "required": True},
+               {"key": "fecha", "type": "text", "label": "Temporada/fecha (ej. Buen Fin)"}],
+       produces="una promoción de temporada",
+       prompt="Promoción para {negocio} en {fecha} con mensaje y mecánica."),
+
+    # ---- Abrir / lanzar (REGIÓN) ----
+    _r(id="licencia_funcionamiento", category="abrir", name="Licencia de funcionamiento",
+       description="Requisitos y pasos para tu licencia municipal (varía por municipio).",
+       inputs=[{"key": "giro", "type": "text", "label": "Giro del negocio", "required": True},
+               _estado_input(), _municipio_input()],
+       produces="la guía de licencia de funcionamiento",
+       prompt="Requisitos y pasos de la licencia de funcionamiento para un negocio de {giro} en {municipio}, {estado}."),
+    _r(id="uso_de_suelo", category="abrir", name="Constancia de uso de suelo",
+       description="Cómo tramitar el uso de suelo para tu local (por municipio).",
+       inputs=[{"key": "actividad", "type": "text", "label": "Actividad/uso", "required": True},
+               _estado_input(), _municipio_input()],
+       produces="la guía de uso de suelo",
+       prompt="Pasos para la constancia de uso de suelo para {actividad} en {municipio}, {estado}."),
+    _r(id="permiso_anuncio", category="abrir", name="Permiso de anuncio / letrero",
+       description="Trámite del permiso para tu anuncio exterior (municipal).",
+       inputs=[{"key": "tipo_anuncio", "type": "text", "label": "Tipo de anuncio", "required": True},
+               _estado_input(), _municipio_input()],
+       produces="la guía del permiso de anuncio",
+       prompt="Requisitos del permiso de anuncio tipo {tipo_anuncio} en {municipio}, {estado}."),
+    _r(id="nombre_negocio", category="abrir", name="Ideas de nombre + disponibilidad",
+       description="Propongo nombres para tu negocio y qué revisar antes de usarlo.",
+       inputs=[{"key": "giro", "type": "text", "label": "Giro/idea", "required": True}],
+       produces="ideas de nombre",
+       prompt="Propón 8 nombres para un negocio de {giro} y cómo verificar disponibilidad (IMPI/dominio/redes)."),
+
+    # ---- Cumplimiento (CEP / legal) (varios con REGIÓN) ----
+    _r(id="rfc_alta", category="cumplimiento", name="Alta en el RFC (guía)",
+       description="Pasos para darte de alta en el SAT según tu actividad.",
+       inputs=[{"key": "actividad", "type": "text", "label": "Tu actividad", "required": True},
+               {"key": "regimen", "type": "text", "label": "Régimen (si lo sabes, ej. RESICO)"}],
+       produces="la guía de alta en el RFC",
+       prompt="Guía para darse de alta en el RFC ante el SAT para {actividad} (régimen {regimen})."),
+    _r(id="impuestos_locales", category="cumplimiento", name="Impuestos locales del negocio",
+       description="Qué impuestos estatales/municipales aplican a tu negocio.",
+       inputs=[{"key": "giro", "type": "text", "label": "Giro del negocio", "required": True},
+               _estado_input(), _municipio_input()],
+       produces="un resumen de impuestos locales",
+       prompt="Impuestos estatales y municipales que aplican a un negocio de {giro} en {municipio}, {estado}."),
+    _r(id="reglamento_local", category="cumplimiento", name="Reglas para tu giro (local)",
+       description="Reglamentos municipales aplicables a tu actividad.",
+       inputs=[{"key": "giro", "type": "text", "label": "Giro/actividad", "required": True},
+               _estado_input(), _municipio_input()],
+       produces="un resumen de reglamentos locales",
+       prompt="Reglamentos municipales aplicables a {giro} en {municipio}, {estado} (verificación, horarios, sanidad)."),
+    _r(id="politica_devoluciones", category="cumplimiento", name="Política de devoluciones",
+       description="Texto de política de devoluciones y garantías para tu negocio.",
+       inputs=[{"key": "negocio", "type": "text", "label": "Tu negocio", "required": True},
+               {"key": "productos", "type": "text", "label": "Qué vendes"}],
+       produces="una política de devoluciones",
+       prompt="Política de devoluciones y garantías para {negocio} que vende {productos}, acorde a PROFECO."),
+
+    # ---- Operaciones ----
+    _r(id="orden_compra", category="operaciones", name="Orden de compra a proveedor",
+       description="Genero una orden de compra lista para enviar.",
+       inputs=[{"key": "proveedor", "type": "text", "label": "Proveedor", "required": True},
+               {"key": "articulos", "type": "text", "label": "Artículos y cantidades", "required": True}],
+       produces="una orden de compra",
+       prompt="Orden de compra a {proveedor} por {articulos}."),
+    _r(id="recordatorio_cobranza", category="operaciones", name="Recordatorio de cobranza",
+       description="Mensaje amable para cobrar a un cliente.",
+       inputs=[{"key": "cliente", "type": "text", "label": "Cliente", "required": True},
+               {"key": "monto", "type": "text", "label": "Monto/adeudo", "required": True}],
+       produces="un recordatorio de cobranza",
+       prompt="Mensaje cordial de cobranza a {cliente} por {monto}, con opciones de pago."),
+    _r(id="horario_turnos", category="operaciones", name="Rol de turnos del personal",
+       description="Arma un rol de turnos simple para tu equipo.",
+       inputs=[{"key": "personas", "type": "text", "label": "Personas y disponibilidad", "required": True},
+               {"key": "horario", "type": "text", "label": "Horario del negocio"}],
+       produces="un rol de turnos",
+       prompt="Rol de turnos para {personas} con horario {horario}."),
+
+    # ---- Día a día (incluye economía informal) ----
+    _r(id="carta_precios", category="dia_a_dia", name="Carta / lista de precios",
+       description="Arma una lista de precios presentable para mostrar o imprimir.",
+       inputs=[{"key": "productos", "type": "text", "label": "Productos y precios", "required": True},
+               {"key": "negocio", "type": "text", "label": "Nombre del negocio"}],
+       produces="una lista de precios",
+       prompt="Lista de precios presentable para {negocio} con: {productos}."),
+    _r(id="mensaje_whatsapp", category="dia_a_dia", name="Mensaje para clientes (WhatsApp)",
+       description="Mensaje listo para difundir promociones o avisos.",
+       inputs=[{"key": "aviso", "type": "text", "label": "Qué quieres avisar", "required": True}],
+       produces="un mensaje para clientes",
+       prompt="Mensaje breve y amable para WhatsApp/redes avisando: {aviso}."),
+    _r(id="control_gastos", category="dia_a_dia", name="Control de gastos semanal",
+       description="Ordena tus gastos de la semana y detecta dónde ahorrar.",
+       inputs=[{"key": "gastos", "type": "text", "label": "Tus gastos de la semana", "required": True}],
+       produces="un control de gastos",
+       prompt="Organiza estos gastos semanales por categoría y sugiere ahorros: {gastos}."),
+    _r(id="agradecimiento_cliente", category="dia_a_dia", name="Mensaje de agradecimiento",
+       description="Detalle para fidelizar a un cliente después de su compra.",
+       inputs=[{"key": "cliente", "type": "text", "label": "Cliente", "required": True},
+               {"key": "compra", "type": "text", "label": "Qué compró"}],
+       produces="un mensaje de agradecimiento",
+       prompt="Mensaje de agradecimiento a {cliente} por comprar {compra}, invitando a regresar."),
 ]
 
 
@@ -212,16 +351,25 @@ def _prefill_generic(recipe: dict, tenant: Tenant, inputs: dict) -> dict:
                 "route": "blocked", "blocked": True,
                 "summary": f"⛔ No puedo continuar: {decision.reason}"}
 
+    region_aware = bool(inputs.get("estado") or inputs.get("municipio"))
+    if region_aware:
+        loc = ", ".join(x for x in (inputs.get("municipio"), inputs.get("estado")) if x)
+        system += f" Adapta la respuesta a {loc} (México) y advierte que los requisitos varían por localidad."
+
     gen = generate_with_fallback(decision.route, system, instruction, decision.context)
     contenido = gen.response.content if gen.route != ModelRoute.BLOCKED else ""
+    summary = (f"Generé {produces} con tus datos por la ruta «{gen.route.value}». "
+               f"Revisa y aprueba; el dato se procesó de forma privada y queda auditado.")
+    if region_aware:
+        summary += "\n\n" + _REGION_DISCLAIMER
     return {
         "tipo": "generico",
         "plan": instruction,            # what I understood (transparency)
         "contenido": contenido,         # AI-generated draft to review
         "produces": produces,
         "route": gen.route.value,
-        "summary": (f"Generé {produces} con tus datos por la ruta «{gen.route.value}». "
-                    f"Revisa y aprueba; el dato se procesó de forma privada y queda auditado."),
+        "region_aware": region_aware,
+        "summary": summary,
     }
 
 
