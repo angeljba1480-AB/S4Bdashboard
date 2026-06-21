@@ -356,7 +356,7 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
     # Ground in the layered KB: company-private + state + country curated.
     matches = layered_search(session, tenant, q=f"{recipe.get('name', '')} {instruction}",
                              region=inputs.get("region"), municipio=inputs.get("municipio"),
-                             country=country["code"])[:6]
+                             country=country["code"], include_rag=True)[:6]
     ground_context = [to_context(t) for t in matches]
     fuentes = [{"title": t["title"], "authority": t.get("authority", ""),
                 "fuente": t.get("fuente", ""), "source": t.get("source", "curado")} for t in matches]

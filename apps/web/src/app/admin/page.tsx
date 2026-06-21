@@ -399,8 +399,9 @@ export default function AdminPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="mb-1 font-semibold text-slate-800">MCP de empresa · Trámites</h2>
           <p className="mb-4 text-sm text-slate-500">
-            Tu capa privada de contexto (sobre estado y país). Lo que agregues aquí aterriza las
-            respuestas de tus agentes y casos de uso. {tramites.filter((t) => t.source === "empresa").length} propios.
+            Tu capa privada de contexto (sobre estado y país). Se nutre de lo que agregues aquí
+            <b> y de tus documentos indexados (RAG)</b>. Aterriza las respuestas de tus agentes y casos
+            de uso. {tramites.filter((t) => t.source === "empresa").length} entradas propias.
           </p>
           <form onSubmit={addTramite} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <input value={newTramite.title} onChange={(e) => setNewTramite((t) => ({ ...t, title: e.target.value }))}

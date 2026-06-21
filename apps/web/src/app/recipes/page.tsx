@@ -225,7 +225,7 @@ export default function RecipesPage() {
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
                       <span className="font-semibold text-slate-600">Fuentes (MCP de trámites): </span>
                       {(run.draft.fuentes as { title: string; authority: string; source?: string }[])
-                        .map((f) => `${f.title}${f.source === "empresa" ? " (empresa)" : ""}`)
+                        .map((f) => `${f.title}${f.source?.startsWith("empresa") ? (f.source === "empresa-rag" ? " (empresa·RAG)" : " (empresa)") : ""}`)
                         .join(" · ")}
                     </div>
                   )}

@@ -5,8 +5,9 @@ agentes y casos de uso, en **capas**:
 
 1. **País** — trámites nacionales (`app/regional/tramites.py`, scope `nacional`).
 2. **Estado/Municipio** — curados por región (scope `estatal`/`municipal`).
-3. **Empresa (tenant)** — capa **privada** del cliente que paga
-   (`TenantTramite`); se agrega en *Admin → MCP de empresa · Trámites*.
+3. **Empresa (tenant)** — capa **privada** del cliente que paga: trámites propios
+   (`TenantTramite`, en *Admin → MCP de empresa*) **+ RAG sobre sus documentos
+   indexados** (se recupera contexto de los archivos de la empresa).
 
 El grounding combina **empresa → estado → país** (la capa privada manda) y cita
 autoridad/fuente. La misma KB se consulta por:

@@ -56,6 +56,16 @@ def test_company_tramite_blocked_when_subscription_inactive(client):
     client.put("/admin/billing", headers=h, json={"subscription_status": "active"})
 
 
+def test_company_rag_layer_from_documents(client):
+    h = _auth(client)
+    # upload a company doc -> becomes part of the company MCP via RAG
+    client.post("/documents/upload", headers=h, data={
+        "filename": "manual_interno.txt",
+        "text": "Procedimiento Zafiro de reembolso de viáticos: adjuntar tickets y aprobar con gerente."})
+    res = client.get("/tramites?q=Zafiro%20reembolso%20viáticos&rag=true", headers=h).json()
+    assert any(t.get("source") == "empresa-rag" for t in res)
+
+
 def test_recipe_prefill_grounds_on_kb(client):
     h = _auth(client)
     start = client.post("/recipes/rfc_alta/start", headers=h, json={

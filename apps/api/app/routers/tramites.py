@@ -51,16 +51,35 @@ def _tenant_matches(session: Session, tenant_id: str, country: str | None,
     return out
 
 
+def _rag_matches(session: Session, tenant_id: str, q: str | None, limit: int = 3) -> list[dict]:
+    """Company MCP knowledge from the tenant's own indexed documents (RAG)."""
+    if not q:
+        return []
+    from ..ai.rag import retrieve
+    try:
+        cits = retrieve(session, tenant_id, q, None, top_k=limit)
+    except Exception:
+        return []
+    return [{
+        "id": f"rag_{c.document_id}_{c.chunk_index}", "title": c.filename,
+        "authority": "Documento de la empresa", "text": c.text,
+        "source": "empresa-rag", "scope": "empresa", "region": "", "municipio": "",
+        "requisitos": [], "pasos": [], "fuente": "", "country": "",
+    } for c in cits]
+
+
 def layered_search(session: Session, tenant: Tenant, q: str | None = None,
                    region: str | None = None, municipio: str | None = None,
-                   country: str | None = None) -> list[dict]:
-    """Company-private entries first, then curated state/country."""
+                   country: str | None = None, include_rag: bool = False) -> list[dict]:
+    """Company layer (private trámites + RAG over the company's docs) first,
+    then curated state/country."""
     country = country or tenant.country
     private = _tenant_matches(session, tenant.id, country, region, municipio, q)
+    rag = _rag_matches(session, tenant.id, q) if include_rag else []
     curated = find_tramites(country, region, municipio, q)
     for c in curated:
         c.setdefault("source", "curado")
-    return private + curated
+    return private + rag + curated
 
 
 class TenantTramiteIn(BaseModel):
@@ -81,11 +100,12 @@ def search(
     region: str | None = None,
     municipio: str | None = None,
     country: str | None = None,
+    rag: bool = True,
     tenant: Tenant = Depends(get_current_tenant),
     _: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> list[dict]:
-    return layered_search(session, tenant, q, region, municipio, country)
+    return layered_search(session, tenant, q, region, municipio, country, include_rag=rag)
 
 
 @router.get("/{tramite_id}")

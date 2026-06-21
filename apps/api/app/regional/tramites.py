@@ -99,6 +99,92 @@ TRAMITES: list[dict] = [
               "Genera la credencial de pago"],
        costo_aprox="Cuota mensual según categoría", fuente="https://www.afip.gob.ar",
        keywords=["monotributo", "afip", "cuit", "argentina", "impuestos"]),
+
+    # ===== México — nacional (más) =====
+    _t(id="mx_imss_patron", country="MX", scope="nacional", category="bienestar", eje="bienestar",
+       title="Alta patronal e inscripción de trabajadores (IMSS)",
+       authority="Instituto Mexicano del Seguro Social (IMSS)",
+       requisitos=["RFC con e.firma", "Identificación del patrón", "Comprobante de domicilio",
+                   "Datos de los trabajadores (CURP/NSS)"],
+       pasos=["Regístrate en IDSE/Escritorio Virtual", "Da de alta el registro patronal",
+              "Inscribe a cada trabajador", "Calcula y paga cuotas (SUA)"],
+       costo_aprox="Cuotas obrero-patronales", fuente="https://www.imss.gob.mx",
+       keywords=["imss", "alta patronal", "trabajadores", "nss", "cuotas", "empleados"]),
+    _t(id="mx_impi_marca", country="MX", scope="nacional", category="cumplimiento", eje="economia",
+       title="Registro de marca (IMPI)",
+       authority="Instituto Mexicano de la Propiedad Industrial (IMPI)",
+       requisitos=["Denominación o logo", "Productos/servicios (clasificación Niza)",
+                   "Datos del solicitante", "Pago de derechos"],
+       pasos=["Búsqueda fonética en MARCANET", "Presenta solicitud en MARCA en línea",
+              "Paga derechos", "Atiende oficios", "Obtén el título de registro"],
+       costo_aprox="~$2,400 MXN por clase", vigencia="10 años (renovable)",
+       fuente="https://www.gob.mx/impi", keywords=["marca", "impi", "registro", "propiedad industrial", "logo"]),
+
+    # ===== México — estatal / municipal (más) =====
+    _t(id="mx_nl_mty_licencia", country="MX", scope="municipal", region="Nuevo León", municipio="Monterrey",
+       category="abrir", eje="economia",
+       title="Licencia / anuencia de funcionamiento — Monterrey",
+       authority="Municipio de Monterrey",
+       requisitos=["Uso de suelo", "Identificación", "Comprobante de domicilio del local",
+                   "Dictamen de Protección Civil (según giro)"],
+       pasos=["Verifica factibilidad de uso de suelo", "Ingresa solicitud", "Paga derechos",
+              "Recibe anuencia/licencia"],
+       costo_aprox="Variable por giro/superficie", vigencia="Anual",
+       fuente="https://www.monterrey.gob.mx", keywords=["licencia", "monterrey", "nuevo león", "anuencia"]),
+    _t(id="mx_jal_sare", country="MX", scope="estatal", region="Jalisco",
+       category="abrir", eje="economia",
+       title="Apertura rápida de empresas (SARE) — Jalisco",
+       authority="Gobierno de Jalisco / municipios",
+       requisitos=["Giro de bajo riesgo", "Uso de suelo compatible", "Identificación"],
+       pasos=["Verifica si tu giro es de bajo riesgo", "Tramita por SARE/ventanilla única",
+              "Obtén licencia en plazo reducido"],
+       costo_aprox="Reducido (giros de bajo riesgo)", fuente="https://www.jalisco.gob.mx",
+       keywords=["sare", "apertura rápida", "jalisco", "bajo riesgo", "licencia"]),
+
+    # ===== Colombia (más) =====
+    _t(id="co_bog_uso_suelo", country="CO", scope="municipal", region="Bogotá D.C.",
+       category="abrir", eje="servicios",
+       title="Concepto de uso de suelo — Bogotá",
+       authority="Secretaría Distrital de Planeación, Bogotá",
+       requisitos=["Dirección y CHIP del predio", "Actividad económica (CIIU)"],
+       pasos=["Consulta norma urbana (POT)", "Solicita concepto de uso", "Verifica compatibilidad del CIIU"],
+       costo_aprox="Gratuito (consulta)", fuente="https://www.sdp.gov.co",
+       keywords=["uso de suelo", "bogotá", "pot", "ciiu", "planeación"]),
+
+    # ===== Chile =====
+    _t(id="cl_inicio_actividades", country="CL", scope="nacional", category="cumplimiento", eje="economia",
+       title="Inicio de actividades (SII)",
+       authority="Servicio de Impuestos Internos (SII)",
+       requisitos=["RUT/ClaveÚnica", "Actividad económica", "Domicilio"],
+       pasos=["Ingresa a sii.cl", "Declara inicio de actividades", "Selecciona giro/código",
+              "Habilita boletas/facturas electrónicas"],
+       costo_aprox="Gratuito", fuente="https://www.sii.cl",
+       keywords=["sii", "inicio de actividades", "chile", "rut", "boleta"]),
+    _t(id="cl_patente_municipal", country="CL", scope="municipal", category="abrir", eje="economia",
+       title="Patente comercial municipal — Chile",
+       authority="Municipalidad correspondiente",
+       requisitos=["Inicio de actividades en SII", "Domicilio comercial", "Recepción definitiva del local"],
+       pasos=["Reúne requisitos", "Solicita patente en la municipalidad", "Paga la patente (semestral)"],
+       costo_aprox="% del capital propio (tope legal)", vigencia="Semestral",
+       fuente="", keywords=["patente", "municipal", "chile", "comercial"]),
+
+    # ===== Perú =====
+    _t(id="pe_ruc_sunat", country="PE", scope="nacional", category="cumplimiento", eje="economia",
+       title="Inscripción al RUC (SUNAT)",
+       authority="SUNAT",
+       requisitos=["DNI", "Comprobante de domicilio", "Actividad económica"],
+       pasos=["Ingresa a SUNAT con Clave SOL", "Inscribe el RUC", "Elige régimen (NRUS/RER/RMT)",
+              "Emite comprobantes electrónicos"],
+       costo_aprox="Gratuito", fuente="https://www.sunat.gob.pe",
+       keywords=["ruc", "sunat", "perú", "clave sol", "régimen"]),
+    _t(id="pe_licencia_funcionamiento", country="PE", scope="municipal", category="abrir", eje="economia",
+       title="Licencia de funcionamiento municipal — Perú",
+       authority="Municipalidad distrital",
+       requisitos=["RUC", "Zonificación compatible", "Inspección de Defensa Civil (ITSE)"],
+       pasos=["Verifica zonificación", "Presenta solicitud y declaración jurada", "ITSE según riesgo",
+              "Obtén la licencia"],
+       costo_aprox="Según tasa municipal", fuente="",
+       keywords=["licencia de funcionamiento", "perú", "itse", "defensa civil", "municipal"]),
 ]
 
 
@@ -136,6 +222,9 @@ def find_tramites(country: str | None = None, region: str | None = None,
 
 def to_context(t: dict) -> str:
     """Compact grounding block for an LLM."""
+    if t.get("text"):  # RAG snippet from the company's own documents
+        loc = t.get("title", "Documento de la empresa")
+        return f"[{loc} — documento empresa] {t['text'][:400]}"
     reqs = "; ".join(t.get("requisitos", []))
     pasos = " → ".join(t.get("pasos", []))
     loc = " / ".join(x for x in (t.get("municipio"), t.get("region"), t["country"]) if x)
