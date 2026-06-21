@@ -148,6 +148,13 @@ export const api = {
     request<{ id: string; name: string }>("/integrations/connectors", { method: "POST", body: JSON.stringify(body) }),
   testConnector: (id: string) => request<{ status: string; detail: string }>(`/integrations/connectors/${id}/test`, { method: "POST" }),
   deleteConnector: (id: string) => request<{ ok: boolean }>(`/integrations/connectors/${id}`, { method: "DELETE" }),
+  connectorTemplates: () =>
+    request<{ id: string; kind: string; name: string; auth_header: string; base_url: string; auth_hint: string; payload_example: Record<string, unknown> }[]>("/integrations/connector-templates"),
+  webhooks: () =>
+    request<{ id: string; name: string; default_event: string; enabled: boolean; url: string }[]>("/integrations/webhooks"),
+  createWebhook: (body: { name: string; default_event: string }) =>
+    request<{ id: string; name: string; url: string; secret: string }>("/integrations/webhooks", { method: "POST", body: JSON.stringify(body) }),
+  deleteWebhook: (id: string) => request<{ ok: boolean }>(`/integrations/webhooks/${id}`, { method: "DELETE" }),
   apiKeys: () => request<{ id: string; name: string; prefix: string; status: string }[]>("/admin/api-keys"),
   createApiKey: (name: string) => request<{ id: string; name: string; api_key: string }>("/admin/api-keys", { method: "POST", body: JSON.stringify({ name }) }),
   revokeApiKey: (id: string) => request<{ id: string; status: string }>(`/admin/api-keys/${id}/revoke`, { method: "POST" }),

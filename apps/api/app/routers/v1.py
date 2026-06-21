@@ -6,7 +6,11 @@ Auth: header X-API-Key.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+import hashlib
+import hmac
+import json as _json
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlmodel import Session
 
@@ -75,3 +79,35 @@ def ingest_event(
     from .automations import dispatch_event
     ran = dispatch_event(session, tenant, body.event, body.payload)
     return {"event": body.event, "automations_triggered": ran}
+
+
+@router.post("/webhooks/{webhook_id}")
+async def inbound_webhook(
+    webhook_id: str,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> dict:
+    """Signed inbound webhook (HMAC-SHA256). External systems POST events here;
+    authenticated by the X-Signature header, not an API key."""
+    from ..models import WebhookEndpoint
+    from ..security.crypto import decrypt
+    from .automations import dispatch_event
+
+    wh = session.get(WebhookEndpoint, webhook_id)
+    if not wh or not wh.enabled:
+        raise HTTPException(status_code=404, detail="Webhook no encontrado")
+    raw = await request.body()
+    secret = decrypt(wh.secret_enc, wh.tenant_id)
+    expected = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
+    sig = request.headers.get("X-Signature", "")
+    if not hmac.compare_digest(expected, sig):
+        raise HTTPException(status_code=401, detail="Firma inválida")
+    try:
+        data = _json.loads(raw or b"{}")
+    except ValueError:
+        data = {}
+    event = data.get("event") or wh.default_event
+    payload = data.get("payload", data)
+    tenant = session.get(Tenant, wh.tenant_id)
+    ran = dispatch_event(session, tenant, event, payload)
+    return {"ok": True, "event": event, "automations_triggered": ran}

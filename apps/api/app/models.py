@@ -198,6 +198,18 @@ class Connector(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class WebhookEndpoint(SQLModel, table=True):
+    """Inbound signed webhook (HMAC) so external systems notify events securely."""
+    __tablename__ = "webhook_endpoints"
+    id: str = Field(default_factory=lambda: _uuid("whk"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    name: str = ""
+    secret_enc: str = ""           # HMAC secret, encrypted at rest
+    default_event: str = "webhook"
+    enabled: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class Connection(SQLModel, table=True):
     """A user-approved connection to an external account (email, calendar, ...).
 

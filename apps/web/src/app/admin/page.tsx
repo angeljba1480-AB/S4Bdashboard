@@ -32,38 +32,6 @@ export default function AdminPage() {
   const [tramiteMsg, setTramiteMsg] = useState("");
   const [docs, setDocs] = useState<{ id: string; filename: string }[]>([]);
   const [importDoc, setImportDoc] = useState("");
-  const [keys, setKeys] = useState<{ id: string; name: string; prefix: string; status: string }[]>([]);
-  const [newKeyName, setNewKeyName] = useState("");
-  const [newKeyValue, setNewKeyValue] = useState("");
-  const [connectors, setConnectors] = useState<{ id: string; kind: string; name: string; enabled: boolean }[]>([]);
-  const [newCnx, setNewCnx] = useState({ kind: "crm", name: "", base_url: "", token: "" });
-  const [cnxMsg, setCnxMsg] = useState("");
-
-  function loadIntegrations() {
-    api.apiKeys().then(setKeys).catch(() => {});
-    api.connectors().then(setConnectors).catch(() => {});
-  }
-  async function createKey() {
-    const r = await api.createApiKey(newKeyName || "Integración");
-    setNewKeyValue(r.api_key);
-    setNewKeyName("");
-    loadIntegrations();
-  }
-  async function revokeKey(id: string) {
-    await api.revokeApiKey(id);
-    loadIntegrations();
-  }
-  async function addConnector(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newCnx.name || !newCnx.base_url) return;
-    await api.createConnector(newCnx);
-    setNewCnx({ kind: "crm", name: "", base_url: "", token: "" });
-    loadIntegrations();
-  }
-  async function testConnector(id: string) {
-    const r = await api.testConnector(id);
-    setCnxMsg(`Prueba: ${r.status} · ${r.detail}`);
-  }
 
   function loadTramites() {
     api.tramites().then(setTramites).catch(() => {});
@@ -160,7 +128,6 @@ export default function AdminPage() {
     api.regionalCountries().then(setCountries).catch(() => {});
     loadTramites();
     api.documents().then((d) => setDocs(d.map((x) => ({ id: x.id, filename: x.filename })))).catch(() => {});
-    loadIntegrations();
   }, []);
 
   async function curate(id: string) {
@@ -489,65 +456,6 @@ export default function AdminPage() {
               ))}
             </div>
           )}
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-1 font-semibold text-slate-800">Integraciones · API & conectores</h2>
-          <p className="mb-4 text-sm text-slate-500">
-            API keys para que otros sistemas (CRM/ERP/delivery) llamen a MaestroAI (<code>/v1</code>), y
-            conectores para que MaestroAI les envíe datos.
-          </p>
-
-          <div className="mb-4">
-            <div className="mb-2 text-sm font-medium text-slate-700">API keys (entrada)</div>
-            <div className="flex flex-wrap gap-2">
-              <input value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)}
-                placeholder="Nombre (ej. CRM Acme)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-              <button onClick={createKey} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Generar API key</button>
-            </div>
-            {newKeyValue && (
-              <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                Cópiala ahora (no se vuelve a mostrar): <code className="break-all font-mono">{newKeyValue}</code>
-              </div>
-            )}
-            <div className="mt-2 space-y-1">
-              {keys.map((k) => (
-                <div key={k.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                  <span className="text-slate-700">{k.name} <span className="font-mono text-slate-400">{k.prefix}…</span></span>
-                  {k.status === "active" ? (
-                    <button onClick={() => revokeKey(k.id)} className="text-xs font-semibold text-red-600">Revocar</button>
-                  ) : <span className="text-xs text-slate-400">revocada</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="mb-2 text-sm font-medium text-slate-700">Conectores (salida)</div>
-            <form onSubmit={addConnector} className="flex flex-wrap gap-2">
-              <select value={newCnx.kind} onChange={(e) => setNewCnx({ ...newCnx, kind: e.target.value })}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                <option value="crm">CRM</option><option value="erp">ERP</option>
-                <option value="delivery">Delivery</option><option value="custom">Custom</option>
-              </select>
-              <input value={newCnx.name} onChange={(e) => setNewCnx({ ...newCnx, name: e.target.value })}
-                placeholder="Nombre" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-              <input value={newCnx.base_url} onChange={(e) => setNewCnx({ ...newCnx, base_url: e.target.value })}
-                placeholder="https://… (webhook/REST)" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-              <input value={newCnx.token} onChange={(e) => setNewCnx({ ...newCnx, token: e.target.value })}
-                type="password" placeholder="Token (opcional)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-              <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Agregar</button>
-            </form>
-            <div className="mt-2 space-y-1">
-              {connectors.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                  <span className="text-slate-700"><span className="uppercase text-slate-400">{c.kind}</span> · {c.name}</span>
-                  <button onClick={() => testConnector(c.id)} className="text-xs font-semibold text-violet-700">Probar</button>
-                </div>
-              ))}
-            </div>
-            {cnxMsg && <div className="mt-2 text-xs text-slate-500">{cnxMsg}</div>}
-          </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5">

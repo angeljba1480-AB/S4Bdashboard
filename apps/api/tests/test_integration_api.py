@@ -91,3 +91,31 @@ def test_run_due_scheduled(client):
     client.post("/automations/from-template", headers=h, json={"template_id": "reporte_operacion"})  # daily
     res = client.post("/automations/run-due?frequency=daily", headers=h).json()
     assert res["ran"] >= 1
+
+
+def test_connector_templates(client):
+    h = _auth(client)
+    t = client.get("/integrations/connector-templates", headers=h).json()
+    ids = {x["id"] for x in t}
+    assert {"hubspot", "salesforce", "shopify", "rappi"} <= ids
+    assert all("payload_example" in x for x in t)
+
+
+def test_signed_inbound_webhook(client):
+    import hashlib
+    import hmac
+    h = _auth(client)
+    client.post("/automations/from-template", headers=h, json={"template_id": "alerta_doc_sensible"})
+    wh = client.post("/integrations/webhooks", headers=h, json={
+        "name": "CRM events", "default_event": "document_uploaded"}).json()
+    secret = wh["secret"]
+    body = b'{"event":"document_uploaded","payload":{"from":"crm"}}'
+    sig = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+
+    # valid signature -> dispatched
+    ok = client.post(wh["url"], content=body, headers={"X-Signature": sig})
+    assert ok.status_code == 200 and ok.json()["automations_triggered"] >= 1
+
+    # bad signature -> rejected
+    bad = client.post(wh["url"], content=body, headers={"X-Signature": "deadbeef"})
+    assert bad.status_code == 401
