@@ -113,6 +113,8 @@ export const api = {
   },
   addCompanyTramite: (body: { title: string; authority?: string; region?: string; municipio?: string; requisitos?: string[]; pasos?: string[]; costo_aprox?: string; fuente?: string; keywords?: string[] }) =>
     request<{ id: string; title: string }>("/tramites", { method: "POST", body: JSON.stringify(body) }),
+  importTramite: (documentId: string) =>
+    request<{ id: string; title: string }>("/tramites/import", { method: "POST", body: JSON.stringify({ document_id: documentId }) }),
   // Dashboard builder
   dashboards: () =>
     request<{ id: string; name: string; description: string; spec: unknown[]; workflow_id: string | null }[]>("/dashboards"),
@@ -124,7 +126,11 @@ export const api = {
   createDashboard: (body: { name: string; description: string; spec?: unknown[]; workflow_id?: string }) =>
     request<{ id: string; name: string }>("/dashboards", { method: "POST", body: JSON.stringify(body) }),
   dashboardData: (id: string) =>
-    request<{ id: string; name: string; widgets: { id: string; type: string; title: string; value?: number; series?: { name: string; value: number }[]; rows?: Record<string, unknown>[] }[] }>(`/dashboards/${id}/data`),
+    request<{ id: string; name: string; widgets: { id: string; type: string; title: string; source?: string; key?: string; value?: number; series?: { name: string; value: number }[]; rows?: Record<string, unknown>[] }[] }>(`/dashboards/${id}/data`),
+  dashboardCatalog: () =>
+    request<{ key: string; type: string; title: string }[]>("/dashboards/catalog"),
+  updateDashboard: (id: string, body: { name: string; description: string; spec?: unknown[]; workflow_id?: string }) =>
+    request<{ id: string; name: string }>(`/dashboards/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteDashboard: (id: string) => request<{ ok: boolean }>(`/dashboards/${id}`, { method: "DELETE" }),
   // App Studio
   apps: () => request<AppProject[]>("/apps"),

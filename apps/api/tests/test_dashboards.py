@@ -50,6 +50,17 @@ def test_create_and_resolve_data(client):
     assert all("series" in w for w in bars)
 
 
+def test_company_data_widget_resolves(client):
+    h = _auth(client)
+    client.post("/documents/upload", headers=h, data={
+        "filename": "contrato_demo.txt", "text": "Contrato de servicios confidencial."})
+    dash = client.post("/dashboards", headers=h, json={
+        "name": "Documentos", "description": "documentos y archivos de la empresa"}).json()
+    data = client.get(f"/dashboards/{dash['id']}/data", headers=h).json()
+    doc_kpi = next((w for w in data["widgets"] if w["id"] and w.get("value") is not None and "Documentos" in w["title"]), None)
+    assert doc_kpi is not None and doc_kpi["value"] >= 1
+
+
 def test_update_and_delete(client):
     h = _auth(client)
     dash = client.post("/dashboards", headers=h, json={"name": "Tmp", "description": "casos"}).json()

@@ -66,6 +66,23 @@ def test_company_rag_layer_from_documents(client):
     assert any(t.get("source") == "empresa-rag" for t in res)
 
 
+def test_import_document_to_company_tramite(client):
+    h = _auth(client)
+    doc = client.post("/documents/upload", headers=h, data={
+        "filename": "proceso_compras.txt",
+        "text": ("Proceso de compras\n"
+                 "Requisito: presentar orden de compra firmada\n"
+                 "Requisito: adjuntar identificación del proveedor\n"
+                 "1. Solicita cotización\n2. Registra la orden\n3. Paga al proveedor")}).json()
+    imported = client.post("/tramites/import", headers=h, json={"document_id": doc["id"]}).json()
+    assert imported["source"] == "empresa"
+    assert imported["requisitos"]            # extracted requisitos
+    assert imported["pasos"]                 # extracted pasos
+    # now it grounds searches (matches its extracted keywords, e.g. "compras")
+    res = client.get("/tramites?q=compras", headers=h).json()
+    assert any(t["source"] == "empresa" and "proceso" in t["title"].lower() for t in res)
+
+
 def test_recipe_prefill_grounds_on_kb(client):
     h = _auth(client)
     start = client.post("/recipes/rfc_alta/start", headers=h, json={

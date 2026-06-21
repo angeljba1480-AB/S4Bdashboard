@@ -17,7 +17,7 @@ from sqlmodel import Session, select
 
 from ..auth import get_current_tenant, get_current_user, require_roles
 from ..db import get_session
-from ..models import Role, Tenant, TenantTramite, User
+from ..models import Document, Role, Tenant, TenantTramite, User
 from ..regional.tramites import find_tramites, get_tramite
 
 router = APIRouter(prefix="/tramites", tags=["tramites"])
@@ -82,6 +82,35 @@ def layered_search(session: Session, tenant: Tenant, q: str | None = None,
     return private + rag + curated
 
 
+class ImportIn(BaseModel):
+    document_id: str
+
+
+_REQ_KW = ("requisito", "deberá", "debera", "presentar", "adjuntar", "acredit", "constancia",
+           "identificación", "identificacion", "comprobante", "copia", "original", "vigente")
+_PASO_KW = ("paso", "ingresa", "acude", "solicita", "registra", "tramita", "paga", "obtén", "obten",
+            "descarga", "verifica", "llena", "completa")
+
+
+def extract_tramite(doc: Document) -> dict:
+    """Heuristically turn a document into a structured trámite draft (offline-safe)."""
+    from ..security.crypto import decrypt
+    text = decrypt(doc.text or "", doc.tenant_id)
+    lines = [ln.strip(" -•\t") for ln in text.splitlines() if ln.strip()]
+    title = (lines[0][:120] if lines else "") or doc.filename.rsplit(".", 1)[0]
+    requisitos, pasos = [], []
+    for ln in lines:
+        low = ln.lower()
+        if len(ln) > 8 and any(k in low for k in _REQ_KW):
+            requisitos.append(ln[:200])
+        if (ln[:2].rstrip(".").isdigit() or any(low.startswith(k) for k in _PASO_KW)):
+            pasos.append(ln[:200])
+    requisitos = list(dict.fromkeys(requisitos))[:12]
+    pasos = list(dict.fromkeys(pasos))[:12] or lines[1:6]
+    keywords = [w.lower() for w in title.split() if len(w) > 4][:6]
+    return {"title": title, "requisitos": requisitos, "pasos": pasos, "keywords": keywords}
+
+
 class TenantTramiteIn(BaseModel):
     title: str
     authority: str = ""
@@ -142,6 +171,32 @@ def add_company_tramite(
         requisitos=json.dumps(body.requisitos), pasos=json.dumps(body.pasos),
         costo_aprox=body.costo_aprox.strip(), fuente=body.fuente.strip(),
         keywords=",".join(body.keywords),
+    )
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return _tenant_entry_to_dict(row)
+
+
+@router.post("/import", status_code=201)
+def import_from_document(
+    body: ImportIn,
+    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Turn an uploaded document into a structured company trámite (MCP layer)."""
+    if tenant.subscription_status not in ("active", "trial"):
+        raise HTTPException(status_code=402, detail="Suscripción inactiva: renueva para tu MCP de empresa")
+    doc = session.get(Document, body.document_id)
+    if not doc or doc.tenant_id != tenant.id:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    draft = extract_tramite(doc)
+    row = TenantTramite(
+        tenant_id=tenant.id, country=tenant.country, title=draft["title"],
+        authority=f"Importado de {doc.filename}",
+        requisitos=json.dumps(draft["requisitos"]), pasos=json.dumps(draft["pasos"]),
+        keywords=",".join(draft["keywords"]), fuente=doc.filename,
     )
     session.add(row)
     session.commit()

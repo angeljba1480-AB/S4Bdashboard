@@ -15,11 +15,46 @@ export default function DashboardsPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
+  const [catalog, setCatalog] = useState<{ key: string; type: string; title: string }[]>([]);
+  const [addKey, setAddKey] = useState("");
+  const [manual, setManual] = useState({ title: "", value: "" });
 
   function load() {
     api.dashboards().then(setList).catch(() => {});
   }
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    api.dashboardCatalog().then(setCatalog).catch(() => {});
+  }, []);
+
+  function currentSpec() {
+    return (active?.widgets ?? []).map((w) => {
+      const base: Record<string, unknown> = { id: w.id, type: w.type, title: w.title, source: w.source ?? "platform", key: w.key };
+      if (w.source === "manual") {
+        if (w.value !== undefined) base.value = w.value;
+        if (w.rows) base.rows = w.rows;
+      }
+      return base;
+    });
+  }
+
+  async function addWidget() {
+    if (!active || !addKey) return;
+    const c = catalog.find((w) => w.key === addKey);
+    if (!c) return;
+    const spec = [...currentSpec(), { id: `w${Date.now()}`, type: c.type, title: c.title, source: "platform", key: c.key }];
+    await api.updateDashboard(active.id, { name: active.name, description: "", spec });
+    setAddKey("");
+    await open(active.id);
+  }
+
+  async function addManual() {
+    if (!active || !manual.title.trim()) return;
+    const spec = [...currentSpec(), { id: `m${Date.now()}`, type: "kpi", title: manual.title, source: "manual", value: Number(manual.value) || 0 }];
+    await api.updateDashboard(active.id, { name: active.name, description: "", spec });
+    setManual({ title: "", value: "" });
+    await open(active.id);
+  }
 
   async function open(id: string) {
     setActive(await api.dashboardData(id));
@@ -88,7 +123,24 @@ export default function DashboardsPage() {
         {/* Active dashboard */}
         {active && (
           <div>
-            <h2 className="mb-3 text-lg font-bold text-slate-900">{active.name}</h2>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-bold text-slate-900">{active.name}</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <select value={addKey} onChange={(e) => setAddKey(e.target.value)}
+                  className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
+                  <option value="">+ Widget de datos…</option>
+                  {catalog.map((c) => <option key={c.key} value={c.key}>{c.title}</option>)}
+                </select>
+                <button onClick={addWidget} disabled={!addKey}
+                  className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">Agregar</button>
+                <span className="text-slate-300">|</span>
+                <input value={manual.title} onChange={(e) => setManual((m) => ({ ...m, title: e.target.value }))}
+                  placeholder="KPI propio" className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+                <input value={manual.value} onChange={(e) => setManual((m) => ({ ...m, value: e.target.value }))}
+                  placeholder="valor" className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+                <button onClick={addManual} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700">+ Manual</button>
+              </div>
+            </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {active.widgets.filter((w) => w.type === "kpi").map((w) => (
                 <div key={w.id} className="rounded-2xl border border-slate-200 bg-white p-5">

@@ -30,9 +30,23 @@ export default function AdminPage() {
   const [tramites, setTramites] = useState<{ id: string; title: string; authority: string; source: string; region: string }[]>([]);
   const [newTramite, setNewTramite] = useState({ title: "", authority: "", region: "", keywords: "", requisitos: "", pasos: "" });
   const [tramiteMsg, setTramiteMsg] = useState("");
+  const [docs, setDocs] = useState<{ id: string; filename: string }[]>([]);
+  const [importDoc, setImportDoc] = useState("");
 
   function loadTramites() {
     api.tramites().then(setTramites).catch(() => {});
+  }
+  async function doImport() {
+    if (!importDoc) return;
+    setTramiteMsg("Importando…");
+    try {
+      await api.importTramite(importDoc);
+      setImportDoc("");
+      setTramiteMsg("✓ Documento convertido a trámite del MCP");
+      loadTramites();
+    } catch (err) {
+      setTramiteMsg(err instanceof Error ? err.message : "Error");
+    }
   }
   async function addTramite(e: React.FormEvent) {
     e.preventDefault();
@@ -113,6 +127,7 @@ export default function AdminPage() {
     api.plans().then(setPlans).catch(() => {});
     api.regionalCountries().then(setCountries).catch(() => {});
     loadTramites();
+    api.documents().then((d) => setDocs(d.map((x) => ({ id: x.id, filename: x.filename })))).catch(() => {});
   }, []);
 
   async function curate(id: string) {
@@ -418,6 +433,18 @@ export default function AdminPage() {
               placeholder="Pasos (uno por línea)" rows={2} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
             <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white sm:col-span-2">Agregar al MCP de empresa</button>
           </form>
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+            <span className="text-sm font-medium text-slate-600">Importar documento → trámite:</span>
+            <select value={importDoc} onChange={(e) => setImportDoc(e.target.value)}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+              <option value="">Selecciona un documento…</option>
+              {docs.map((d) => <option key={d.id} value={d.id}>{d.filename}</option>)}
+            </select>
+            <button onClick={doImport} disabled={!importDoc}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+              Importar al MCP
+            </button>
+          </div>
           {tramiteMsg && <div className="mt-2 text-xs text-slate-500">{tramiteMsg}</div>}
           {tramites.filter((t) => t.source === "empresa").length > 0 && (
             <div className="mt-3 space-y-1">

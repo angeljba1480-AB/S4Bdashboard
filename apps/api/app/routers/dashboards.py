@@ -31,7 +31,30 @@ WIDGET_CATALOG: list[dict] = [
     {"key": "cases.by_recipe", "type": "bar", "title": "Casos por tipo", "tags": ["caso", "tipo", "proceso"]},
     {"key": "cost.by_route", "type": "bar", "title": "Costo por ruta", "tags": ["costo", "ruta", "gasto"]},
     {"key": "recent_cases", "type": "table", "title": "Casos recientes", "tags": ["caso", "reciente", "historial"]},
+    # ---- Company data widgets ----
+    {"key": "documents.total", "type": "kpi", "title": "Documentos", "tags": ["documento", "archivo", "expediente"]},
+    {"key": "tramites_empresa.total", "type": "kpi", "title": "Trámites de empresa (MCP)", "tags": ["trámite", "mcp", "conocimiento"]},
+    {"key": "documents.by_sensitivity", "type": "bar", "title": "Documentos por sensibilidad", "tags": ["documento", "sensibilidad", "clasificación"]},
+    {"key": "documents.recent", "type": "table", "title": "Documentos recientes", "tags": ["documento", "reciente", "archivo"]},
 ]
+
+
+def compute_company(session: Session, tenant: Tenant) -> dict:
+    """Company-owned data metrics (documents + private MCP layer)."""
+    from collections import Counter
+
+    from ..models import Document, TenantTramite
+
+    docs = session.exec(select(Document).where(Document.tenant_id == tenant.id)).all()
+    by_sens = Counter(d.sensitivity.value for d in docs)
+    recent = [{"archivo": d.filename, "sensibilidad": d.sensitivity.value,
+               "fecha": d.created_at.date().isoformat()}
+              for d in sorted(docs, key=lambda d: d.created_at, reverse=True)[:10]]
+    tt = len(session.exec(select(TenantTramite).where(TenantTramite.tenant_id == tenant.id)).all())
+    return {
+        "documents": {"total": len(docs), "by_sensitivity": dict(by_sens), "recent": recent},
+        "tramites_empresa": {"total": tt},
+    }
 
 
 class DashboardIn(BaseModel):
@@ -192,5 +215,6 @@ def dashboard_data(
 ) -> dict:
     d = _load(session, tenant, user, dashboard_id)
     ops = compute_operations(session, tenant)
-    widgets = [resolve_widget(w, ops) for w in json.loads(d.spec or "[]")]
+    data = {**ops, **compute_company(session, tenant)}
+    widgets = [resolve_widget(w, data) for w in json.loads(d.spec or "[]")]
     return {"id": d.id, "name": d.name, "widgets": widgets}
