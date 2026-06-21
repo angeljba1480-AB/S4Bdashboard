@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     n8n_api_base_url: str = ""      # e.g. https://n8n.tu-saas.com/api/v1
     n8n_auto_provision: bool = True
 
+    # In-process scheduler for time-based automations (or use /automations/run-due).
+    scheduler_enabled: bool = False
+
     # Encryption at rest (KMS abstraction). master_kms_key seeds per-tenant keys.
     # In production this comes from a real KMS (AWS KMS, GCP KMS, Vault).
     encryption_enabled: bool = True

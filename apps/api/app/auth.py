@@ -7,7 +7,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
 
@@ -75,6 +75,37 @@ def get_current_tenant(
     session: Session = Depends(get_session),
 ) -> Tenant:
     tenant = session.get(Tenant, user.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+    return tenant
+
+
+def hash_api_key(key: str) -> str:
+    import hashlib
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def generate_api_key() -> tuple[str, str, str]:
+    """Returns (full_key, prefix, hash). Full key is shown once."""
+    import secrets
+    full = f"mai_{secrets.token_urlsafe(32)}"
+    return full, full[:10], hash_api_key(full)
+
+
+def get_tenant_by_api_key(
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+    session: Session = Depends(get_session),
+) -> Tenant:
+    """System-to-system auth for the public /v1 integration API."""
+    from .models import ApiKey
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="Falta X-API-Key")
+    row = session.exec(
+        select(ApiKey).where(ApiKey.key_hash == hash_api_key(x_api_key), ApiKey.status == "active")
+    ).first()
+    if not row:
+        raise HTTPException(status_code=401, detail="API key inválida")
+    tenant = session.get(Tenant, row.tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
     return tenant

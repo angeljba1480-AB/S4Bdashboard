@@ -76,6 +76,13 @@ async def upload(
         reason=f"clasificado {cls.sensitivity.value}; {chunks} chunks; PII {cls.pii.types}",
     ))
     session.commit()
+
+    # Fire event-driven automations (e.g. alerta de documento sensible, indexar).
+    from .automations import dispatch_event
+    dispatch_event(session, tenant, "document_uploaded", {
+        "document_id": doc.id, "filename": doc.filename, "sensitivity": cls.sensitivity.value,
+    }, user=user)
+
     return _out(doc)
 
 

@@ -139,6 +139,18 @@ export const api = {
     request<{ id: string; name: string; description: string; trigger: string; schedule: string; event: string; action_type: string; action_ref: string; enabled: boolean; status: string; last_run: string | null }[]>("/automations"),
   createAutomationFromTemplate: (templateId: string) =>
     request<{ id: string; name: string }>("/automations/from-template", { method: "POST", body: JSON.stringify({ template_id: templateId }) }),
+  createAutomation: (body: { name: string; trigger: string; schedule?: string; event?: string; action_type: string; action_ref?: string; config?: Record<string, unknown> }) =>
+    request<{ id: string; name: string }>("/automations", { method: "POST", body: JSON.stringify(body) }),
+  // Integrations: connectors + API keys
+  connectors: () =>
+    request<{ id: string; kind: string; name: string; base_url: string; has_token: boolean; enabled: boolean }[]>("/integrations/connectors"),
+  createConnector: (body: { kind: string; name: string; base_url: string; auth_header?: string; token?: string }) =>
+    request<{ id: string; name: string }>("/integrations/connectors", { method: "POST", body: JSON.stringify(body) }),
+  testConnector: (id: string) => request<{ status: string; detail: string }>(`/integrations/connectors/${id}/test`, { method: "POST" }),
+  deleteConnector: (id: string) => request<{ ok: boolean }>(`/integrations/connectors/${id}`, { method: "DELETE" }),
+  apiKeys: () => request<{ id: string; name: string; prefix: string; status: string }[]>("/admin/api-keys"),
+  createApiKey: (name: string) => request<{ id: string; name: string; api_key: string }>("/admin/api-keys", { method: "POST", body: JSON.stringify({ name }) }),
+  revokeApiKey: (id: string) => request<{ id: string; status: string }>(`/admin/api-keys/${id}/revoke`, { method: "POST" }),
   toggleAutomation: (id: string) =>
     request<{ id: string; enabled: boolean }>(`/automations/${id}/toggle`, { method: "POST" }),
   runAutomation: (id: string) =>

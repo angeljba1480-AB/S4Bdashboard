@@ -169,13 +169,32 @@ class AuditEvent(SQLModel, table=True):
 
 
 class ApiKey(SQLModel, table=True):
+    """Tenant API key for system-to-system integration (the public /v1 API)."""
     __tablename__ = "api_keys"
     id: str = Field(default_factory=lambda: _uuid("key"), primary_key=True)
     tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    name: str = ""
+    key_prefix: str = ""           # shown for identification (e.g. mai_ab12…)
+    key_hash: str = Field(default="", index=True)  # sha256 of the full key
     provider: str = ""
     secret_ref: str = ""
     allowed_models: str = ""
     status: str = "active"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Connector(SQLModel, table=True):
+    """Outbound connector to an enterprise system (CRM / ERP / delivery / custom).
+    MaestroAI pushes data to it via webhook/REST; used by automations."""
+    __tablename__ = "connectors"
+    id: str = Field(default_factory=lambda: _uuid("cnx"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    kind: str = "crm"              # crm | erp | delivery | custom
+    name: str = ""
+    base_url: str = ""            # endpoint to POST to
+    auth_header: str = "Authorization"
+    token_enc: str = ""           # encrypted at rest
+    enabled: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

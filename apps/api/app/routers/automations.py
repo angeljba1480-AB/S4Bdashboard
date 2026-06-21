@@ -51,13 +51,17 @@ def _load(session, tenant, user, aid) -> Automation:
     return a
 
 
-def _run(session: Session, tenant: Tenant, user: User, a: Automation) -> tuple[str, str]:
+def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
+         payload: dict | None = None) -> tuple[str, str]:
     """Execute the action. Returns (status, detail)."""
     config = json.loads(a.config or "{}")
+    if payload:
+        config = {**config, **payload}
+    uid = user.id if user else None
     if a.action_type == "workflow":
         cfg = resolve_n8n(tenant)
         run = trigger_workflow(cfg, a.action_ref, {
-            "automation_id": a.id, "tenant_id": tenant.id, "user_id": user.id, **config})
+            "automation_id": a.id, "tenant_id": tenant.id, "user_id": uid, **config})
         return run.status, f"workflow {a.action_ref} · n8n:{run.source} · {run.detail}"
     if a.action_type == "recipe":
         from ..recipes.catalog import prefill
@@ -67,13 +71,81 @@ def _run(session: Session, tenant: Tenant, user: User, a: Automation) -> tuple[s
             return "failed", f"receta {a.action_ref} no encontrada"
         draft = prefill(recipe, session, tenant, config)
         return "completed", f"caso {recipe['name']}: {str(draft.get('summary', ''))[:160]}"
+    if a.action_type == "connector":
+        from .integrations import send_to_connector
+        return send_to_connector(session, tenant, a.action_ref, {
+            "automation": a.name, "tenant_id": tenant.id, **config})
     # notify
     return "completed", config.get("message", "Notificación enviada")
+
+
+def dispatch_event(session: Session, tenant: Tenant, event: str,
+                   payload: dict | None = None, user: User | None = None) -> int:
+    """Run all enabled automations subscribed to an event. Returns how many ran."""
+    autos = session.exec(
+        select(Automation).where(
+            Automation.tenant_id == tenant.id, Automation.event == event, Automation.enabled == True)  # noqa: E712
+    ).all()
+    ran = 0
+    for a in autos:
+        try:
+            status, detail = _run(session, tenant, user, a, payload)
+        except Exception as exc:  # never break the triggering action
+            status, detail = "failed", f"error: {exc}"
+        a.status = status
+        a.last_run = datetime.utcnow().isoformat()
+        session.add(a)
+        session.add(AuditEvent(
+            tenant_id=tenant.id, user_id=user.id if user else None, event_type="automation",
+            object_type="automation", object_id=a.id,
+            risk_level="med" if status == "failed" else "low",
+            reason=f"evento '{event}' → '{a.name}' · {status} · {detail}"))
+        ran += 1
+    if ran:
+        session.commit()
+    return ran
+
+
+def run_due(session: Session, tenant: Tenant, frequency: str) -> int:
+    """Run enabled scheduled automations of a given frequency (daily/weekly/...)."""
+    autos = session.exec(
+        select(Automation).where(
+            Automation.tenant_id == tenant.id, Automation.trigger == "schedule",
+            Automation.schedule == frequency, Automation.enabled == True)  # noqa: E712
+    ).all()
+    ran = 0
+    for a in autos:
+        try:
+            status, detail = _run(session, tenant, None, a)
+        except Exception as exc:
+            status, detail = "failed", f"error: {exc}"
+        a.status, a.last_run = status, datetime.utcnow().isoformat()
+        session.add(a)
+        session.add(AuditEvent(
+            tenant_id=tenant.id, event_type="automation", object_type="automation", object_id=a.id,
+            risk_level="med" if status == "failed" else "low",
+            reason=f"programada ({frequency}) '{a.name}' · {status} · {detail}"))
+        ran += 1
+    if ran:
+        session.commit()
+    return ran
 
 
 @router.get("/templates")
 def templates(_: User = Depends(get_current_user)) -> list[dict]:
     return TEMPLATES
+
+
+@router.post("/run-due")
+def run_due_endpoint(
+    frequency: str = "daily",
+    tenant: Tenant = Depends(get_current_tenant),
+    _: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Run this tenant's due scheduled automations. Called by the scheduler or
+    an external cron (works on serverless without an in-process scheduler)."""
+    return {"frequency": frequency, "ran": run_due(session, tenant, frequency)}
 
 
 @router.get("")

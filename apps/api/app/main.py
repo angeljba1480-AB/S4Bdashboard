@@ -19,11 +19,13 @@ from .routers import (
     dashboards,
     documents,
     export,
+    integrations,
     recipes,
     regional,
     sso,
     tramites,
     usage,
+    v1,
     workflows,
 )
 
@@ -34,6 +36,9 @@ async def lifespan(app: FastAPI):
     from .seed import seed
 
     seed()
+    if settings.scheduler_enabled:
+        from .scheduler import start as start_scheduler
+        start_scheduler()
     yield
 
 
@@ -63,6 +68,8 @@ app.include_router(tramites.router)
 app.include_router(dashboards.router)
 app.include_router(apps.router)
 app.include_router(automations.router)
+app.include_router(integrations.router)
+app.include_router(v1.router)
 app.include_router(workflows.router)
 app.include_router(audit.router)
 app.include_router(usage.router)

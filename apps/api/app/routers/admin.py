@@ -145,6 +145,59 @@ def estimate_plan(
     return out
 
 
+class ApiKeyIn(BaseModel):
+    name: str = "Integración"
+
+
+@router.get("/api-keys")
+def list_api_keys(
+    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    from ..models import ApiKey
+    rows = session.exec(select(ApiKey).where(ApiKey.tenant_id == tenant.id)).all()
+    return [{"id": k.id, "name": k.name, "prefix": k.key_prefix, "status": k.status,
+             "created_at": k.created_at.isoformat()} for k in rows]
+
+
+@router.post("/api-keys", status_code=201)
+def create_api_key(
+    body: ApiKeyIn,
+    _: User = Depends(require_roles(Role.ADMIN)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Create an API key for the public /v1 integration API. Full key shown once."""
+    from ..auth import generate_api_key
+    from ..models import ApiKey
+    full, prefix, khash = generate_api_key()
+    row = ApiKey(tenant_id=tenant.id, name=body.name.strip() or "Integración",
+                 key_prefix=prefix, key_hash=khash, status="active")
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return {"id": row.id, "name": row.name, "api_key": full,
+            "note": "Guarda esta llave ahora; no se vuelve a mostrar."}
+
+
+@router.post("/api-keys/{key_id}/revoke")
+def revoke_api_key(
+    key_id: str,
+    _: User = Depends(require_roles(Role.ADMIN)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    from ..models import ApiKey
+    k = session.get(ApiKey, key_id)
+    if not k or k.tenant_id != tenant.id:
+        raise HTTPException(status_code=404, detail="API key no encontrada")
+    k.status = "revoked"
+    session.add(k)
+    session.commit()
+    return {"id": k.id, "status": k.status}
+
+
 @router.get("/billing")
 def get_billing(
     _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),

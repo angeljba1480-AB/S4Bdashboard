@@ -14,6 +14,10 @@ export default function AutomationsPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [list, setList] = useState<Automation[]>([]);
   const [msg, setMsg] = useState("");
+  const [workflows, setWorkflows] = useState<{ id: string; name: string }[]>([]);
+  const [recipes, setRecipes] = useState<{ id: string; name: string }[]>([]);
+  const [connectors, setConnectors] = useState<{ id: string; name: string }[]>([]);
+  const [custom, setCustom] = useState({ name: "", trigger: "manual", schedule: "daily", event: "document_uploaded", action_type: "workflow", action_ref: "", message: "" });
 
   function load() {
     api.automations().then(setList).catch(() => {});
@@ -21,7 +25,29 @@ export default function AutomationsPage() {
   useEffect(() => {
     api.automationTemplates().then(setTemplates).catch(() => {});
     load();
+    api.workflows().then((w) => setWorkflows(w.map((x) => ({ id: x.id, name: x.name })))).catch(() => {});
+    api.recipes().then((r) => setRecipes(r.map((x) => ({ id: x.id, name: x.name })))).catch(() => {});
+    api.connectors().then((c) => setConnectors(c.map((x) => ({ id: x.id, name: x.name })))).catch(() => {});
   }, []);
+
+  const refOptions = custom.action_type === "workflow" ? workflows
+    : custom.action_type === "recipe" ? recipes
+    : custom.action_type === "connector" ? connectors : [];
+
+  async function createCustom(e: React.FormEvent) {
+    e.preventDefault();
+    if (!custom.name.trim()) return;
+    await api.createAutomation({
+      name: custom.name, trigger: custom.trigger,
+      schedule: custom.trigger === "schedule" ? custom.schedule : "",
+      event: custom.trigger === "event" ? custom.event : "",
+      action_type: custom.action_type, action_ref: custom.action_ref,
+      config: custom.action_type === "notify" ? { message: custom.message } : {},
+    });
+    setCustom({ ...custom, name: "", action_ref: "", message: "" });
+    setMsg("✓ Automatización creada");
+    load();
+  }
 
   async function add(t: Template) {
     await api.createAutomationFromTemplate(t.id);
@@ -70,6 +96,51 @@ export default function AutomationsPage() {
             ))}
           </div>
         </div>
+
+        {/* Custom builder */}
+        <details className="rounded-2xl border border-slate-200 bg-white p-5">
+          <summary className="cursor-pointer font-semibold text-slate-800">Crear a la medida</summary>
+          <form onSubmit={createCustom} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <input value={custom.name} onChange={(e) => setCustom({ ...custom, name: e.target.value })}
+              placeholder="Nombre de la automatización" className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2" />
+            <select value={custom.trigger} onChange={(e) => setCustom({ ...custom, trigger: e.target.value })}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+              <option value="manual">Disparador: Manual</option>
+              <option value="schedule">Disparador: Programada</option>
+              <option value="event">Disparador: Por evento</option>
+            </select>
+            {custom.trigger === "schedule" && (
+              <select value={custom.schedule} onChange={(e) => setCustom({ ...custom, schedule: e.target.value })}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <option value="daily">Diaria</option><option value="weekly">Semanal</option><option value="monthly">Mensual</option>
+              </select>
+            )}
+            {custom.trigger === "event" && (
+              <select value={custom.event} onChange={(e) => setCustom({ ...custom, event: e.target.value })}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <option value="document_uploaded">Al subir un documento</option>
+              </select>
+            )}
+            <select value={custom.action_type} onChange={(e) => setCustom({ ...custom, action_type: e.target.value, action_ref: "" })}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+              <option value="workflow">Acción: Workflow (n8n)</option>
+              <option value="recipe">Acción: Caso de uso</option>
+              <option value="connector">Acción: Conector (CRM/ERP/delivery)</option>
+              <option value="notify">Acción: Notificar</option>
+            </select>
+            {custom.action_type !== "notify" ? (
+              <select value={custom.action_ref} onChange={(e) => setCustom({ ...custom, action_ref: e.target.value })}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <option value="">Selecciona…</option>
+                {refOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            ) : (
+              <input value={custom.message} onChange={(e) => setCustom({ ...custom, message: e.target.value })}
+                placeholder="Mensaje de la notificación" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            )}
+            <button className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white sm:col-span-2">Crear automatización</button>
+          </form>
+        </details>
 
         {/* My automations */}
         <div>
