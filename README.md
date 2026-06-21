@@ -21,7 +21,6 @@ apps/
   api/            Backend FastAPI: auth multi-tenant, policy engine, clasificador
                   de datos, detección PII (RFC/CURP/CLABE…), RAG, router de
                   privacidad, model adapters, auditoría y cost meter.
-  s4b-dashboard/  Dashboards mockup originales de Silent4Business (Vite + React).
 packages/
   shared/         Tipos TypeScript compartidos.
 infra/

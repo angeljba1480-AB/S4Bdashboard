@@ -5,7 +5,6 @@
   "description": "Private AI Gateway + Vertical Agents — plataforma de AI privada para México.",
   "workspaces": [
     "apps/web",
-    "apps/s4b-dashboard",
     "packages/*"
   ],
   "scripts": {
