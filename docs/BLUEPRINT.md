@@ -44,7 +44,7 @@ Frontend Web / Portal Empresas
 | AI Gateway | LiteLLM + router propio | `ai/router.py` + adapters |
 | RAG | Qdrant/pgvector + reranker | Vector store in-proc (pluggable a Qdrant) |
 | Workflows | n8n + Temporal | Catálogo + runner simulado |
-| Model Serving | Ollama lab; vLLM/TGI prod | Mock + adapters OpenAI-compatible |
+| Model Serving | Ollama lab; vLLM/TGI prod; NaN Builders (open/volumen) | Mock + adapters OpenAI-compatible (open = NaN Builders) |
 | Observabilidad | Langfuse, OTel, Grafana, SIEM | audit_events + cost meter |
 
 ## 4. Seguridad (§5)

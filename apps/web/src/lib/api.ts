@@ -94,7 +94,9 @@ export const api = {
       method: "POST",
     }),
   routes: () =>
-    request<{ route: string; enabled: boolean; model: string; mode: string }[]>("/admin/routes"),
+    request<{ route: string; provider: string; enabled: boolean; model: string; mode: string }[]>(
+      "/admin/routes",
+    ),
   users: () =>
     request<{ id: string; email: string; name: string; role: string; mfa_enabled: boolean }[]>(
       "/admin/users",

@@ -77,7 +77,7 @@ Reglas (blueprint §6):
 | `RESTRICTED` | Local | Nunca sale; auditoría obligatoria |
 | `CONFIDENTIAL` | VPC (o Local) | VPC privada si la política lo permite |
 | PII detectado | VPC / Local | Nunca a proveedor externo por defecto |
-| `INTERNAL` / `PUBLIC` | Open / Premium | Modelo abierto, o premium si requiere razonamiento |
+| `INTERNAL` / `PUBLIC` | Open ([NaN Builders](#proveedores)) / Premium | Modelo abierto de volumen, o premium si requiere razonamiento |
 | Violación de política | Blocked | Prompt injection / exfiltración |
 
 ## Modelos y configuración
@@ -85,7 +85,20 @@ Reglas (blueprint §6):
 El **MOCK adapter funciona sin configurar nada**, así la plataforma corre de
 extremo a extremo. Para usar proveedores reales, edita `apps/api/.env`
 (`PREMIUM_ENABLED`, `VPC_ENABLED`, `LOCAL_ENABLED`, etc.). El panel **Admin**
-muestra qué rutas usan proveedor real vs mock.
+muestra qué rutas usan proveedor real vs mock, y el proveedor de cada ruta.
+
+### Proveedores
+
+| Ruta | Proveedor | Notas |
+|---|---|---|
+| Local | Self-hosted (Ollama) | Datos restringidos, nunca salen |
+| VPC | vLLM / TGI en VPC privada | Datos confidenciales / con PII |
+| **Open / volumen** | **NaN Builders** | Modelos abiertos optimizados en costo; endpoint OpenAI-compatible (`OPEN_BASE_URL`, `OPEN_API_KEY`, `OPEN_MODEL`) |
+| Premium | OpenAI / Claude / Gemini | Razonamiento de alto nivel con datos no sensibles |
+
+> **NaN Builders** es el proveedor elegido para la ruta de modelos abiertos /
+> volumen. Como expone una API OpenAI-compatible, basta con `OPEN_ENABLED=true`
+> y configurar `OPEN_BASE_URL` / `OPEN_API_KEY` / `OPEN_MODEL`.
 
 ## Pruebas
 

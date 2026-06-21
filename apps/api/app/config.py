@@ -22,9 +22,11 @@ class Settings(BaseSettings):
     premium_api_key: str = ""
     premium_model: str = "gpt-4o-mini"
 
-    # Cost-optimized open model
+    # Cost-optimized open-models / volume route — provider: NaN Builders.
+    # OpenAI-compatible endpoint; set base_url + api_key when onboarded.
     open_enabled: bool = False
-    open_base_url: str = "https://openrouter.ai/api/v1"
+    open_provider_name: str = "NaN Builders"
+    open_base_url: str = "https://api.nanbuilders.com/v1"
     open_api_key: str = ""
     open_model: str = "meta-llama/llama-3.1-8b-instruct"
 

@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 type Security = Awaited<ReturnType<typeof api.security>>;
 
 export default function AdminPage() {
-  const [routes, setRoutes] = useState<{ route: string; enabled: boolean; model: string; mode: string }[]>([]);
+  const [routes, setRoutes] = useState<{ route: string; provider: string; enabled: boolean; model: string; mode: string }[]>([]);
   const [users, setUsers] = useState<{ id: string; email: string; name: string; role: string; mfa_enabled: boolean }[]>([]);
   const [security, setSecurity] = useState<Security | null>(null);
   const [error, setError] = useState("");
@@ -60,6 +60,7 @@ export default function AdminPage() {
             {routes.map((r) => (
               <div key={r.route} className="rounded-xl border border-slate-200 p-4">
                 <div className="text-sm font-semibold capitalize text-slate-800">{r.route}</div>
+                <div className="text-xs font-medium text-violet-600">{r.provider}</div>
                 <div className="mt-1 text-xs text-slate-500">{r.model}</div>
                 <span
                   className={`mt-2 inline-block rounded-full px-2 py-0.5 text-xs ${

@@ -34,13 +34,13 @@ def list_users(
 def model_routes(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS))) -> list[dict]:
     """Which model routes are enabled (real provider vs mock fallback)."""
     return [
-        {"route": ModelRoute.LOCAL.value, "enabled": settings.local_enabled,
+        {"route": ModelRoute.LOCAL.value, "provider": "Self-hosted (Ollama)", "enabled": settings.local_enabled,
          "model": settings.local_model, "mode": "real" if settings.local_enabled else "mock"},
-        {"route": ModelRoute.VPC.value, "enabled": settings.vpc_enabled,
+        {"route": ModelRoute.VPC.value, "provider": "VPC (vLLM/TGI)", "enabled": settings.vpc_enabled,
          "model": settings.vpc_model, "mode": "real" if settings.vpc_enabled else "mock"},
-        {"route": ModelRoute.OPEN.value, "enabled": settings.open_enabled,
+        {"route": ModelRoute.OPEN.value, "provider": settings.open_provider_name, "enabled": settings.open_enabled,
          "model": settings.open_model, "mode": "real" if settings.open_enabled else "mock"},
-        {"route": ModelRoute.PREMIUM.value, "enabled": settings.premium_enabled,
+        {"route": ModelRoute.PREMIUM.value, "provider": "Premium externo", "enabled": settings.premium_enabled,
          "model": settings.premium_model, "mode": "real" if settings.premium_enabled else "mock"},
     ]
 
