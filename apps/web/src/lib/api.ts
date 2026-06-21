@@ -83,6 +83,18 @@ export const api = {
     conversation_id?: string;
     document_ids?: string[];
   }) => request<ChatResponse>("/chat", { method: "POST", body: JSON.stringify(body) }),
+  previewRoute: (body: { agent_id: string; prompt: string; document_ids?: string[] }) =>
+    request<{
+      classification: string;
+      route: string;
+      pii_types: string[];
+      pii_score: number;
+      reason: string;
+      level: "info" | "warn" | "block";
+      message: string;
+      requires_approval: boolean;
+      sources_found: number;
+    }>("/chat/preview", { method: "POST", body: JSON.stringify(body) }),
   audit: (params?: { event_type?: string; risk_level?: string }) => {
     const q = new URLSearchParams(params as Record<string, string>).toString();
     return request<AuditEvent[]>(`/audit${q ? `?${q}` : ""}`);
@@ -111,6 +123,26 @@ export const api = {
       workflows: { engine: string; base_url: string | null };
     }>("/admin/security"),
   ssoConfig: () => request<{ enabled: boolean; authorize_url?: string }>("/auth/sso/config"),
+  getN8n: () =>
+    request<{
+      tenant_override: boolean;
+      webhook_base_url: string | null;
+      auth_header: string;
+      has_api_key: boolean;
+      effective_source: string;
+      managed_available: boolean;
+      auto_provision: boolean;
+      provisioned: boolean;
+    }>("/admin/n8n"),
+  setN8n: (body: { webhook_base_url: string; api_key?: string; auth_header?: string }) =>
+    request<{ engine: string; source: string; base_url: string | null }>("/admin/n8n", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  provisionN8n: () =>
+    request<{ provisioned: boolean; created?: string[]; reason?: string }>("/admin/n8n/provision", {
+      method: "POST",
+    }),
   // Downloads (return URLs with auth handled by the browser fetch + blob).
   async download(path: string, filename: string) {
     const res = await fetch(`${API_BASE}${path}`, {

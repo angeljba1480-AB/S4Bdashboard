@@ -100,6 +100,19 @@ class ChatResponse(BaseModel):
     citations: list[CitationOut]
 
 
+class RoutePreview(BaseModel):
+    """Preflight route advisory — what the router would do, without executing."""
+    classification: Sensitivity
+    route: ModelRoute
+    pii_types: list[str]
+    pii_score: float
+    reason: str
+    level: str            # info | warn | block
+    message: str          # human-readable advisory (es-MX)
+    requires_approval: bool
+    sources_found: int
+
+
 # --- Audit / Usage ----------------------------------------------------------
 class AuditOut(BaseModel):
     id: str

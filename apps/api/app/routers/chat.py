@@ -25,9 +25,62 @@ from ..models import (
     Tenant,
     User,
 )
-from ..schemas import ChatRequest, ChatResponse, CitationOut
+from ..schemas import ChatRequest, ChatResponse, CitationOut, RoutePreview
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+_SENS_LABEL = {
+    "public": "públicos", "internal": "internos",
+    "confidential": "confidenciales", "restricted": "restringidos",
+}
+_ROUTE_LABEL = {
+    "local": "local (self-hosted, no sale de tu infraestructura)",
+    "vpc": "VPC privada (gestionada, sin proveedor externo)",
+    "open": "modelo abierto de volumen",
+    "premium": "premium externo",
+    "blocked": "bloqueada",
+}
+
+
+@router.post("/preview", response_model=RoutePreview)
+def preview(
+    body: ChatRequest,
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> RoutePreview:
+    """Preflight advisory: classify + detect PII + decide route WITHOUT running
+    the model, so the UI can alert the user about the route before sending."""
+    agent = session.get(Agent, body.agent_id)
+    if not agent or agent.tenant_id != tenant.id:
+        raise HTTPException(status_code=404, detail="Agente no encontrado")
+
+    citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None)
+    decision = route_request(tenant, agent, body.prompt, [c.text for c in citations], task="chat")
+
+    route = decision.route.value
+    sens = _SENS_LABEL.get(decision.classification.value, decision.classification.value)
+    pii = ", ".join(decision.pii_types) if decision.pii_types else None
+
+    if decision.route == ModelRoute.BLOCKED:
+        level = "block"
+        message = f"⛔ Bloqueado por política: {decision.reason}. Ajusta tu consulta para continuar."
+    elif decision.classification.value in ("confidential", "restricted") or decision.pii_types:
+        level = "warn"
+        det = f" (PII: {pii})" if pii else ""
+        message = (f"⚠️ Detecté datos {sens}{det}. Se procesará por ruta "
+                   f"{_ROUTE_LABEL.get(route, route)} y quedará auditado. El dato no se expone a terceros.")
+    else:
+        level = "info"
+        message = f"✓ Datos {sens}. Ruta: {_ROUTE_LABEL.get(route, route)}."
+
+    return RoutePreview(
+        classification=decision.classification, route=decision.route,
+        pii_types=decision.pii_types, pii_score=decision.pii_score, reason=decision.reason,
+        level=level, message=message,
+        requires_approval=decision.route == ModelRoute.BLOCKED,
+        sources_found=len(citations),
+    )
 
 
 @router.post("", response_model=ChatResponse)

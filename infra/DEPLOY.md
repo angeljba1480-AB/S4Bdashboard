@@ -58,17 +58,39 @@ EMBEDDINGS_DIM=<dimensión>    # debe coincidir con la columna vector() de pgvec
 > Si cambias `EMBEDDINGS_DIM`, ajusta `vector(<dim>)` en `001_pgvector.sql` y
 > reindexa los documentos.
 
-## 5. Workflows — n8n self-hosted
+## 5. Workflows — n8n gestionado (as-a-service, cero configuración)
 
-La plataforma dispara workflows reales de n8n por webhook. En la API:
+El usuario final **no toca n8n**. Tú operas un n8n gestionado y la plataforma
+**aprovisiona automáticamente** los workflows de cada tenant (vía la REST API de
+n8n), aislados por path `{tenant_id}/{workflow_id}`. Configúralo una vez:
+
 ```
 N8N_ENABLED=true
-N8N_WEBHOOK_BASE_URL=https://n8n.tuempresa.com/webhook
-N8N_API_KEY=<token opcional>      # secreto: solo en el entorno
+N8N_WEBHOOK_BASE_URL=https://n8n.tu-saas.com/webhook
+N8N_API_KEY=<n8n API key>          # secreto: solo en el entorno
 N8N_AUTH_HEADER=X-N8N-API-KEY
+N8N_API_BASE_URL=https://n8n.tu-saas.com/api/v1   # habilita el auto-provision
+N8N_AUTO_PROVISION=true
 ```
-En n8n crea un **Webhook node** por cada workflow, con el path = id del workflow:
-`ingesta`, `rag`, `sow`, `cyber`, `mando`, `finetune`. El POST recibe
-`{run_id, workflow_id, workflow, tenant_id, user_id}`. Cada ejecución se audita
-(éxito/fallo). Si `N8N_ENABLED=false`, las corridas se simulan.
+
+Flujo: al primer `/workflows/{id}/run` de un tenant, la plataforma crea+activa
+sus 6 workflows (`ingesta, rag, sow, cyber, mando, finetune`) en tu n8n y marca
+`n8n_provisioned`. Idempotente; re-provisionable desde **Admin → Workflows·n8n**.
+El POST al webhook recibe `{run_id, workflow_id, workflow, tenant_id, user_id}` y
+cada corrida se audita.
+
+**BYO (avanzado, opcional):** un tenant técnico puede traer su propio n8n en
+Admin (URL + token cifrado). Si lo define se usa el suyo; si no, el gestionado.
+
+> **Importante (control de datos):** el pipeline sensible (clasificación, PII,
+> RAG, router, cifrado, auditoría) vive **dentro de la API**. A n8n solo le llega
+> un payload mínimo y parametrizado por tenant — n8n se usa para las **acciones de
+> salida** (email, SOW, CRM, tareas), no para procesar el documento crudo.
+
+## 6. Alertas de ruta (plug-and-play)
+
+Antes de enviar, el chat consulta `POST /chat/preview` y muestra en vivo qué
+detectó y qué ruta usará: verde (datos públicos/internos), ámbar (confidencial/
+PII → ruta privada local/VPC) o rojo (bloqueado). Es preflight: **no ejecuta el
+modelo ni audita**, solo asesora al usuario desde el inicio.
 

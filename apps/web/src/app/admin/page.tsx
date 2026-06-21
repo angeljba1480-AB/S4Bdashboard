@@ -5,18 +5,45 @@ import { api } from "@/lib/api";
 import { useEffect, useState } from "react";
 
 type Security = Awaited<ReturnType<typeof api.security>>;
+type N8n = Awaited<ReturnType<typeof api.getN8n>>;
 
 export default function AdminPage() {
   const [routes, setRoutes] = useState<{ route: string; provider: string; enabled: boolean; model: string; mode: string }[]>([]);
   const [users, setUsers] = useState<{ id: string; email: string; name: string; role: string; mfa_enabled: boolean }[]>([]);
   const [security, setSecurity] = useState<Security | null>(null);
+  const [n8n, setN8n] = useState<N8n | null>(null);
+  const [n8nUrl, setN8nUrl] = useState("");
+  const [n8nKey, setN8nKey] = useState("");
+  const [n8nMsg, setN8nMsg] = useState("");
   const [error, setError] = useState("");
+
+  function loadN8n() {
+    api.getN8n().then((c) => {
+      setN8n(c);
+      setN8nUrl(c.webhook_base_url ?? "");
+    }).catch(() => {});
+  }
 
   useEffect(() => {
     api.routes().then(setRoutes).catch((e) => setError(e.message));
     api.users().then(setUsers).catch(() => {});
     api.security().then(setSecurity).catch(() => {});
+    loadN8n();
   }, []);
+
+  async function saveN8n(e: React.FormEvent) {
+    e.preventDefault();
+    setN8nMsg("Guardando…");
+    try {
+      const res = await api.setN8n({ webhook_base_url: n8nUrl, api_key: n8nKey || undefined });
+      setN8nKey("");
+      setN8nMsg(`✓ Motor: ${res.engine} (${res.source})`);
+      loadN8n();
+      api.security().then(setSecurity).catch(() => {});
+    } catch (err) {
+      setN8nMsg(err instanceof Error ? err.message : "Error");
+    }
+  }
 
   return (
     <Shell>
@@ -78,6 +105,67 @@ export default function AdminPage() {
             ))}
           </div>
         </div>
+
+        {n8n && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-1 flex items-center justify-between">
+              <h2 className="font-semibold text-slate-800">Workflows · n8n</h2>
+              <span className={`rounded-full px-2 py-0.5 text-xs ${
+                n8n.effective_source === "tenant" ? "bg-violet-100 text-violet-700"
+                  : n8n.effective_source === "global" ? "bg-emerald-100 text-emerald-700"
+                    : "bg-slate-100 text-slate-500"
+              }`}>
+                {n8n.effective_source === "tenant" ? "n8n propio (BYO)"
+                  : n8n.effective_source === "global" ? "Gestionado · sin configuración"
+                    : "no disponible"}
+              </span>
+            </div>
+            <p className="mb-3 text-sm text-slate-500">
+              Tus workflows son <b>totalmente gestionados</b>: no necesitas configurar nada.
+              {n8n.effective_source === "global" && n8n.auto_provision && (
+                <> Se aprovisionan automáticamente {n8n.provisioned ? "(ya listos ✓)" : "al primer uso"}.</>
+              )}
+            </p>
+            {n8n.effective_source === "global" && (
+              <button
+                onClick={async () => {
+                  setN8nMsg("Provisionando…");
+                  const r = await api.provisionN8n();
+                  setN8nMsg(r.provisioned ? `✓ Workflows listos (${(r.created ?? []).length} nuevos)` : `⚠️ ${r.reason}`);
+                  loadN8n();
+                }}
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Re-provisionar mis workflows
+              </button>
+            )}
+
+            <details className="mt-4">
+              <summary className="cursor-pointer text-xs font-medium text-slate-400 hover:text-slate-600">
+                Avanzado: usar mi propio n8n (BYO)
+              </summary>
+              <form onSubmit={saveN8n} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <input
+                  value={n8nUrl}
+                  onChange={(e) => setN8nUrl(e.target.value)}
+                  placeholder="https://n8n.tuempresa.com/webhook (vacío = gestionado)"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
+                />
+                <input
+                  value={n8nKey}
+                  onChange={(e) => setN8nKey(e.target.value)}
+                  type="password"
+                  placeholder={n8n.has_api_key ? "•••••• (sin cambios)" : "API key (opcional)"}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+                <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 sm:col-span-3">
+                  Guardar n8n propio
+                </button>
+              </form>
+            </details>
+            {n8nMsg && <div className="mt-2 text-xs text-slate-500">{n8nMsg}</div>}
+          </div>
+        )}
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="mb-4 font-semibold text-slate-800">Usuarios del tenant</h2>

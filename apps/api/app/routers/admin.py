@@ -8,7 +8,10 @@ from sqlmodel import Session, select
 from ..auth import get_current_tenant, require_roles
 from ..config import settings
 from ..db import get_session
+from ..integrations.n8n import resolve_n8n
+from ..integrations.n8n_provision import ensure_tenant_workflows, is_available as is_provision_available
 from ..models import ModelRoute, Role, Tenant, User
+from ..security.crypto import encrypt
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -17,6 +20,12 @@ class TenantSettings(BaseModel):
     allows_external: bool
     allows_vpc: bool
     retention_days: int
+
+
+class N8nSettings(BaseModel):
+    webhook_base_url: str = ""
+    api_key: str = ""          # write-only; stored encrypted, never returned
+    auth_header: str = ""
 
 
 @router.get("/users")
@@ -46,7 +55,10 @@ def model_routes(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS))) -> l
 
 
 @router.get("/security")
-def security_status(_: User = Depends(require_roles(Role.ADMIN, Role.SECURITY, Role.DEVOPS))) -> dict:
+def security_status(
+    _: User = Depends(require_roles(Role.ADMIN, Role.SECURITY, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+) -> dict:
     """Surface the enterprise-hardening posture (Fase 5)."""
     return {
         "encryption_at_rest": {"enabled": settings.encryption_enabled, "algo": "AES-256-GCM",
@@ -54,9 +66,69 @@ def security_status(_: User = Depends(require_roles(Role.ADMIN, Role.SECURITY, R
         "vector_store": settings.vector_store,
         "sso": {"enabled": settings.sso_enabled, "issuer": settings.oidc_issuer or None},
         "fallback_order": settings.fallback_routes,
-        "workflows": {"engine": "n8n" if settings.n8n_enabled else "simulado",
-                      "base_url": settings.n8n_webhook_base_url or None},
+        "workflows": _workflows_status(tenant),
     }
+
+
+def _workflows_status(tenant: Tenant) -> dict:
+    cfg = resolve_n8n(tenant)
+    return {"engine": "n8n" if cfg.enabled else "simulado", "source": cfg.source,
+            "base_url": cfg.base_url or None}
+
+
+@router.get("/n8n")
+def get_n8n(
+    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+) -> dict:
+    """n8n status. Managed is the zero-config default; BYO is advanced/optional."""
+    cfg = resolve_n8n(tenant)
+    return {
+        "tenant_override": bool(tenant.n8n_webhook_base_url),
+        "webhook_base_url": tenant.n8n_webhook_base_url or None,
+        "auth_header": tenant.n8n_auth_header or settings.n8n_auth_header,
+        "has_api_key": bool(tenant.n8n_api_key_enc),
+        "effective_source": cfg.source,
+        "managed_available": bool(settings.n8n_enabled and settings.n8n_webhook_base_url),
+        "auto_provision": settings.n8n_auto_provision and is_provision_available(),
+        "provisioned": tenant.n8n_provisioned,
+    }
+
+
+@router.post("/n8n/provision")
+def provision_n8n(
+    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Manually (re)provision this tenant's managed workflows. Usually automatic."""
+    from .workflows import CATALOG
+
+    result = ensure_tenant_workflows(tenant, [w["id"] for w in CATALOG])
+    if result.get("provisioned"):
+        tenant.n8n_provisioned = True
+        session.add(tenant)
+        session.commit()
+    return result
+
+
+@router.put("/n8n")
+def update_n8n(
+    body: N8nSettings,
+    _: User = Depends(require_roles(Role.ADMIN)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Set/clear this tenant's own n8n. Empty base_url reverts to global n8n."""
+    tenant.n8n_webhook_base_url = body.webhook_base_url.strip()
+    tenant.n8n_auth_header = body.auth_header.strip()
+    if body.api_key:
+        tenant.n8n_api_key_enc = encrypt(body.api_key, tenant.id)
+    elif not tenant.n8n_webhook_base_url:
+        tenant.n8n_api_key_enc = ""  # cleared override
+    session.add(tenant)
+    session.commit()
+    return _workflows_status(tenant)
 
 
 @router.put("/tenant")

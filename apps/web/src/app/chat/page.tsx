@@ -24,6 +24,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [convId, setConvId] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<Awaited<ReturnType<typeof api.previewRoute>> | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,6 +38,21 @@ export default function ChatPage() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [turns]);
+
+  // Live route advisory: as the user types, preview classification + route.
+  useEffect(() => {
+    if (!input.trim() || !agentId) {
+      setPreview(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      api
+        .previewRoute({ agent_id: agentId, prompt: input.trim(), document_ids: selectedDocs.length ? selectedDocs : undefined })
+        .then(setPreview)
+        .catch(() => setPreview(null));
+    }, 500);
+    return () => clearTimeout(t);
+  }, [input, agentId, selectedDocs]);
 
   async function send() {
     if (!input.trim() || !agentId) return;
@@ -151,6 +167,22 @@ export default function ChatPage() {
           </div>
 
           <div className="border-t border-slate-200 bg-white p-4">
+            {preview && (
+              <div
+                className={`mb-2 rounded-lg border px-3 py-2 text-xs ${
+                  preview.level === "block"
+                    ? "border-red-200 bg-red-50 text-red-700"
+                    : preview.level === "warn"
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                }`}
+              >
+                {preview.message}
+                {preview.sources_found > 0 && (
+                  <span className="opacity-70"> · {preview.sources_found} fuente(s) en contexto</span>
+                )}
+              </div>
+            )}
             <div className="flex gap-2">
               <input
                 value={input}
