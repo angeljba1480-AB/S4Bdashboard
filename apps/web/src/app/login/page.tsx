@@ -3,7 +3,7 @@
 import { api } from "@/lib/api";
 import { Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,6 +11,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("demo1234");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sso, setSso] = useState<{ enabled: boolean; authorize_url?: string }>({ enabled: false });
+
+  useEffect(() => {
+    api.ssoConfig().then(setSso).catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,6 +68,14 @@ export default function LoginPage() {
           >
             {loading ? "Entrando…" : "Entrar"}
           </button>
+          {sso.enabled && sso.authorize_url && (
+            <a
+              href={sso.authorize_url}
+              className="mt-3 block w-full rounded-lg border border-slate-300 py-2.5 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Entrar con SSO (OIDC)
+            </a>
+          )}
           <div className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
             Demo: <b>admin@s4b.mx</b> · <b>demo1234</b> (también user@ / security@)
           </div>

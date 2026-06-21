@@ -45,6 +45,18 @@ def model_routes(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS))) -> l
     ]
 
 
+@router.get("/security")
+def security_status(_: User = Depends(require_roles(Role.ADMIN, Role.SECURITY, Role.DEVOPS))) -> dict:
+    """Surface the enterprise-hardening posture (Fase 5)."""
+    return {
+        "encryption_at_rest": {"enabled": settings.encryption_enabled, "algo": "AES-256-GCM",
+                               "kms_key_version": settings.kms_key_version},
+        "vector_store": settings.vector_store,
+        "sso": {"enabled": settings.sso_enabled, "issuer": settings.oidc_issuer or None},
+        "fallback_order": settings.fallback_routes,
+    }
+
+
 @router.put("/tenant")
 def update_tenant(
     body: TenantSettings,

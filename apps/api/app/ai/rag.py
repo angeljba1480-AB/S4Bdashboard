@@ -13,7 +13,9 @@ from dataclasses import dataclass
 from sqlmodel import Session, select
 
 from ..models import Document, DocumentChunk, Sensitivity
+from ..security.crypto import decrypt, encrypt
 from .embeddings import cosine, embed
+from .vectorstore import VectorPoint, get_vector_store
 
 
 def chunk_text(text: str, size: int = 800, overlap: int = 100) -> list[str]:
@@ -32,30 +34,45 @@ def chunk_text(text: str, size: int = 800, overlap: int = 100) -> list[str]:
 
 
 def index_document(session: Session, doc: Document) -> int:
-    """(Re)build chunks + embeddings for a document. Returns chunk count."""
+    """(Re)build chunks + embeddings for a document. Returns chunk count.
+
+    Document and chunk text are encrypted at rest (AES-256-GCM per tenant);
+    embeddings are computed on plaintext, chunks are stored as ciphertext.
+    """
     existing = session.exec(
         select(DocumentChunk).where(DocumentChunk.document_id == doc.id)
     ).all()
     for c in existing:
         session.delete(c)
 
-    pieces = chunk_text(doc.text)
+    plaintext = decrypt(doc.text, doc.tenant_id)
+    pieces = chunk_text(plaintext)
+    store = get_vector_store()
+    points: list[VectorPoint] = []
     for i, piece in enumerate(pieces):
-        vec = embed(piece)
-        session.add(
-            DocumentChunk(
-                tenant_id=doc.tenant_id,
-                document_id=doc.id,
-                chunk_index=i,
-                text=piece,
-                text_hash=hashlib.sha256(piece.encode()).hexdigest(),
-                sensitivity=doc.sensitivity,
-                embedding=json.dumps(vec),
-            )
+        vec = embed(piece)  # embed plaintext, persist ciphertext
+        cipher_piece = encrypt(piece, doc.tenant_id)
+        chunk = DocumentChunk(
+            tenant_id=doc.tenant_id,
+            document_id=doc.id,
+            chunk_index=i,
+            text=cipher_piece,
+            text_hash=hashlib.sha256(piece.encode()).hexdigest(),
+            sensitivity=doc.sensitivity,
+            embedding=json.dumps(vec),
         )
+        session.add(chunk)
+        if store:
+            points.append(VectorPoint(
+                id=chunk.id, vector=vec, document_id=doc.id, chunk_index=i,
+                text=cipher_piece, sensitivity=doc.sensitivity.value,
+            ))
+    doc.text = encrypt(plaintext, doc.tenant_id)  # ensure encrypted at rest
     doc.indexed = True
     session.add(doc)
     session.commit()
+    if store and points:
+        store.upsert(doc.tenant_id, points)
     return len(pieces)
 
 
@@ -78,6 +95,26 @@ def retrieve(
 ) -> list[Citation]:
     """Vector search scoped to a tenant (and optionally specific documents)."""
     qvec = embed(query)
+
+    # Managed Qdrant path (when configured); in-process DB path otherwise.
+    store = get_vector_store()
+    if store:
+        docs = {d.id: d for d in session.exec(
+            select(Document).where(Document.tenant_id == tenant_id)
+        ).all()}
+        hits = store.search(tenant_id, qvec, top_k, document_ids)
+        return [
+            Citation(
+                document_id=h.document_id,
+                filename=docs[h.document_id].filename if h.document_id in docs else "?",
+                chunk_index=h.chunk_index,
+                text=decrypt(h.text, tenant_id),
+                score=round(h.score, 4),
+                sensitivity=Sensitivity(h.sensitivity),
+            )
+            for h in hits
+        ]
+
     stmt = select(DocumentChunk).where(DocumentChunk.tenant_id == tenant_id)
     if document_ids:
         stmt = stmt.where(DocumentChunk.document_id.in_(document_ids))
@@ -102,7 +139,7 @@ def retrieve(
                 document_id=ch.document_id,
                 filename=doc.filename if doc else "?",
                 chunk_index=ch.chunk_index,
-                text=ch.text,
+                text=decrypt(ch.text, tenant_id),
                 score=round(score, 4),
                 sensitivity=ch.sensitivity,
             )

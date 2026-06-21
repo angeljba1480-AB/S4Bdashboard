@@ -18,11 +18,14 @@ app/
     classifier.py    Clasificación de sensibilidad.
     dlp.py           Minimización + redacción de contexto.
     policy.py        Policy engine (carga política, detecta violaciones).
+    crypto.py        Cifrado en reposo AES-256-GCM + KMS por tenant (rotación).
   ai/
     router.py        route_request() — el Privacy Model Router.
     adapters.py      Adapters: Mock + OpenAI-compatible (OpenAI/Ollama/vLLM).
+    resilience.py    Cadena de fallback de proveedores (privacy-safe).
     embeddings.py    Embedder local determinista (pluggable a proveedor real).
-    rag.py           Chunking, indexado, retrieval + reranking, citas.
+    vectorstore.py   Vector store pluggable (in-process / Qdrant).
+    rag.py           Chunking, indexado (cifrado), retrieval + reranking, citas.
     cost.py          Estimación de tokens y costo por ruta.
   routers/           Endpoints HTTP.
 tests/               pytest (security core + flujo API end-to-end).
@@ -42,8 +45,12 @@ tests/               pytest (security core + flujo API end-to-end).
 | POST | `/chat` | Policy + RAG + router + adapter + auditoría. |
 | GET/POST | `/workflows` `/workflows/{id}/run` | Catálogo y ejecución. |
 | GET | `/audit` | Auditoría filtrable por tenant. |
+| GET | `/audit/export` | Export SIEM (JSON Lines). |
 | GET | `/usage` | Cost meter por ruta y agente. |
-| GET | `/admin/users` `/admin/routes` | Admin (RBAC). |
+| POST | `/export/report` | Genera PDF/Markdown de un reporte o SOW. |
+| GET | `/export/conversation/{id}` | Exporta transcripción (pdf/md). |
+| GET | `/auth/sso/config` · POST `/auth/sso/callback` | SSO/OIDC opcional. |
+| GET | `/admin/users` `/admin/routes` `/admin/security` | Admin (RBAC). |
 | PUT | `/admin/tenant` | Política del tenant. |
 
 ## Ejecutar

@@ -21,7 +21,7 @@ export default function AuditPage() {
         subtitle="Cada llamada registra usuario, tenant, modelo, ruta, tokens, costo, sensibilidad y decisión."
       />
       <div className="p-8">
-        <div className="mb-4 flex gap-2">
+        <div className="mb-4 flex items-center gap-2">
           {["", "low", "high"].map((r) => (
             <button
               key={r || "all"}
@@ -33,6 +33,12 @@ export default function AuditPage() {
               {r === "" ? "Todos" : r}
             </button>
           ))}
+          <button
+            onClick={() => api.exportAudit()}
+            className="ml-auto rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+          >
+            Exportar SIEM (JSONL)
+          </button>
         </div>
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <table className="w-full text-sm">

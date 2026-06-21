@@ -10,9 +10,9 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from ..ai.adapters import get_adapter
 from ..ai.cost import estimate_cost, estimate_tokens
 from ..ai.rag import retrieve
+from ..ai.resilience import generate_with_fallback
 from ..ai.router import route_request
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
@@ -69,44 +69,57 @@ def chat(
         content_redacted=body.prompt[:4000], model_used="", route=decision.route,
     ))
 
-    # 5. Generate (or block)
+    # 5. Generate (or block) — with privacy-safe provider fallback.
+    used_route = decision.route
     if decision.route == ModelRoute.BLOCKED:
         content = f"⛔ Operación bloqueada por política: {decision.reason}"
         model_used = "—"
         tokens = estimate_tokens(body.prompt)
         cost = 0.0
     else:
-        adapter = get_adapter(decision.route)
-        result = adapter.generate(agent.system_prompt, body.prompt, decision.context)
-        content = result.content
-        model_used = result.model
-        tokens = estimate_tokens(body.prompt + content)
-        cost = estimate_cost(decision.route, tokens)
+        gen = generate_with_fallback(decision.route, agent.system_prompt, body.prompt, decision.context)
+        used_route = gen.route
+        if gen.route == ModelRoute.BLOCKED:
+            content = f"⛔ Sin proveedor disponible (fallback agotado): {gen.error}"
+            model_used = "—"
+            tokens = estimate_tokens(body.prompt)
+            cost = 0.0
+        else:
+            content = gen.response.content
+            model_used = gen.response.model
+            if gen.fell_back:
+                content += f"\n\n_(Fallback a ruta `{gen.route.value}` por indisponibilidad del proveedor.)_"
+            tokens = estimate_tokens(body.prompt + content)
+            cost = estimate_cost(gen.route, tokens)
 
     # 6. Persist assistant message
     msg = Message(
         conversation_id=conv.id, role="assistant", content_redacted=content,
-        model_used=model_used, route=decision.route, token_count=tokens, cost_estimate=cost,
+        model_used=model_used, route=used_route, token_count=tokens, cost_estimate=cost,
     )
     session.add(msg)
+
+    blocked = used_route == ModelRoute.BLOCKED
+    fell_back = used_route != decision.route and not blocked
+    audit_reason = decision.reason + (f" → fallback a {used_route.value}" if fell_back else "")
 
     # 7. Audit (always)
     session.add(AuditEvent(
         tenant_id=tenant.id, user_id=user.id, request_id=request_id, event_type="chat",
         object_type="agent", object_id=agent.id, classification=decision.classification,
-        selected_route=decision.route, selected_model=model_used,
-        risk_level="high" if decision.route == ModelRoute.BLOCKED or decision.pii_score > 0.3 else "low",
-        token_count=tokens, cost_estimate=cost, reason=decision.reason,
-        event_metadata=str({"pii": decision.pii_types, "redacted": decision.redacted}),
+        selected_route=used_route, selected_model=model_used,
+        risk_level="high" if blocked or decision.pii_score > 0.3 else "low",
+        token_count=tokens, cost_estimate=cost, reason=audit_reason,
+        event_metadata=str({"pii": decision.pii_types, "redacted": decision.redacted, "fell_back": fell_back}),
     ))
     session.commit()
     session.refresh(msg)
 
     return ChatResponse(
         conversation_id=conv.id, message_id=msg.id, content=content,
-        route=decision.route, model_used=model_used, classification=decision.classification,
+        route=used_route, model_used=model_used, classification=decision.classification,
         pii_types=decision.pii_types, pii_score=decision.pii_score, redacted=decision.redacted,
-        blocked=decision.route == ModelRoute.BLOCKED, reason=decision.reason,
+        blocked=blocked, reason=audit_reason,
         token_count=tokens, cost_estimate=cost,
         citations=[CitationOut(**c.__dict__) for c in citations],
     )

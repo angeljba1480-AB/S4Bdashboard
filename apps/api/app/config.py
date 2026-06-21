@@ -43,9 +43,39 @@ class Settings(BaseSettings):
     embeddings_provider: str = "local"
     embeddings_dim: int = 384
 
+    # Vector store: "inprocess" (default) or "qdrant"
+    vector_store: str = "inprocess"
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str = ""
+
+    # Encryption at rest (KMS abstraction). master_kms_key seeds per-tenant keys.
+    # In production this comes from a real KMS (AWS KMS, GCP KMS, Vault).
+    encryption_enabled: bool = True
+    master_kms_key: str = ""  # falls back to secret_key when empty
+    kms_key_version: int = 1  # bump to rotate
+
+    # Provider resilience: fallback order tried when a route's adapter fails.
+    fallback_order: str = "vpc,open,local"
+
+    # SSO / OIDC (optional, pluggable). When disabled, password login is used.
+    sso_enabled: bool = False
+    oidc_issuer: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
+    oidc_redirect_uri: str = "http://localhost:3000/auth/callback"
+    oidc_default_role: str = "user"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def fallback_routes(self) -> list[str]:
+        return [r.strip() for r in self.fallback_order.split(",") if r.strip()]
+
+    @property
+    def effective_kms_key(self) -> str:
+        return self.master_kms_key or self.secret_key
 
 
 @lru_cache

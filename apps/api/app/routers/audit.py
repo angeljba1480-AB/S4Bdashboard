@@ -1,7 +1,10 @@
 """Audit log endpoint — filterable, tenant-scoped (blueprint section 12)."""
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends
+from fastapi.responses import Response
 from sqlmodel import Session, select
 
 from ..auth import get_current_tenant
@@ -36,3 +39,25 @@ def list_audit(
         )
         for e in events
     ]
+
+
+@router.get("/export")
+def export_audit(
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> Response:
+    """SIEM-friendly JSON Lines export of the tenant's audit trail."""
+    events = session.exec(
+        select(AuditEvent).where(AuditEvent.tenant_id == tenant.id).order_by(AuditEvent.created_at)
+    ).all()
+    lines = []
+    for e in events:
+        lines.append(json.dumps({
+            "ts": e.created_at.isoformat(), "tenant_id": e.tenant_id, "user_id": e.user_id,
+            "request_id": e.request_id, "event_type": e.event_type, "object_type": e.object_type,
+            "object_id": e.object_id, "classification": e.classification.value if e.classification else None,
+            "route": e.selected_route.value if e.selected_route else None, "model": e.selected_model,
+            "risk_level": e.risk_level, "tokens": e.token_count, "cost": e.cost_estimate, "reason": e.reason,
+        }, ensure_ascii=False))
+    return Response("\n".join(lines), media_type="application/x-ndjson",
+                    headers={"Content-Disposition": 'attachment; filename="audit.jsonl"'})

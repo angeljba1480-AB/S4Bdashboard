@@ -99,4 +99,29 @@ export const api = {
     request<{ id: string; email: string; name: string; role: string; mfa_enabled: boolean }[]>(
       "/admin/users",
     ),
+  security: () =>
+    request<{
+      encryption_at_rest: { enabled: boolean; algo: string; kms_key_version: number };
+      vector_store: string;
+      sso: { enabled: boolean; issuer: string | null };
+      fallback_order: string[];
+    }>("/admin/security"),
+  ssoConfig: () => request<{ enabled: boolean; authorize_url?: string }>("/auth/sso/config"),
+  // Downloads (return URLs with auth handled by the browser fetch + blob).
+  async download(path: string, filename: string) {
+    const res = await fetch(`${API_BASE}${path}`, {
+      headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
+    });
+    if (!res.ok) throw new Error("Export falló");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+  exportConversation: (id: string, format: "pdf" | "md") =>
+    api.download(`/export/conversation/${id}?format=${format}`, `conversacion.${format}`),
+  exportAudit: () => api.download("/audit/export", "audit.jsonl"),
 };

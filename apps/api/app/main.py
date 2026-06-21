@@ -15,6 +15,8 @@ from .routers import (
     auth_routes,
     chat,
     documents,
+    export,
+    sso,
     usage,
     workflows,
 )
@@ -45,6 +47,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_routes.router)
+app.include_router(sso.router)
 app.include_router(agents.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
@@ -52,6 +55,7 @@ app.include_router(workflows.router)
 app.include_router(audit.router)
 app.include_router(usage.router)
 app.include_router(admin.router)
+app.include_router(export.router)
 
 
 @app.get("/health", tags=["meta"])

@@ -88,6 +88,19 @@ def delete_document(
     doc = session.get(Document, doc_id)
     if not doc or doc.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+    from ..ai.vectorstore import get_vector_store
+    from ..models import DocumentChunk
+
+    for ch in session.exec(select(DocumentChunk).where(DocumentChunk.document_id == doc.id)).all():
+        session.delete(ch)
+    store = get_vector_store()
+    if store:
+        store.delete_document(tenant.id, doc.id)
     session.delete(doc)
+    session.add(AuditEvent(
+        tenant_id=tenant.id, event_type="delete", object_type="document", object_id=doc.id,
+        risk_level="low", reason="documento y chunks eliminados (retención)",
+    ))
     session.commit()
     return {"ok": True}

@@ -7,4 +7,6 @@ python-multipart==0.0.20
 PyJWT==2.10.1
 numpy==2.2.1
 httpx==0.28.1
+pycryptodome==3.21.0
+reportlab==4.2.5
 pytest==8.3.4

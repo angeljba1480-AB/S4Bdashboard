@@ -102,7 +102,15 @@ tenants y el flujo completo de `/chat`.
 - [x] **Fase 2 — RAG seguro**: clasificación, PII, chunking, embeddings, citas, reranking.
 - [x] **Fase 3 — Router multi-modelo**: rutas local/VPC/open/premium, costos, fallback, mock adapter.
 - [x] **Fase 4 — Agentes verticales**: Document Intelligence, Cyber Diagnostic, Proposal/SOW, Executive Copilot.
-- [ ] **Fase 5 — Enterprise hardening**: SSO real, KMS, SIEM, Qdrant/pgvector productivo, DLP avanzado, confidential computing.
+- [x] **Fase 5 — Enterprise hardening**:
+  - **Cifrado en reposo** AES-256-GCM con abstracción KMS y llaves por tenant + rotación (`KMS_KEY_VERSION`).
+  - **SSO/OIDC** pluggable (authorization-code flow + auto-provisión de usuario/tenant).
+  - **Vector store productivo** Qdrant (pluggable; in-process por defecto).
+  - **SIEM**: export de auditoría en JSONL.
+  - **Resiliencia**: cadena de fallback de proveedores que nunca debilita la privacidad.
+  - **Export** de reportes/SOWs/conversaciones a PDF y Markdown.
+  - **Red-teaming**: suite de pruebas de prompt injection, exfiltración, fuga de PII y aislamiento entre tenants.
+  - _Pendiente_: confidential computing/TEE y wrapping de llaves con KMS real (AWS/GCP/Vault).
 
 ## Blueprint
 
