@@ -1,0 +1,14 @@
+{
+  "name": "MaestroAI",
+  "short_name": "MaestroAI",
+  "description": "Agentes y casos de uso por país, con IA privada.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7c3aed",
+  "lang": "es",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

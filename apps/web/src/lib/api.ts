@@ -1,4 +1,4 @@
-// Thin typed client over the Private AI Platform API.
+// Thin typed client over the MaestroAI API.
 import type {
   Agent,
   AppProject,

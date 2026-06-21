@@ -39,8 +39,8 @@ export default function LoginPage() {
             <Shield className="h-6 w-6 text-white" />
           </div>
           <div>
-            <div className="text-lg font-extrabold text-slate-900">Private AI Platform</div>
-            <div className="text-sm text-slate-500">AI empresarial sin perder control de tus datos</div>
+            <div className="text-lg font-extrabold text-slate-900">MaestroAI</div>
+            <div className="text-sm text-slate-500">Agentes y casos para LATAM, sin perder control de tus datos</div>
           </div>
         </div>
         <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
