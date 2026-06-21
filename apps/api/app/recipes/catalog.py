@@ -40,14 +40,15 @@ ESTADOS_MX = [
 
 
 def _estado_input() -> dict:
-    return {"key": "estado", "type": "choice", "label": "Estado", "options": ESTADOS_MX, "required": True}
+    # Generic, country-aware region field (localized per tenant country at API time).
+    return {"key": "region", "type": "region", "label": "Estado/Provincia/Región", "required": True}
 
 
 def _municipio_input() -> dict:
-    return {"key": "municipio", "type": "text", "label": "Municipio / alcaldía", "required": True}
+    return {"key": "municipio", "type": "text", "label": "Municipio / localidad", "required": True}
 
 
-_REGION_DISCLAIMER = ("⚠️ Los requisitos, costos y plazos cambian por estado y municipio. "
+_REGION_DISCLAIMER = ("⚠️ Los requisitos, costos y plazos cambian por región y localidad (y por país). "
                       "Esto es una guía; confirma siempre con tu autoridad local.")
 
 
@@ -190,19 +191,19 @@ RECIPES: list[dict] = [
        inputs=[{"key": "giro", "type": "text", "label": "Giro del negocio", "required": True},
                _estado_input(), _municipio_input()],
        produces="la guía de licencia de funcionamiento",
-       prompt="Requisitos y pasos de la licencia de funcionamiento para un negocio de {giro} en {municipio}, {estado}."),
+       prompt="Requisitos y pasos de la licencia de funcionamiento para un negocio de {giro} en {municipio}, {region}."),
     _r(id="uso_de_suelo", category="abrir", name="Constancia de uso de suelo",
        description="Cómo tramitar el uso de suelo para tu local (por municipio).",
        inputs=[{"key": "actividad", "type": "text", "label": "Actividad/uso", "required": True},
                _estado_input(), _municipio_input()],
        produces="la guía de uso de suelo",
-       prompt="Pasos para la constancia de uso de suelo para {actividad} en {municipio}, {estado}."),
+       prompt="Pasos para la constancia de uso de suelo para {actividad} en {municipio}, {region}."),
     _r(id="permiso_anuncio", category="abrir", name="Permiso de anuncio / letrero",
        description="Trámite del permiso para tu anuncio exterior (municipal).",
        inputs=[{"key": "tipo_anuncio", "type": "text", "label": "Tipo de anuncio", "required": True},
                _estado_input(), _municipio_input()],
        produces="la guía del permiso de anuncio",
-       prompt="Requisitos del permiso de anuncio tipo {tipo_anuncio} en {municipio}, {estado}."),
+       prompt="Requisitos del permiso de anuncio tipo {tipo_anuncio} en {municipio}, {region}."),
     _r(id="nombre_negocio", category="abrir", name="Ideas de nombre + disponibilidad",
        description="Propongo nombres para tu negocio y qué revisar antes de usarlo.",
        inputs=[{"key": "giro", "type": "text", "label": "Giro/idea", "required": True}],
@@ -221,13 +222,13 @@ RECIPES: list[dict] = [
        inputs=[{"key": "giro", "type": "text", "label": "Giro del negocio", "required": True},
                _estado_input(), _municipio_input()],
        produces="un resumen de impuestos locales",
-       prompt="Impuestos estatales y municipales que aplican a un negocio de {giro} en {municipio}, {estado}."),
+       prompt="Impuestos estatales y municipales que aplican a un negocio de {giro} en {municipio}, {region}."),
     _r(id="reglamento_local", category="cumplimiento", name="Reglas para tu giro (local)",
        description="Reglamentos municipales aplicables a tu actividad.",
        inputs=[{"key": "giro", "type": "text", "label": "Giro/actividad", "required": True},
                _estado_input(), _municipio_input()],
        produces="un resumen de reglamentos locales",
-       prompt="Reglamentos municipales aplicables a {giro} en {municipio}, {estado} (verificación, horarios, sanidad)."),
+       prompt="Reglamentos municipales aplicables a {giro} en {municipio}, {region} (verificación, horarios, sanidad)."),
     _r(id="politica_devoluciones", category="cumplimiento", name="Política de devoluciones",
        description="Texto de política de devoluciones y garantías para tu negocio.",
        inputs=[{"key": "negocio", "type": "text", "label": "Tu negocio", "required": True},
@@ -341,9 +342,12 @@ def _prefill_generic(recipe: dict, tenant: Tenant, inputs: dict) -> dict:
     The instruction is classified and routed (local/VPC for sensitive inputs,
     open/premium otherwise). Offline, the MOCK adapter still returns content.
     """
+    from ..regional.countries import get_country
+
+    country = get_country(getattr(tenant, "country", "MX"))
     instruction = recipe.get("prompt", "").format_map(_SafeDict(inputs)).strip() or recipe["name"]
     produces = recipe.get("produces", "el resultado")
-    system = (f"Eres un asistente que genera {produces} para un negocio en México. "
+    system = (f"Eres un asistente que genera {produces} para un negocio en {country['name']}. "
               f"Responde en español, claro y listo para usar.")
 
     decision = route_request(tenant, None, instruction, [], task="recipe")
@@ -352,10 +356,11 @@ def _prefill_generic(recipe: dict, tenant: Tenant, inputs: dict) -> dict:
                 "route": "blocked", "blocked": True,
                 "summary": f"⛔ No puedo continuar: {decision.reason}"}
 
-    region_aware = bool(inputs.get("estado") or inputs.get("municipio"))
+    region_aware = bool(inputs.get("region") or inputs.get("municipio"))
     if region_aware:
-        loc = ", ".join(x for x in (inputs.get("municipio"), inputs.get("estado")) if x)
-        system += f" Adapta la respuesta a {loc} (México) y advierte que los requisitos varían por localidad."
+        loc = ", ".join(x for x in (inputs.get("municipio"), inputs.get("region"), country["name"]) if x)
+        system += (f" Adapta la respuesta a {loc} y advierte que los requisitos varían por "
+                   f"localidad y país.")
 
     gen = generate_with_fallback(decision.route, system, instruction, decision.context)
     contenido = gen.response.content if gen.route != ModelRoute.BLOCKED else ""

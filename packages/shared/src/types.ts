@@ -16,6 +16,8 @@ export interface Me {
   brand_logo_url?: string;
   brand_color?: string;
   brand_tagline?: string;
+  country?: string;
+  country_name?: string;
 }
 
 export interface Agent {

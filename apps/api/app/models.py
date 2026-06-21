@@ -42,6 +42,7 @@ class Tenant(SQLModel, table=True):
     id: str = Field(default_factory=lambda: _uuid("tnt"), primary_key=True)
     name: str
     plan: str = "starter"
+    country: str = "MX"            # ISO code; LATAM localization (default México)
     region: str = "mx-central"
     kms_key_id: str = Field(default_factory=lambda: _uuid("kms"))
     retention_days: int = 365

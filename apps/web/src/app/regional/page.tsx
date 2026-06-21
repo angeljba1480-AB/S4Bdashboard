@@ -8,7 +8,10 @@ import { useEffect, useState } from "react";
 
 export default function RegionalPage() {
   const [ejes, setEjes] = useState<Eje[]>([]);
+  const [countries, setCountries] = useState<{ code: string; name: string; division_label: string }[]>([]);
+  const [country, setCountry] = useState("");
   const [estados, setEstados] = useState<string[]>([]);
+  const [divisionLabel, setDivisionLabel] = useState("Estado/Provincia/Región");
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [estado, setEstado] = useState("");
   const [eje, setEje] = useState("");
@@ -17,14 +20,25 @@ export default function RegionalPage() {
 
   useEffect(() => {
     api.regionalEjes().then(setEjes).catch(() => {});
-    api.regionalEstados().then(setEstados).catch(() => {});
+    api.regionalCountries().then(setCountries).catch(() => {});
+    api.me().then((m) => setCountry(m.country || "MX")).catch(() => setCountry("MX"));
   }, []);
 
   useEffect(() => {
-    api.regionalProcedures({ estado: estado || undefined, eje: eje || undefined, q: q || undefined })
+    if (!country) return;
+    setEstado("");
+    api.regionalDivisions(country).then((d) => {
+      setEstados(d.divisions);
+      setDivisionLabel(d.division_label);
+    }).catch(() => {});
+  }, [country]);
+
+  useEffect(() => {
+    if (!country) return;
+    api.regionalProcedures({ country, estado: estado || undefined, eje: eje || undefined, q: q || undefined })
       .then(setProcedures)
       .catch(() => {});
-  }, [estado, eje, q]);
+  }, [country, estado, eje, q]);
 
   async function propose(p: Procedure) {
     await api.procedureToProposal(p.id);
@@ -42,11 +56,19 @@ export default function RegionalPage() {
 
         <div className="mb-5 flex flex-wrap items-center gap-2">
           <select
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium"
+          >
+            {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </select>
+          <select
             value={estado}
             onChange={(e) => setEstado(e.target.value)}
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            disabled={estados.length === 0}
           >
-            <option value="">Todo el país</option>
+            <option value="">{`Todo (${divisionLabel})`}</option>
             {estados.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           <input

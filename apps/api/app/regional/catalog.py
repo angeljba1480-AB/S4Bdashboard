@@ -22,6 +22,7 @@ EJES: list[dict] = [
 
 def _p(**kw) -> dict:
     kw.setdefault("estados", [])          # [] = aplica a nivel nacional
+    kw.setdefault("countries", [])        # [] = aplica a toda LATAM
     kw.setdefault("category", "operaciones")
     kw.setdefault("suggested_recipe", "")
     return kw
@@ -45,7 +46,7 @@ PROCEDURES: list[dict] = [
        title="Permiso de anuncio / letrero",
        problem="Quiero poner mi letrero pero desconozco el permiso municipal.",
        suggested_recipe="permiso_anuncio"),
-    _p(id="alta_sat", eje="economia", category="cumplimiento",
+    _p(id="alta_sat", eje="economia", category="cumplimiento", countries=["MX"],
        title="Darse de alta en el SAT (RFC)",
        problem="Vendo pero no estoy dado de alta; no sé el régimen que me toca.",
        suggested_recipe="rfc_alta"),
@@ -73,7 +74,7 @@ PROCEDURES: list[dict] = [
        title="Saber a cuánto vender",
        problem="No sé poner precios y a veces pierdo dinero.",
        suggested_recipe="precio_venta"),
-    _p(id="proteccion_consumidor", eje="seguridad", category="cumplimiento",
+    _p(id="proteccion_consumidor", eje="seguridad", category="cumplimiento", countries=["MX"],
        title="Cumplir con PROFECO",
        problem="No sé qué políticas debo mostrar a mis clientes.",
        suggested_recipe="politica_devoluciones"),
@@ -81,7 +82,7 @@ PROCEDURES: list[dict] = [
        title="Aviso de privacidad (datos personales)",
        problem="Recolecto datos de clientes y no tengo aviso de privacidad.",
        suggested_recipe="aviso_privacidad"),
-    _p(id="tramite_salud", eje="salud", category="cumplimiento",
+    _p(id="tramite_salud", eje="salud", category="cumplimiento", countries=["MX"],
        title="Aviso de funcionamiento sanitario (COFEPRIS)",
        problem="Mi giro maneja alimentos/salud y desconozco el aviso sanitario.",
        suggested_recipe="reglamento_local"),
@@ -100,8 +101,11 @@ def get_procedure(pid: str) -> dict | None:
     return next((p for p in PROCEDURES if p["id"] == pid), None)
 
 
-def filter_procedures(estado: str | None = None, eje: str | None = None, q: str | None = None) -> list[dict]:
+def filter_procedures(estado: str | None = None, eje: str | None = None,
+                      q: str | None = None, country: str | None = None) -> list[dict]:
     items = PROCEDURES
+    if country:
+        items = [p for p in items if not p["countries"] or country.upper() in p["countries"]]
     if eje:
         items = [p for p in items if p["eje"] == eje]
     if estado:

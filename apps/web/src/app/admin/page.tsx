@@ -20,7 +20,8 @@ export default function AdminPage() {
   >([]);
   const [error, setError] = useState("");
 
-  const [brand, setBrand] = useState({ brand_name: "", brand_logo_url: "", brand_color: "", brand_tagline: "" });
+  const [brand, setBrand] = useState({ brand_name: "", brand_logo_url: "", brand_color: "", brand_tagline: "", country: "MX" });
+  const [countries, setCountries] = useState<{ code: string; name: string }[]>([]);
   const [brandMsg, setBrandMsg] = useState("");
   const [billing, setBilling] = useState<Awaited<ReturnType<typeof api.getBilling>> | null>(null);
   const [plans, setPlans] = useState<Awaited<ReturnType<typeof api.plans>> | null>(null);
@@ -54,7 +55,7 @@ export default function AdminPage() {
   }
   function loadBranding() {
     api.getBranding()
-      .then((b) => setBrand({ brand_name: b.brand_name, brand_logo_url: b.brand_logo_url, brand_color: b.brand_color, brand_tagline: b.brand_tagline }))
+      .then((b) => setBrand({ brand_name: b.brand_name, brand_logo_url: b.brand_logo_url, brand_color: b.brand_color, brand_tagline: b.brand_tagline, country: b.country || "MX" }))
       .catch(() => {});
   }
   async function saveBranding(e: React.FormEvent) {
@@ -84,6 +85,7 @@ export default function AdminPage() {
     loadBranding();
     loadBilling();
     api.plans().then(setPlans).catch(() => {});
+    api.regionalCountries().then(setCountries).catch(() => {});
   }, []);
 
   async function curate(id: string) {
@@ -203,11 +205,19 @@ export default function AdminPage() {
         )}
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-1 font-semibold text-slate-800">Marca (white-label)</h2>
+          <h2 className="mb-1 font-semibold text-slate-800">Marca y región (white-label)</h2>
           <p className="mb-4 text-sm text-slate-500">
-            Personaliza el portal para tu organización: nombre, logo y color. Cada tenant tiene la suya.
+            Personaliza el portal: nombre, logo, color y <b>país</b> (LATAM). El país ajusta trámites,
+            divisiones (estado/provincia/departamento) y el contexto de la IA.
           </p>
           <form onSubmit={saveBranding} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <select
+              value={brand.country}
+              onChange={(e) => setBrand((b) => ({ ...b, country: e.target.value }))}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
+            >
+              {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+            </select>
             <input
               value={brand.brand_name}
               onChange={(e) => setBrand((b) => ({ ...b, brand_name: e.target.value }))}

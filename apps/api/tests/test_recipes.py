@@ -125,21 +125,21 @@ def test_generic_recipe_routes_sensitive_input_privately(client):
 
 def test_region_aware_recipe_localizes_and_warns(client):
     h = _auth(client)
-    # estado is a choice input; municipio is text — both required
+    # region is country-localized; municipio is text — both required
     start = client.post("/recipes/licencia_funcionamiento/start", headers=h, json={
-        "inputs": {"giro": "cafetería", "estado": "Jalisco", "municipio": "Guadalajara"},
+        "inputs": {"giro": "cafetería", "region": "Jalisco", "municipio": "Guadalajara"},
     }).json()
     assert "Guadalajara" in start["draft"]["plan"]
     assert start["draft"]["region_aware"] is True
     assert "autoridad local" in start["draft"]["summary"]
 
 
-def test_region_recipe_requires_estado(client):
+def test_region_recipe_requires_region(client):
     h = _auth(client)
     r = client.post("/recipes/licencia_funcionamiento/start", headers=h, json={
         "inputs": {"giro": "cafetería", "municipio": "Guadalajara"},
     })
-    assert r.status_code == 422  # estado required
+    assert r.status_code == 422  # region required
 
 
 def test_propose_use_case(client):

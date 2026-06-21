@@ -136,7 +136,13 @@ def list_recipes(
     if q:
         ql = q.lower()
         items = [r for r in items if ql in r["name"].lower() or ql in r["description"].lower()]
-    return [public_recipe(r) for r in items]
+    from ..regional.countries import localize_inputs
+    out = []
+    for r in items:
+        pr = public_recipe(r)
+        pr["inputs"] = localize_inputs(pr["inputs"], tenant.country)
+        out.append(pr)
+    return out
 
 
 @router.get("/categories")

@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from ..auth import create_access_token, get_current_user, verify_password
 from ..db import get_session
 from ..models import AuditEvent, Tenant, User
+from ..regional.countries import get_country
 from ..schemas import LoginRequest, MeResponse, TokenResponse
 
 router = APIRouter(tags=["auth"])
@@ -67,4 +68,6 @@ def me(user: User = Depends(get_current_user), session: Session = Depends(get_se
         brand_logo_url=tenant.brand_logo_url if tenant else "",
         brand_color=tenant.brand_color if tenant else "",
         brand_tagline=tenant.brand_tagline if tenant else "",
+        country=tenant.country if tenant else "MX",
+        country_name=get_country(tenant.country if tenant else "MX")["name"],
     )

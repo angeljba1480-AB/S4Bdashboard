@@ -35,6 +35,7 @@ class BrandSettings(BaseModel):
     brand_logo_url: str = ""
     brand_color: str = ""
     brand_tagline: str = ""
+    country: str | None = None
 
 
 @router.get("/branding")
@@ -44,7 +45,7 @@ def get_branding(
 ) -> dict:
     return {"brand_name": tenant.brand_name, "brand_logo_url": tenant.brand_logo_url,
             "brand_color": tenant.brand_color, "brand_tagline": tenant.brand_tagline,
-            "tenant_name": tenant.name}
+            "tenant_name": tenant.name, "country": tenant.country}
 
 
 @router.put("/branding")
@@ -62,6 +63,9 @@ def update_branding(
     tenant.brand_logo_url = body.brand_logo_url.strip()
     tenant.brand_color = color
     tenant.brand_tagline = body.brand_tagline.strip()
+    if body.country:
+        from ..regional.countries import get_country
+        tenant.country = get_country(body.country)["code"]
     session.add(tenant)
     session.commit()
     return {"brand_name": tenant.brand_name, "brand_logo_url": tenant.brand_logo_url,

@@ -85,12 +85,18 @@ export const api = {
     request<{ id: string; email: string }>("/admin/users", { method: "POST", body: JSON.stringify(body) }),
   // Regional catalog
   regionalEjes: () => request<Eje[]>("/regional/ejes"),
-  regionalEstados: () => request<string[]>("/regional/estados"),
-  regionalProcedures: (p?: { estado?: string; eje?: string; q?: string }) => {
+  regionalCountries: () =>
+    request<{ code: string; name: string; division_label: string }[]>("/regional/countries"),
+  regionalDivisions: (country?: string) =>
+    request<{ country: string; division_label: string; divisions: string[] }>(
+      `/regional/divisions${country ? `?country=${country}` : ""}`,
+    ),
+  regionalProcedures: (p?: { estado?: string; eje?: string; q?: string; country?: string }) => {
     const qs = new URLSearchParams();
     if (p?.estado) qs.set("estado", p.estado);
     if (p?.eje) qs.set("eje", p.eje);
     if (p?.q) qs.set("q", p.q);
+    if (p?.country) qs.set("country", p.country);
     const s = qs.toString() ? `?${qs}` : "";
     return request<Procedure[]>(`/regional/procedures${s}`);
   },
@@ -115,10 +121,10 @@ export const api = {
     return { payment_required: false, app: data };
   },
   getBranding: () =>
-    request<{ brand_name: string; brand_logo_url: string; brand_color: string; brand_tagline: string; tenant_name: string }>(
+    request<{ brand_name: string; brand_logo_url: string; brand_color: string; brand_tagline: string; tenant_name: string; country: string }>(
       "/admin/branding",
     ),
-  setBranding: (body: { brand_name: string; brand_logo_url: string; brand_color: string; brand_tagline: string }) =>
+  setBranding: (body: { brand_name: string; brand_logo_url: string; brand_color: string; brand_tagline: string; country?: string }) =>
     request<{ brand_name: string; brand_color: string }>("/admin/branding", {
       method: "PUT",
       body: JSON.stringify(body),

@@ -31,6 +31,8 @@ class MeResponse(BaseModel):
     brand_logo_url: str = ""
     brand_color: str = ""
     brand_tagline: str = ""
+    country: str = "MX"
+    country_name: str = "México"
 
 
 # --- Agents -----------------------------------------------------------------

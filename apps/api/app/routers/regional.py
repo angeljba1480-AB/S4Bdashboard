@@ -8,10 +8,16 @@ from sqlmodel import Session
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
 from ..models import AuditEvent, RecipeProposal, Tenant, User
-from ..recipes.catalog import ESTADOS_MX
 from ..regional.catalog import EJES, PROCEDURES, filter_procedures, get_procedure
+from ..regional.countries import COUNTRIES, get_country
 
 router = APIRouter(prefix="/regional", tags=["regional"])
+
+
+@router.get("/countries")
+def list_countries(_: User = Depends(get_current_user)) -> list[dict]:
+    return [{"code": c["code"], "name": c["name"], "division_label": c["division_label"]}
+            for c in COUNTRIES]
 
 
 @router.get("/ejes")
@@ -22,9 +28,14 @@ def list_ejes(_: User = Depends(get_current_user)) -> list[dict]:
     return [{**e, "count": counts.get(e["id"], 0)} for e in EJES]
 
 
-@router.get("/estados")
-def list_estados(_: User = Depends(get_current_user)) -> list[str]:
-    return ESTADOS_MX
+@router.get("/divisions")
+def list_divisions(
+    country: str | None = None,
+    tenant: Tenant = Depends(get_current_tenant),
+    _: User = Depends(get_current_user),
+) -> dict:
+    c = get_country(country or tenant.country)
+    return {"country": c["code"], "division_label": c["division_label"], "divisions": c["divisions"]}
 
 
 @router.get("/procedures")
@@ -32,15 +43,18 @@ def list_procedures(
     estado: str | None = None,
     eje: str | None = None,
     q: str | None = None,
+    country: str | None = None,
+    tenant: Tenant = Depends(get_current_tenant),
     _: User = Depends(get_current_user),
 ) -> list[dict]:
+    country = country or tenant.country
     eje_label = {e["id"]: e["label"] for e in EJES}
     return [
         {"id": p["id"], "title": p["title"], "problem": p["problem"],
          "eje": p["eje"], "eje_label": eje_label.get(p["eje"], p["eje"]),
          "category": p["category"], "suggested_recipe": p["suggested_recipe"],
          "scope": "nacional" if not p["estados"] else ", ".join(p["estados"])}
-        for p in filter_procedures(estado, eje, q)
+        for p in filter_procedures(estado, eje, q, country)
     ]
 
 
