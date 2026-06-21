@@ -26,13 +26,48 @@ Vercel (apps/web, Next.js)  ──►  API (apps/api, FastAPI en contenedor)
 > Auth: el MVP usa JWT propio con usuarios en Postgres. Para usar **Supabase
 > Auth (GoTrue)** en su lugar, ver `SSO_ENABLED` (OIDC) — Supabase expone OIDC.
 
-## 2. API (FastAPI)
+## 2. API (FastAPI) — desplegar el backend
 
-Hospédala en un contenedor (Fly.io / Render / Railway / Cloud Run) con
-`apps/api/Dockerfile`. Variables mínimas: `DATABASE_URL`, `SECRET_KEY`,
-`MASTER_KMS_KEY`, `CORS_ORIGINS=https://<tu-app>.vercel.app`, y la ruta de
-modelos NaN Builders (`OPEN_ENABLED=true`, `OPEN_BASE_URL`, `OPEN_API_KEY`,
-`OPEN_MODEL`).
+El backend ya viene listo para contenedor (`apps/api/Dockerfile`: usuario
+no-root, healthcheck en `/health`, escucha en `$PORT`). Elige una opción:
+
+### Opción A — Render (un clic, recomendada)
+Hay un **blueprint** en `render.yaml` (crea la API **y** un Postgres gestionado):
+1. Render → **New → Blueprint** → apunta a este repo.
+2. Render genera `SECRET_KEY` y conecta `DATABASE_URL` al Postgres solo.
+3. Tras el deploy, en el servicio pon **`CORS_ORIGINS=https://<tu-app>.vercel.app`**.
+4. (Opcional) activa modelos: `OPEN_ENABLED=true`, `OPEN_API_KEY=…`.
+
+### Opción B — Fly.io
+Config en `apps/api/fly.toml`:
+```bash
+cd apps/api
+fly launch --no-deploy
+fly postgres create && fly postgres attach <db>     # define DATABASE_URL
+fly secrets set SECRET_KEY=$(openssl rand -hex 32) \
+                CORS_ORIGINS=https://<tu-app>.vercel.app
+fly deploy
+```
+
+### Opción C — Railway
+1. New Project → **Deploy from repo** → Root Directory `apps/api` (detecta el Dockerfile).
+2. Add **PostgreSQL** → copia su `DATABASE_URL` al servicio.
+3. Variables: `SECRET_KEY` (genera 32+ chars), `CORS_ORIGINS=https://<tu-app>.vercel.app`.
+
+### Variables del backend (checklist)
+| Variable | Obligatoria | Valor |
+|---|---|---|
+| `DATABASE_URL` | ✅ | Postgres (Render/Fly/Railway o **Supabase**). `postgres://` se normaliza solo. |
+| `SECRET_KEY` | ✅ | 32+ caracteres aleatorios (firma JWT + cifrado por defecto). |
+| `MASTER_KMS_KEY` | ◑ | Recomendada: clave de cifrado en reposo. Si la fijas, podrás rotar `SECRET_KEY` sin perder datos cifrados. Si la omites, usa `SECRET_KEY`. |
+| `CORS_ORIGINS` | ✅ | La URL de tu app en Vercel (sin esto, el portal no conecta). |
+| `APP_ENV` | — | `production`. |
+| `VECTOR_STORE` | — | `inprocess` (default) o `pgvector` (reusa el Postgres; corre `infra/supabase/001_pgvector.sql`). |
+| `OPEN_ENABLED` / `OPEN_API_KEY` | — | Modelos NaN Builders. |
+| `N8N_*` | — | Workflows gestionados (sección 5). |
+
+> Verifica con `GET https://<tu-api>/health` → `{"status":"ok"}`. Usuario demo:
+> `admin@s4b.mx` / `demo1234` (cámbialo en producción).
 
 ## 3. Vercel (portal web)
 
