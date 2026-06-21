@@ -22,6 +22,31 @@ export default function AdminPage() {
 
   const [brand, setBrand] = useState({ brand_name: "", brand_logo_url: "", brand_color: "", brand_tagline: "" });
   const [brandMsg, setBrandMsg] = useState("");
+  const [billing, setBilling] = useState<Awaited<ReturnType<typeof api.getBilling>> | null>(null);
+  const [newUser, setNewUser] = useState({ email: "", name: "", role: "user" });
+  const [billingMsg, setBillingMsg] = useState("");
+
+  function loadBilling() {
+    api.getBilling().then(setBilling).catch(() => {});
+  }
+  async function addSeat() {
+    if (!billing) return;
+    await api.updateBilling({ seats_licensed: billing.seats_licensed + 1 });
+    loadBilling();
+  }
+  async function addUser(e: React.FormEvent) {
+    e.preventDefault();
+    setBillingMsg("");
+    try {
+      await api.createUser(newUser);
+      setNewUser({ email: "", name: "", role: "user" });
+      setBillingMsg("✓ Usuario agregado");
+      api.users().then(setUsers).catch(() => {});
+      loadBilling();
+    } catch (err) {
+      setBillingMsg(err instanceof Error ? err.message : "Error (¿asientos agotados?)");
+    }
+  }
 
   function loadProposals() {
     api.recipeProposals().then(setProposals).catch(() => {});
@@ -56,6 +81,7 @@ export default function AdminPage() {
     loadN8n();
     loadProposals();
     loadBranding();
+    loadBilling();
   }, []);
 
   async function curate(id: string) {
@@ -86,6 +112,64 @@ export default function AdminPage() {
       <PageHeader title="Administración" subtitle="Usuarios, roles, modelos habilitados y rutas de privacidad." />
       <div className="space-y-6 p-8">
         {error && <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
+
+        {billing && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-1 flex items-center justify-between">
+              <h2 className="font-semibold text-slate-800">Suscripción y asientos</h2>
+              <span className={`rounded-full px-2 py-0.5 text-xs ${
+                billing.subscription_status === "active" ? "bg-emerald-100 text-emerald-700"
+                  : billing.subscription_status === "trial" ? "bg-amber-100 text-amber-700"
+                    : "bg-red-100 text-red-700"
+              }`}>
+                {billing.subscription_status}
+              </span>
+            </div>
+            <p className="mb-4 text-sm text-slate-500">
+              Plataforma por <b>setup + anual prepagado por asientos</b>. Publicar proyectos de App Studio a
+              producción se cobra aparte ({billing.prod_deploy_price_mxn} MXN por deploy).
+            </p>
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-xl border border-slate-200 p-3">
+                <div className="text-xs uppercase tracking-wide text-slate-400">Asientos</div>
+                <div className="mt-1 font-semibold text-slate-800">{billing.seats_used} / {billing.seats_licensed}</div>
+                <div className="text-xs text-slate-400">{billing.seats_available} disponibles</div>
+              </div>
+              <div className="rounded-xl border border-slate-200 p-3">
+                <div className="text-xs uppercase tracking-wide text-slate-400">Cuota anual</div>
+                <div className="mt-1 font-semibold text-slate-800">${billing.annual_fee_mxn.toLocaleString()} MXN</div>
+              </div>
+              <div className="rounded-xl border border-slate-200 p-3">
+                <div className="text-xs uppercase tracking-wide text-slate-400">Setup</div>
+                <div className="mt-1 font-semibold text-slate-800">{billing.setup_fee_paid ? "Pagado" : "Pendiente"}</div>
+              </div>
+              <div className="rounded-xl border border-slate-200 p-3">
+                <div className="text-xs uppercase tracking-wide text-slate-400">Renovación</div>
+                <div className="mt-1 font-semibold text-slate-800">{billing.renews_at ?? "—"}</div>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <button onClick={addSeat} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">
+                + Ampliar 1 asiento
+              </button>
+              <form onSubmit={addUser} className="flex flex-wrap items-center gap-2">
+                <input value={newUser.name} onChange={(e) => setNewUser((u) => ({ ...u, name: e.target.value }))}
+                  placeholder="Nombre" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                <input value={newUser.email} onChange={(e) => setNewUser((u) => ({ ...u, email: e.target.value }))}
+                  placeholder="correo@empresa.mx" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                <select value={newUser.role} onChange={(e) => setNewUser((u) => ({ ...u, role: e.target.value }))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                  <option value="user">Usuario</option>
+                  <option value="admin">Admin</option>
+                  <option value="security">Security</option>
+                  <option value="devops">DevOps</option>
+                </select>
+                <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Agregar usuario</button>
+              </form>
+            </div>
+            {billingMsg && <div className="mt-2 text-xs text-slate-500">{billingMsg}</div>}
+          </div>
+        )}
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="mb-1 font-semibold text-slate-800">Marca (white-label)</h2>

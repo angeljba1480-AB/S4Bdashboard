@@ -79,6 +79,108 @@ def list_users(
              "mfa_enabled": u.mfa_enabled, "status": u.status} for u in users]
 
 
+class NewUser(BaseModel):
+    email: str
+    name: str
+    role: str = "user"
+    password: str = "demo1234"
+
+
+def _seats_used(session: Session, tenant_id: str) -> int:
+    return len(session.exec(
+        select(User).where(User.tenant_id == tenant_id, User.status == "active")
+    ).all())
+
+
+@router.post("/users", status_code=201)
+def create_user(
+    body: NewUser,
+    _: User = Depends(require_roles(Role.ADMIN)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Add a user — enforces the tenant's licensed seats (annual prepaid)."""
+    from ..auth import hash_password
+
+    if tenant.subscription_status == "expired":
+        raise HTTPException(status_code=402, detail="Suscripción vencida: renueva para agregar usuarios")
+    if _seats_used(session, tenant.id) >= tenant.seats_licensed:
+        raise HTTPException(status_code=402, detail={
+            "message": "No hay asientos disponibles. Amplía tu plan.",
+            "seats_licensed": tenant.seats_licensed})
+    if session.exec(select(User).where(User.email == body.email)).first():
+        raise HTTPException(status_code=409, detail="Ese correo ya existe")
+    try:
+        role = Role(body.role)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Rol inválido")
+    u = User(tenant_id=tenant.id, email=body.email.strip(), name=body.name.strip(),
+             role=role, password_hash=hash_password(body.password))
+    session.add(u)
+    session.commit()
+    session.refresh(u)
+    return {"id": u.id, "email": u.email, "name": u.name, "role": u.role.value}
+
+
+@router.get("/billing")
+def get_billing(
+    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    from .apps import DEPLOY_PRICE_MXN
+
+    used = _seats_used(session, tenant.id)
+    return {
+        "plan": tenant.plan,
+        "subscription_status": tenant.subscription_status,
+        "renews_at": tenant.subscription_renews_at or None,
+        "setup_fee_paid": tenant.setup_fee_paid,
+        "annual_fee_mxn": tenant.annual_fee_mxn,
+        "seats_licensed": tenant.seats_licensed,
+        "seats_used": used,
+        "seats_available": max(0, tenant.seats_licensed - used),
+        "prod_deploy_price_mxn": DEPLOY_PRICE_MXN,
+    }
+
+
+class BillingUpdate(BaseModel):
+    seats_licensed: int | None = None
+    annual_fee_mxn: int | None = None
+    subscription_status: str | None = None
+    subscription_renews_at: str | None = None
+    setup_fee_paid: bool | None = None
+    plan: str | None = None
+
+
+@router.put("/billing")
+def update_billing(
+    body: BillingUpdate,
+    _: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Set the tenant's subscription (seats, annual fee, status). In production a
+    billing provider/webhook drives this; here it's set explicitly."""
+    if body.seats_licensed is not None:
+        if body.seats_licensed < _seats_used(session, tenant.id):
+            raise HTTPException(status_code=422, detail="No puedes licenciar menos asientos de los usados")
+        tenant.seats_licensed = body.seats_licensed
+    if body.annual_fee_mxn is not None:
+        tenant.annual_fee_mxn = body.annual_fee_mxn
+    if body.subscription_status is not None:
+        tenant.subscription_status = body.subscription_status
+    if body.subscription_renews_at is not None:
+        tenant.subscription_renews_at = body.subscription_renews_at
+    if body.setup_fee_paid is not None:
+        tenant.setup_fee_paid = body.setup_fee_paid
+    if body.plan is not None:
+        tenant.plan = body.plan
+    session.add(tenant)
+    session.commit()
+    return {"ok": True}
+
+
 @router.get("/routes")
 def model_routes(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS))) -> list[dict]:
     """Which model routes are enabled (real provider vs mock fallback)."""

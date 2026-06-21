@@ -66,6 +66,23 @@ export const api = {
     return data;
   },
   me: () => request<Me>("/me"),
+  // Billing / seats
+  getBilling: () =>
+    request<{
+      plan: string;
+      subscription_status: string;
+      renews_at: string | null;
+      setup_fee_paid: boolean;
+      annual_fee_mxn: number;
+      seats_licensed: number;
+      seats_used: number;
+      seats_available: number;
+      prod_deploy_price_mxn: number;
+    }>("/admin/billing"),
+  updateBilling: (body: Partial<{ seats_licensed: number; annual_fee_mxn: number; subscription_status: string; subscription_renews_at: string; setup_fee_paid: boolean; plan: string }>) =>
+    request<{ ok: boolean }>("/admin/billing", { method: "PUT", body: JSON.stringify(body) }),
+  createUser: (body: { email: string; name: string; role?: string }) =>
+    request<{ id: string; email: string }>("/admin/users", { method: "POST", body: JSON.stringify(body) }),
   // Regional catalog
   regionalEjes: () => request<Eje[]>("/regional/ejes"),
   regionalEstados: () => request<string[]>("/regional/estados"),
