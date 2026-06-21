@@ -20,6 +20,7 @@ from .routers import (
     recipes,
     regional,
     sso,
+    tramites,
     usage,
     workflows,
 )
@@ -56,6 +57,7 @@ app.include_router(documents.router)
 app.include_router(chat.router)
 app.include_router(recipes.router)
 app.include_router(regional.router)
+app.include_router(tramites.router)
 app.include_router(apps.router)
 app.include_router(workflows.router)
 app.include_router(audit.router)

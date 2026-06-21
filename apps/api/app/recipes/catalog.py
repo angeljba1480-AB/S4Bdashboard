@@ -333,24 +333,35 @@ def prefill(recipe: dict, session: Session, tenant: Tenant, inputs: dict) -> dic
         return _prefill_licitacion(session, tenant.id, inputs)
     if handler == "correo_agenda":
         return _prefill_correo_agenda(inputs)
-    return _prefill_generic(recipe, tenant, inputs)
+    return _prefill_generic(recipe, session, tenant, inputs)
 
 
-def _prefill_generic(recipe: dict, tenant: Tenant, inputs: dict) -> dict:
+def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dict) -> dict:
     """Generate real content through the privacy router + model fallback.
 
     The instruction is classified and routed (local/VPC for sensitive inputs,
     open/premium otherwise). Offline, the MOCK adapter still returns content.
     """
     from ..regional.countries import get_country
+    from ..regional.tramites import to_context
+    from ..routers.tramites import layered_search
 
     country = get_country(getattr(tenant, "country", "MX"))
     instruction = recipe.get("prompt", "").format_map(_SafeDict(inputs)).strip() or recipe["name"]
     produces = recipe.get("produces", "el resultado")
     system = (f"Eres un asistente que genera {produces} para un negocio en {country['name']}. "
-              f"Responde en español, claro y listo para usar.")
+              f"Responde en español, claro y listo para usar. Usa el contexto de trámites "
+              f"(empresa → estado → país) cuando aplique y cita la autoridad/fuente.")
 
-    decision = route_request(tenant, None, instruction, [], task="recipe")
+    # Ground in the layered KB: company-private + state + country curated.
+    matches = layered_search(session, tenant, q=f"{recipe.get('name', '')} {instruction}",
+                             region=inputs.get("region"), municipio=inputs.get("municipio"),
+                             country=country["code"])[:6]
+    ground_context = [to_context(t) for t in matches]
+    fuentes = [{"title": t["title"], "authority": t.get("authority", ""),
+                "fuente": t.get("fuente", ""), "source": t.get("source", "curado")} for t in matches]
+
+    decision = route_request(tenant, None, instruction, ground_context, task="recipe")
     if decision.route == ModelRoute.BLOCKED:
         return {"tipo": "generico", "plan": instruction, "contenido": "", "produces": produces,
                 "route": "blocked", "blocked": True,
@@ -362,7 +373,7 @@ def _prefill_generic(recipe: dict, tenant: Tenant, inputs: dict) -> dict:
         system += (f" Adapta la respuesta a {loc} y advierte que los requisitos varían por "
                    f"localidad y país.")
 
-    gen = generate_with_fallback(decision.route, system, instruction, decision.context)
+    gen = generate_with_fallback(decision.route, system, instruction, decision.context or ground_context)
     contenido = gen.response.content if gen.route != ModelRoute.BLOCKED else ""
     tokens = estimate_tokens(instruction + contenido)
     cost = estimate_cost(gen.route, tokens)
@@ -379,6 +390,7 @@ def _prefill_generic(recipe: dict, tenant: Tenant, inputs: dict) -> dict:
         "region_aware": region_aware,
         "tokens": tokens,
         "cost": cost,
+        "fuentes": fuentes,
         "summary": summary,
     }
 

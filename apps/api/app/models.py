@@ -197,6 +197,26 @@ class Connection(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class TenantTramite(SQLModel, table=True):
+    """Per-company (tenant) curated procedure — the private MCP layer. Only
+    paying tenants can add these; they ground that company's agents on top of the
+    country/state curated layers."""
+    __tablename__ = "tenant_tramites"
+    id: str = Field(default_factory=lambda: _uuid("ttr"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    country: str = "MX"
+    region: str = ""               # estado/provincia ("" = nacional)
+    municipio: str = ""
+    title: str = ""
+    authority: str = ""
+    requisitos: str = ""           # JSON list
+    pasos: str = ""                # JSON list
+    costo_aprox: str = ""
+    fuente: str = ""
+    keywords: str = ""             # comma separated
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class AppProject(SQLModel, table=True):
     """App Studio: a user-built app/automation. Building is free; pushing to
     production is gated behind payment (pay-to-prod)."""

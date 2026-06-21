@@ -27,6 +27,32 @@ export default function AdminPage() {
   const [plans, setPlans] = useState<Awaited<ReturnType<typeof api.plans>> | null>(null);
   const [newUser, setNewUser] = useState({ email: "", name: "", role: "user" });
   const [billingMsg, setBillingMsg] = useState("");
+  const [tramites, setTramites] = useState<{ id: string; title: string; authority: string; source: string; region: string }[]>([]);
+  const [newTramite, setNewTramite] = useState({ title: "", authority: "", region: "", keywords: "", requisitos: "", pasos: "" });
+  const [tramiteMsg, setTramiteMsg] = useState("");
+
+  function loadTramites() {
+    api.tramites().then(setTramites).catch(() => {});
+  }
+  async function addTramite(e: React.FormEvent) {
+    e.preventDefault();
+    setTramiteMsg("");
+    try {
+      await api.addCompanyTramite({
+        title: newTramite.title,
+        authority: newTramite.authority,
+        region: newTramite.region,
+        keywords: newTramite.keywords.split(",").map((k) => k.trim()).filter(Boolean),
+        requisitos: newTramite.requisitos.split("\n").map((k) => k.trim()).filter(Boolean),
+        pasos: newTramite.pasos.split("\n").map((k) => k.trim()).filter(Boolean),
+      });
+      setNewTramite({ title: "", authority: "", region: "", keywords: "", requisitos: "", pasos: "" });
+      setTramiteMsg("✓ Agregado al MCP de tu empresa");
+      loadTramites();
+    } catch (err) {
+      setTramiteMsg(err instanceof Error ? err.message : "Error");
+    }
+  }
 
   function loadBilling() {
     api.getBilling().then(setBilling).catch(() => {});
@@ -86,6 +112,7 @@ export default function AdminPage() {
     loadBilling();
     api.plans().then(setPlans).catch(() => {});
     api.regionalCountries().then(setCountries).catch(() => {});
+    loadTramites();
   }, []);
 
   async function curate(id: string) {
@@ -368,6 +395,40 @@ export default function AdminPage() {
             {n8nMsg && <div className="mt-2 text-xs text-slate-500">{n8nMsg}</div>}
           </div>
         )}
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h2 className="mb-1 font-semibold text-slate-800">MCP de empresa · Trámites</h2>
+          <p className="mb-4 text-sm text-slate-500">
+            Tu capa privada de contexto (sobre estado y país). Lo que agregues aquí aterriza las
+            respuestas de tus agentes y casos de uso. {tramites.filter((t) => t.source === "empresa").length} propios.
+          </p>
+          <form onSubmit={addTramite} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <input value={newTramite.title} onChange={(e) => setNewTramite((t) => ({ ...t, title: e.target.value }))}
+              placeholder="Título (ej. Política interna de facturación)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2" />
+            <input value={newTramite.authority} onChange={(e) => setNewTramite((t) => ({ ...t, authority: e.target.value }))}
+              placeholder="Autoridad / área" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <input value={newTramite.region} onChange={(e) => setNewTramite((t) => ({ ...t, region: e.target.value }))}
+              placeholder="Estado/Provincia (opcional)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <input value={newTramite.keywords} onChange={(e) => setNewTramite((t) => ({ ...t, keywords: e.target.value }))}
+              placeholder="Palabras clave (coma)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2" />
+            <textarea value={newTramite.requisitos} onChange={(e) => setNewTramite((t) => ({ ...t, requisitos: e.target.value }))}
+              placeholder="Requisitos (uno por línea)" rows={2} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <textarea value={newTramite.pasos} onChange={(e) => setNewTramite((t) => ({ ...t, pasos: e.target.value }))}
+              placeholder="Pasos (uno por línea)" rows={2} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white sm:col-span-2">Agregar al MCP de empresa</button>
+          </form>
+          {tramiteMsg && <div className="mt-2 text-xs text-slate-500">{tramiteMsg}</div>}
+          {tramites.filter((t) => t.source === "empresa").length > 0 && (
+            <div className="mt-3 space-y-1">
+              {tramites.filter((t) => t.source === "empresa").map((t) => (
+                <div key={t.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                  <span className="text-slate-700">{t.title} {t.region && <span className="text-slate-400">· {t.region}</span>}</span>
+                  <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs text-violet-700">empresa</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="mb-1 font-semibold text-slate-800">Propuestas de casos de uso</h2>

@@ -104,6 +104,15 @@ export const api = {
     request<{ id: string; title: string; status: string }>(`/regional/procedures/${id}/propose`, {
       method: "POST",
     }),
+  // Trámites (curated KB / company MCP layer)
+  tramites: (p?: { q?: string; region?: string; municipio?: string; country?: string }) => {
+    const qs = new URLSearchParams();
+    Object.entries(p || {}).forEach(([k, v]) => v && qs.set(k, v));
+    const s = qs.toString() ? `?${qs}` : "";
+    return request<{ id: string; title: string; authority: string; source: string; scope: string; region: string }[]>(`/tramites${s}`);
+  },
+  addCompanyTramite: (body: { title: string; authority?: string; region?: string; municipio?: string; requisitos?: string[]; pasos?: string[]; costo_aprox?: string; fuente?: string; keywords?: string[] }) =>
+    request<{ id: string; title: string }>("/tramites", { method: "POST", body: JSON.stringify(body) }),
   // App Studio
   apps: () => request<AppProject[]>("/apps"),
   createApp: (body: { name: string; description: string }) =>

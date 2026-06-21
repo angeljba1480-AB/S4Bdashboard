@@ -221,6 +221,15 @@ export default function RecipesPage() {
                     </div>
                   )}
 
+                  {Array.isArray(run.draft?.fuentes) && (run.draft.fuentes as { title: string; authority: string; source?: string }[]).length > 0 && (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                      <span className="font-semibold text-slate-600">Fuentes (MCP de trámites): </span>
+                      {(run.draft.fuentes as { title: string; authority: string; source?: string }[])
+                        .map((f) => `${f.title}${f.source === "empresa" ? " (empresa)" : ""}`)
+                        .join(" · ")}
+                    </div>
+                  )}
+
                   {typeof run.draft?.contenido === "string" && run.draft.contenido && (
                     <div>
                       <div className="mb-1 text-xs font-semibold uppercase text-slate-400">Borrador generado (revisa)</div>
