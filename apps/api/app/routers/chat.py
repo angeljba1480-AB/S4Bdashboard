@@ -113,6 +113,13 @@ def chat(
     citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None)
     context_texts = [c.text for c in citations]
 
+    # 2b. Curated trámites MCP grounding (empresa → estado → país) so agents
+    # answer with real local context, not just the company's own documents.
+    from ..regional.tramites import to_context as _tramite_context
+    from .tramites import layered_search as _tramite_search
+    tramite_matches = _tramite_search(session, tenant, q=body.prompt, country=tenant.country)[:4]
+    context_texts = context_texts + [_tramite_context(t) for t in tramite_matches]
+
     # 3. Privacy Model Router
     decision = route_request(tenant, agent, body.prompt, context_texts, task="chat")
 
