@@ -126,7 +126,7 @@ export const api = {
   createDashboard: (body: { name: string; description: string; spec?: unknown[]; workflow_id?: string }) =>
     request<{ id: string; name: string }>("/dashboards", { method: "POST", body: JSON.stringify(body) }),
   dashboardData: (id: string) =>
-    request<{ id: string; name: string; widgets: { id: string; type: string; title: string; source?: string; key?: string; value?: number; series?: { name: string; value: number }[]; rows?: Record<string, unknown>[] }[] }>(`/dashboards/${id}/data`),
+    request<{ id: string; name: string; workflow_id: string | null; widgets: { id: string; type: string; title: string; source?: string; key?: string; value?: number; series?: { name: string; value: number }[]; rows?: Record<string, unknown>[] }[] }>(`/dashboards/${id}/data`),
   dashboardCatalog: () =>
     request<{ key: string; type: string; title: string }[]>("/dashboards/catalog"),
   updateDashboard: (id: string, body: { name: string; description: string; spec?: unknown[]; workflow_id?: string }) =>

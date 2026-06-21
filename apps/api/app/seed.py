@@ -17,7 +17,9 @@ def seed() -> None:
         if session.exec(select(Tenant)).first():
             return  # already seeded
 
-        tenant = Tenant(name="Silent4Business", plan="enterprise", region="mx-central")
+        tenant = Tenant(name="Silent4Business", plan="enterprise", region="mx-central",
+                        country="MX", brand_name="MaestroAI", brand_tagline="Agentes y casos para LATAM",
+                        subscription_status="active", seats_licensed=25)
         session.add(tenant)
         session.commit()
         session.refresh(tenant)

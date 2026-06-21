@@ -18,6 +18,8 @@ export default function DashboardsPage() {
   const [catalog, setCatalog] = useState<{ key: string; type: string; title: string }[]>([]);
   const [addKey, setAddKey] = useState("");
   const [manual, setManual] = useState({ title: "", value: "" });
+  const [workflows, setWorkflows] = useState<{ id: string; name: string }[]>([]);
+  const [autoMsg, setAutoMsg] = useState("");
 
   function load() {
     api.dashboards().then(setList).catch(() => {});
@@ -25,7 +27,21 @@ export default function DashboardsPage() {
   useEffect(() => {
     load();
     api.dashboardCatalog().then(setCatalog).catch(() => {});
+    api.workflows().then(setWorkflows).catch(() => {});
   }, []);
+
+  async function linkWorkflow(id: string) {
+    if (!active) return;
+    await api.updateDashboard(active.id, { name: active.name, description: "", spec: currentSpec(), workflow_id: id });
+    await open(active.id);
+  }
+
+  async function runAutomation() {
+    if (!active?.workflow_id) return;
+    setAutoMsg("Ejecutando…");
+    const res = await api.runWorkflow(active.workflow_id);
+    setAutoMsg(`Automatización: ${res.status} · ${res.engine}`);
+  }
 
   function currentSpec() {
     return (active?.widgets ?? []).map((w) => {
@@ -140,6 +156,20 @@ export default function DashboardsPage() {
                   placeholder="valor" className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
                 <button onClick={addManual} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700">+ Manual</button>
               </div>
+            </div>
+
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+              <span className="text-sm font-medium text-slate-600">Automatización:</span>
+              <select value={active.workflow_id ?? ""} onChange={(e) => linkWorkflow(e.target.value)}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
+                <option value="">Sin workflow</option>
+                {workflows.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+              <button onClick={runAutomation} disabled={!active.workflow_id}
+                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+                Ejecutar automatización
+              </button>
+              {autoMsg && <span className="text-xs text-slate-500">{autoMsg}</span>}
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {active.widgets.filter((w) => w.type === "kpi").map((w) => (

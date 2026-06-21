@@ -69,8 +69,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   }
 
   const brand = me?.brand_color || "#7c3aed";
-  const brandName = me?.brand_name || "Private AI";
-  const tagline = me?.brand_tagline || "Gateway + Agentes";
+  const brandName = me?.brand_name || "MaestroAI";
+  const tagline = me?.brand_tagline || "Agentes y casos para LATAM";
 
   return (
     <div className="flex min-h-screen bg-slate-50" style={{ ["--brand" as string]: brand }}>

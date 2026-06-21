@@ -178,6 +178,40 @@ def add_company_tramite(
     return _tenant_entry_to_dict(row)
 
 
+def _ai_extract(tenant: Tenant, text: str) -> dict | None:
+    """Try LLM extraction (governed) into structured JSON; None if unavailable."""
+    import json as _json
+
+    from ..ai.resilience import generate_with_fallback
+    from ..ai.router import route_request
+    from ..models import ModelRoute
+
+    snippet = text[:4000]
+    prompt = ('Extrae de este texto un trámite en JSON con las llaves exactas '
+              '{"title","authority","requisitos":[],"pasos":[]}. Solo JSON.\n\n' + snippet)
+    decision = route_request(tenant, None, prompt, [snippet], task="extract")
+    if decision.route == ModelRoute.BLOCKED:
+        return None
+    gen = generate_with_fallback(decision.route, "Extractor de trámites. Devuelve solo JSON.",
+                                 prompt, decision.context)
+    raw = gen.response.content or ""
+    try:
+        start, end = raw.find("{"), raw.rfind("}")
+        if start < 0 or end <= start:
+            return None
+        data = _json.loads(raw[start:end + 1])
+        if not isinstance(data, dict) or not data.get("title"):
+            return None
+        return {
+            "title": str(data.get("title", ""))[:120],
+            "authority": str(data.get("authority", ""))[:120],
+            "requisitos": [str(x)[:200] for x in (data.get("requisitos") or [])][:12],
+            "pasos": [str(x)[:200] for x in (data.get("pasos") or [])][:12],
+        }
+    except (ValueError, TypeError):
+        return None
+
+
 @router.post("/import", status_code=201)
 def import_from_document(
     body: ImportIn,
@@ -185,13 +219,24 @@ def import_from_document(
     tenant: Tenant = Depends(get_current_tenant),
     session: Session = Depends(get_session),
 ) -> dict:
-    """Turn an uploaded document into a structured company trámite (MCP layer)."""
+    """Turn an uploaded document into a structured company trámite (MCP layer).
+
+    Uses AI extraction when a model is available, with a robust heuristic fallback.
+    """
     if tenant.subscription_status not in ("active", "trial"):
         raise HTTPException(status_code=402, detail="Suscripción inactiva: renueva para tu MCP de empresa")
     doc = session.get(Document, body.document_id)
     if not doc or doc.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
-    draft = extract_tramite(doc)
+    draft = extract_tramite(doc)  # heuristic base (always works)
+    from ..security.crypto import decrypt
+    ai = _ai_extract(tenant, decrypt(doc.text or "", doc.tenant_id))
+    if ai:  # prefer AI fields when present
+        draft["title"] = ai["title"] or draft["title"]
+        if ai["requisitos"]:
+            draft["requisitos"] = ai["requisitos"]
+        if ai["pasos"]:
+            draft["pasos"] = ai["pasos"]
     row = TenantTramite(
         tenant_id=tenant.id, country=tenant.country, title=draft["title"],
         authority=f"Importado de {doc.filename}",

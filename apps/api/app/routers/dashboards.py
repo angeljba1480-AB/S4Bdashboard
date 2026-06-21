@@ -217,4 +217,4 @@ def dashboard_data(
     ops = compute_operations(session, tenant)
     data = {**ops, **compute_company(session, tenant)}
     widgets = [resolve_widget(w, data) for w in json.loads(d.spec or "[]")]
-    return {"id": d.id, "name": d.name, "widgets": widgets}
+    return {"id": d.id, "name": d.name, "widgets": widgets, "workflow_id": d.workflow_id or None}
