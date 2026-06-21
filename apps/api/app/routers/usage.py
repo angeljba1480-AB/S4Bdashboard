@@ -53,6 +53,11 @@ def operations(
     session: Session = Depends(get_session),
 ) -> dict:
     """Operations dashboard: cases running, searches, tokens burned and cost."""
+    return compute_operations(session, tenant)
+
+
+def compute_operations(session: Session, tenant: Tenant) -> dict:
+    """Aggregate operations metrics (reused by /usage/operations and dashboards)."""
     from ..models import AppProject, Conversation, RecipeRun
     from .recipes import _resolve  # recipe id -> display name
 
@@ -73,6 +78,10 @@ def operations(
                        + sum(a.cost_estimate for a in apps), 6)
 
     tokens_by_source = {"chat": chat_tokens, "casos": case_tokens, "apps": app_tokens}
+
+    cost_by_route: dict[str, float] = {}
+    for m in msgs:
+        cost_by_route[m.route.value] = round(cost_by_route.get(m.route.value, 0.0) + m.cost_estimate, 6)
 
     by_status: dict[str, int] = {}
     by_recipe: dict[str, int] = {}
@@ -100,7 +109,7 @@ def operations(
         },
         "searches": len([m for m in msgs if m.role == "assistant"]),
         "tokens": {"total": total_tokens, "by_source": tokens_by_source},
-        "cost": {"total": total_cost},
+        "cost": {"total": total_cost, "by_route": cost_by_route},
         "apps": {"built": len(apps), "deployed": len([a for a in apps if a.status == "deployed"])},
         "recent_cases": recent_cases,
     }

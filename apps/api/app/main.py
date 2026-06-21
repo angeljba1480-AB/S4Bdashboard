@@ -15,6 +15,7 @@ from .routers import (
     audit,
     auth_routes,
     chat,
+    dashboards,
     documents,
     export,
     recipes,
@@ -58,6 +59,7 @@ app.include_router(chat.router)
 app.include_router(recipes.router)
 app.include_router(regional.router)
 app.include_router(tramites.router)
+app.include_router(dashboards.router)
 app.include_router(apps.router)
 app.include_router(workflows.router)
 app.include_router(audit.router)

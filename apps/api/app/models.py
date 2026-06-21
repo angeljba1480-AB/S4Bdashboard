@@ -197,6 +197,21 @@ class Connection(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class Dashboard(SQLModel, table=True):
+    """A company dashboard built from widgets (KPIs/charts/tables) bound to live
+    metrics or manual data, optionally linked to a workflow automation."""
+    __tablename__ = "dashboards"
+    id: str = Field(default_factory=lambda: _uuid("dsh"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(foreign_key="users.id")
+    name: str = ""
+    description: str = ""
+    spec: str = "[]"               # JSON list of widgets
+    workflow_id: str = ""          # optional linked automation (n8n)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class TenantTramite(SQLModel, table=True):
     """Per-company (tenant) curated procedure — the private MCP layer. Only
     paying tenants can add these; they ground that company's agents on top of the

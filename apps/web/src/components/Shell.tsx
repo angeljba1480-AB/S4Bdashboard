@@ -8,6 +8,7 @@ import {
   FileText,
   IdCard,
   LayoutDashboard,
+  LayoutGrid,
   LogOut,
   MapPin,
   MessageSquare,
@@ -34,6 +35,7 @@ const NAV = [
     group: "PLATAFORMA",
     items: [
       { href: "/recipes", label: "Casos de uso", icon: Sparkles },
+      { href: "/dashboards", label: "Tableros", icon: LayoutGrid },
       { href: "/regional", label: "Trámites y casos", icon: MapPin },
       { href: "/apps", label: "App Studio", icon: Rocket },
       { href: "/agents", label: "Agentes", icon: Bot },
