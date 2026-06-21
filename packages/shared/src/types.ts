@@ -127,6 +127,33 @@ export interface RecipeRun {
   connections: RecipeConnection[];
 }
 
+export interface Eje {
+  id: string;
+  label: string;
+  count: number;
+}
+
+export interface Procedure {
+  id: string;
+  title: string;
+  problem: string;
+  eje: string;
+  eje_label: string;
+  category: string;
+  suggested_recipe: string;
+  scope: string;
+}
+
+export interface AppProject {
+  id: string;
+  name: string;
+  description: string;
+  spec: string;
+  status: "draft" | "built" | "pending_payment" | "deployed";
+  paid: boolean;
+  deploy_url: string | null;
+}
+
 export interface UsageSummary {
   total_messages: number;
   total_tokens: number;

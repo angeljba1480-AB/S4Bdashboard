@@ -7,7 +7,9 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  MapPin,
   MessageSquare,
+  Rocket,
   Settings,
   Shield,
   ShieldCheck,
@@ -24,6 +26,8 @@ const NAV = [
     group: "PLATAFORMA",
     items: [
       { href: "/recipes", label: "Casos de uso", icon: Sparkles },
+      { href: "/regional", label: "Trámites y casos", icon: MapPin },
+      { href: "/apps", label: "App Studio", icon: Rocket },
       { href: "/agents", label: "Agentes", icon: Bot },
       { href: "/documents", label: "Documentos", icon: FileText },
       { href: "/chat", label: "Chat con fuentes", icon: MessageSquare },

@@ -1,10 +1,13 @@
 // Thin typed client over the Private AI Platform API.
 import type {
   Agent,
+  AppProject,
   AuditEvent,
   ChatResponse,
   DocumentItem,
+  Eje,
   Me,
+  Procedure,
   Recipe,
   RecipeRun,
   UsageSummary,
@@ -63,6 +66,37 @@ export const api = {
     return data;
   },
   me: () => request<Me>("/me"),
+  // Regional catalog
+  regionalEjes: () => request<Eje[]>("/regional/ejes"),
+  regionalEstados: () => request<string[]>("/regional/estados"),
+  regionalProcedures: (p?: { estado?: string; eje?: string; q?: string }) => {
+    const qs = new URLSearchParams();
+    if (p?.estado) qs.set("estado", p.estado);
+    if (p?.eje) qs.set("eje", p.eje);
+    if (p?.q) qs.set("q", p.q);
+    const s = qs.toString() ? `?${qs}` : "";
+    return request<Procedure[]>(`/regional/procedures${s}`);
+  },
+  procedureToProposal: (id: string) =>
+    request<{ id: string; title: string; status: string }>(`/regional/procedures/${id}/propose`, {
+      method: "POST",
+    }),
+  // App Studio
+  apps: () => request<AppProject[]>("/apps"),
+  createApp: (body: { name: string; description: string }) =>
+    request<AppProject>("/apps", { method: "POST", body: JSON.stringify(body) }),
+  confirmCheckout: (id: string) =>
+    request<{ id: string; paid: boolean }>(`/apps/${id}/checkout`, { method: "POST" }),
+  async deployApp(id: string): Promise<{ payment_required: boolean; checkout?: { amount: number; currency: string }; app?: AppProject }> {
+    const res = await fetch(`${API_BASE}/apps/${id}/deploy`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 402) return { payment_required: true, checkout: data.detail?.checkout };
+    if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "No se pudo publicar");
+    return { payment_required: false, app: data };
+  },
   getBranding: () =>
     request<{ brand_name: string; brand_logo_url: string; brand_color: string; brand_tagline: string; tenant_name: string }>(
       "/admin/branding",

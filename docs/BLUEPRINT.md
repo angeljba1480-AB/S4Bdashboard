@@ -45,6 +45,8 @@ Frontend Web / Portal Empresas
 | RAG | Qdrant/pgvector + reranker | Vector store in-proc (pluggable a Qdrant) |
 | Workflows | n8n + Temporal | Catálogo + trigger real vía webhook n8n (simulado si off) |
 | Casos de uso | Catálogo escalable | Recetas data-driven por categoría (crecer/abrir/cumplimiento/operaciones/día a día), pre-llenado por IA, aprobación de acción/conexión, propuestas de usuarios |
+| Catálogo regional | Trámites/problemas por estado | Por estado + ejes de desarrollo del gobierno; de un trámite → propuesta → caso de uso curado |
+| App Studio | Construye + paga para prod | Plan de app por IA (gobernado), publicación a producción con paywall (pay-to-prod) |
 | Model Serving | Ollama lab; vLLM/TGI prod; NaN Builders (open/volumen) | Mock + adapters OpenAI-compatible (open = NaN Builders) |
 | Observabilidad | Langfuse, OTel, Grafana, SIEM | audit_events + cost meter |
 

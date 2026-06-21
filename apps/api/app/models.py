@@ -189,6 +189,23 @@ class Connection(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class AppProject(SQLModel, table=True):
+    """App Studio: a user-built app/automation. Building is free; pushing to
+    production is gated behind payment (pay-to-prod)."""
+    __tablename__ = "app_projects"
+    id: str = Field(default_factory=lambda: _uuid("app"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(foreign_key="users.id")
+    name: str = ""
+    description: str = ""
+    spec: str = ""                 # AI-generated build plan / scaffold
+    status: str = "draft"          # draft | built | pending_payment | deployed
+    paid: bool = False
+    deploy_url: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class CatalogRecipe(SQLModel, table=True):
     """A curated, DB-backed use case (so the catalog scales without redeploys).
 

@@ -11,12 +11,14 @@ from .db import init_db
 from .routers import (
     admin,
     agents,
+    apps,
     audit,
     auth_routes,
     chat,
     documents,
     export,
     recipes,
+    regional,
     sso,
     usage,
     workflows,
@@ -53,6 +55,8 @@ app.include_router(agents.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
 app.include_router(recipes.router)
+app.include_router(regional.router)
+app.include_router(apps.router)
 app.include_router(workflows.router)
 app.include_router(audit.router)
 app.include_router(usage.router)
