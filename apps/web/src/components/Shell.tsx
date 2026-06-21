@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   Workflow,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -38,6 +39,7 @@ const NAV = [
       { href: "/dashboards", label: "Tableros", icon: LayoutGrid },
       { href: "/regional", label: "Trámites y casos", icon: MapPin },
       { href: "/apps", label: "App Studio", icon: Rocket },
+      { href: "/automations", label: "Automatizaciones", icon: Zap },
       { href: "/agents", label: "Agentes", icon: Bot },
       { href: "/documents", label: "Documentos", icon: FileText },
       { href: "/chat", label: "Chat con fuentes", icon: MessageSquare },

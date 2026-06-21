@@ -132,6 +132,19 @@ export const api = {
   updateDashboard: (id: string, body: { name: string; description: string; spec?: unknown[]; workflow_id?: string }) =>
     request<{ id: string; name: string }>(`/dashboards/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteDashboard: (id: string) => request<{ ok: boolean }>(`/dashboards/${id}`, { method: "DELETE" }),
+  // Automations
+  automationTemplates: () =>
+    request<{ id: string; name: string; description: string; trigger: string; schedule: string; event: string; action_type: string }[]>("/automations/templates"),
+  automations: () =>
+    request<{ id: string; name: string; description: string; trigger: string; schedule: string; event: string; action_type: string; action_ref: string; enabled: boolean; status: string; last_run: string | null }[]>("/automations"),
+  createAutomationFromTemplate: (templateId: string) =>
+    request<{ id: string; name: string }>("/automations/from-template", { method: "POST", body: JSON.stringify({ template_id: templateId }) }),
+  toggleAutomation: (id: string) =>
+    request<{ id: string; enabled: boolean }>(`/automations/${id}/toggle`, { method: "POST" }),
+  runAutomation: (id: string) =>
+    request<{ id: string; status: string; detail: string; last_run: string }>(`/automations/${id}/run`, { method: "POST" }),
+  deleteAutomation: (id: string) =>
+    request<{ ok: boolean }>(`/automations/${id}`, { method: "DELETE" }),
   // App Studio
   apps: () => request<AppProject[]>("/apps"),
   createApp: (body: { name: string; description: string }) =>

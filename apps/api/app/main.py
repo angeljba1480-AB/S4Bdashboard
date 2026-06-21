@@ -12,6 +12,7 @@ from .routers import (
     admin,
     agents,
     apps,
+    automations,
     audit,
     auth_routes,
     chat,
@@ -61,6 +62,7 @@ app.include_router(regional.router)
 app.include_router(tramites.router)
 app.include_router(dashboards.router)
 app.include_router(apps.router)
+app.include_router(automations.router)
 app.include_router(workflows.router)
 app.include_router(audit.router)
 app.include_router(usage.router)

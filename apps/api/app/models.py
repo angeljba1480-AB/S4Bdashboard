@@ -197,6 +197,28 @@ class Connection(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class Automation(SQLModel, table=True):
+    """A user automation: trigger (manual/schedule/event) -> action (workflow /
+    recipe / notify). Schedules/events are executed by the workflows layer
+    (n8n/Temporal); 'run now' executes immediately."""
+    __tablename__ = "automations"
+    id: str = Field(default_factory=lambda: _uuid("auto"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(foreign_key="users.id")
+    name: str = ""
+    description: str = ""
+    trigger: str = "manual"        # manual | schedule | event
+    schedule: str = ""             # daily | weekly | monthly ("" if not schedule)
+    event: str = ""                # e.g. document_uploaded
+    action_type: str = "workflow"  # workflow | recipe | notify
+    action_ref: str = ""           # workflow id / recipe id
+    config: str = "{}"             # JSON (recipe inputs, notify message, ...)
+    enabled: bool = True
+    status: str = ""               # last run status
+    last_run: str = ""             # ISO timestamp
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class Dashboard(SQLModel, table=True):
     """A company dashboard built from widgets (KPIs/charts/tables) bound to live
     metrics or manual data, optionally linked to a workflow automation."""
