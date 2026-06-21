@@ -1,5 +1,5 @@
-"""Workflows endpoint (blueprint section 9). MVP exposes the catalog and a
-simulated run that records audit + cost, ready to be wired to n8n/Temporal."""
+"""Workflows endpoint (blueprint section 9). Triggers real n8n workflows via
+webhook when configured; otherwise records a simulated run + audit."""
 from __future__ import annotations
 
 import uuid
@@ -9,6 +9,7 @@ from sqlmodel import Session
 
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
+from ..integrations.n8n import trigger_workflow
 from ..models import AuditEvent, Tenant, User
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
@@ -45,10 +46,19 @@ def run_workflow(
     if not wf:
         raise HTTPException(status_code=404, detail="Workflow no encontrado")
     run_id = uuid.uuid4().hex[:12]
+
+    run = trigger_workflow(workflow_id, {
+        "run_id": run_id, "workflow_id": workflow_id, "workflow": wf["name"],
+        "tenant_id": tenant.id, "user_id": user.id,
+    })
+
     session.add(AuditEvent(
         tenant_id=tenant.id, user_id=user.id, event_type="workflow",
-        object_type="workflow", object_id=workflow_id, risk_level="low",
-        reason=f"ejecución simulada de {wf['name']} (run {run_id})",
+        object_type="workflow", object_id=workflow_id,
+        risk_level="med" if run.status == "failed" else "low",
+        reason=f"{wf['name']} (run {run_id}) · {run.status} · {run.detail}",
     ))
     session.commit()
-    return {"run_id": run_id, "workflow": wf["name"], "status": "completed", "steps": wf["steps"]}
+    return {"run_id": run_id, "workflow": wf["name"], "status": run.status,
+            "engine": "n8n" if run.triggered else "simulado",
+            "detail": run.detail, "response": run.response, "steps": wf["steps"]}

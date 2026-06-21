@@ -50,6 +50,11 @@ export default function AdminPage() {
                 <div className="text-xs uppercase tracking-wide text-slate-400">Fallback de rutas</div>
                 <div className="mt-1 font-semibold text-slate-800">{security.fallback_order.join(" → ")}</div>
               </div>
+              <div className="rounded-xl border border-slate-200 p-4">
+                <div className="text-xs uppercase tracking-wide text-slate-400">Workflows</div>
+                <div className="mt-1 font-semibold capitalize text-slate-800">{security.workflows.engine}</div>
+                <div className="truncate text-xs text-slate-400">{security.workflows.base_url ?? "—"}</div>
+              </div>
             </div>
           </div>
         )}

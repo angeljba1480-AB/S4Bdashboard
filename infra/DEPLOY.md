@@ -57,3 +57,18 @@ EMBEDDINGS_DIM=<dimensión>    # debe coincidir con la columna vector() de pgvec
 
 > Si cambias `EMBEDDINGS_DIM`, ajusta `vector(<dim>)` en `001_pgvector.sql` y
 > reindexa los documentos.
+
+## 5. Workflows — n8n self-hosted
+
+La plataforma dispara workflows reales de n8n por webhook. En la API:
+```
+N8N_ENABLED=true
+N8N_WEBHOOK_BASE_URL=https://n8n.tuempresa.com/webhook
+N8N_API_KEY=<token opcional>      # secreto: solo en el entorno
+N8N_AUTH_HEADER=X-N8N-API-KEY
+```
+En n8n crea un **Webhook node** por cada workflow, con el path = id del workflow:
+`ingesta`, `rag`, `sow`, `cyber`, `mando`, `finetune`. El POST recibe
+`{run_id, workflow_id, workflow, tenant_id, user_id}`. Cada ejecución se audita
+(éxito/fallo). Si `N8N_ENABLED=false`, las corridas se simulan.
+

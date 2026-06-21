@@ -54,6 +54,8 @@ def security_status(_: User = Depends(require_roles(Role.ADMIN, Role.SECURITY, R
         "vector_store": settings.vector_store,
         "sso": {"enabled": settings.sso_enabled, "issuer": settings.oidc_issuer or None},
         "fallback_order": settings.fallback_routes,
+        "workflows": {"engine": "n8n" if settings.n8n_enabled else "simulado",
+                      "base_url": settings.n8n_webhook_base_url or None},
     }
 
 

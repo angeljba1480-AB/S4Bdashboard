@@ -51,6 +51,13 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str = ""
 
+    # Workflows: n8n self-hosted (blueprint §4/§9). When disabled, /workflows
+    # runs are simulated. Webhook path defaults to the workflow id.
+    n8n_enabled: bool = False
+    n8n_webhook_base_url: str = ""  # e.g. https://n8n.tuempresa.com/webhook
+    n8n_api_key: str = ""           # optional; sent as n8n_auth_header if set
+    n8n_auth_header: str = "X-N8N-API-KEY"
+
     # Encryption at rest (KMS abstraction). master_kms_key seeds per-tenant keys.
     # In production this comes from a real KMS (AWS KMS, GCP KMS, Vault).
     encryption_enabled: bool = True

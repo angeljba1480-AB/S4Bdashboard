@@ -43,7 +43,7 @@ Frontend Web / Portal Empresas
 | Policy Engine | Servicio + Presidio/DLP + YAML | `security/` propio (regex MX + heurística) |
 | AI Gateway | LiteLLM + router propio | `ai/router.py` + adapters |
 | RAG | Qdrant/pgvector + reranker | Vector store in-proc (pluggable a Qdrant) |
-| Workflows | n8n + Temporal | Catálogo + runner simulado |
+| Workflows | n8n + Temporal | Catálogo + trigger real vía webhook n8n (simulado si off) |
 | Model Serving | Ollama lab; vLLM/TGI prod; NaN Builders (open/volumen) | Mock + adapters OpenAI-compatible (open = NaN Builders) |
 | Observabilidad | Langfuse, OTel, Grafana, SIEM | audit_events + cost meter |
 

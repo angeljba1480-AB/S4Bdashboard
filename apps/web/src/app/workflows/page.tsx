@@ -16,7 +16,7 @@ export default function WorkflowsPage() {
   async function run(id: string) {
     setResult((r) => ({ ...r, [id]: "Ejecutando…" }));
     const res = await api.runWorkflow(id);
-    setResult((r) => ({ ...r, [id]: `✓ ${res.status} (run ${res.run_id})` }));
+    setResult((r) => ({ ...r, [id]: `${res.status} · ${res.engine} (run ${res.run_id})` }));
   }
 
   return (

@@ -90,9 +90,10 @@ export const api = {
   usage: () => request<UsageSummary>("/usage"),
   workflows: () => request<{ id: string; name: string; steps: string }[]>("/workflows"),
   runWorkflow: (id: string) =>
-    request<{ run_id: string; status: string; steps: string }>(`/workflows/${id}/run`, {
-      method: "POST",
-    }),
+    request<{ run_id: string; status: string; engine: string; detail: string; steps: string }>(
+      `/workflows/${id}/run`,
+      { method: "POST" },
+    ),
   routes: () =>
     request<{ route: string; provider: string; enabled: boolean; model: string; mode: string }[]>(
       "/admin/routes",
@@ -107,6 +108,7 @@ export const api = {
       vector_store: string;
       sso: { enabled: boolean; issuer: string | null };
       fallback_order: string[];
+      workflows: { engine: string; base_url: string | null };
     }>("/admin/security"),
   ssoConfig: () => request<{ enabled: boolean; authorize_url?: string }>("/auth/sso/config"),
   // Downloads (return URLs with auth handled by the browser fetch + blob).
