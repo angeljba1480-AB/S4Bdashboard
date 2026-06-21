@@ -164,3 +164,50 @@ class ApiKey(SQLModel, table=True):
     allowed_models: str = ""
     status: str = "active"
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Connection(SQLModel, table=True):
+    """A user-approved connection to an external account (email, calendar, ...).
+
+    The "solo aprueba conexión" gate: created pending, executed only once the
+    user approves. Designed to back a real OAuth consent later.
+    """
+    __tablename__ = "connections"
+    id: str = Field(default_factory=lambda: _uuid("con"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(foreign_key="users.id")
+    provider: str = ""             # email | calendar | crm | ...
+    identifier: str = ""           # e.g. the email address
+    status: str = "pending"        # pending | approved | revoked
+    scopes: str = ""               # comma separated
+    prefs: str = ""                # JSON (output type, schedule, ...)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class RecipeProposal(SQLModel, table=True):
+    """A use case proposed by a user. Curated into the catalog over time."""
+    __tablename__ = "recipe_proposals"
+    id: str = Field(default_factory=lambda: _uuid("prop"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(foreign_key="users.id")
+    title: str = ""
+    description: str = ""
+    category: str = "dia_a_dia"
+    status: str = "proposed"       # proposed | curated | rejected
+    votes: int = 0
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class RecipeRun(SQLModel, table=True):
+    """An instance of a use-case recipe: collect inputs -> AI pre-fill -> approve."""
+    __tablename__ = "recipe_runs"
+    id: str = Field(default_factory=lambda: _uuid("run"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(foreign_key="users.id")
+    recipe_id: str = ""
+    status: str = "draft"          # draft | needs_connection | completed | failed
+    inputs: str = ""               # JSON
+    draft: str = ""                # JSON — AI pre-filled output awaiting approval
+    result: str = ""               # JSON — after approval/execution
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

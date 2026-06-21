@@ -77,6 +77,47 @@ export interface AuditEvent {
   created_at: string;
 }
 
+export interface RecipeInput {
+  key: string;
+  type: "document" | "text" | "email" | "choice";
+  label: string;
+  required?: boolean;
+  options?: string[];
+}
+
+export interface Recipe {
+  id: string;
+  category: string;
+  name: string;
+  icon: string;
+  description: string;
+  inputs: RecipeInput[];
+  connections: { provider: string; label: string }[];
+  approval: "draft" | "connection";
+  approve_label: string;
+}
+
+export interface RecipeConnection {
+  id: string;
+  provider: string;
+  label?: string;
+  identifier: string;
+  status: "pending" | "approved" | "revoked";
+}
+
+export interface RecipeRun {
+  id: string;
+  recipe_id: string;
+  recipe_name: string;
+  status: "draft" | "needs_connection" | "completed" | "failed";
+  approval: string;
+  approve_label: string;
+  inputs: Record<string, unknown>;
+  draft: Record<string, unknown> & { summary?: string; campos?: { requisito: string; respuesta_sugerida: string }[] };
+  result: (Record<string, unknown> & { message?: string; documento?: string }) | null;
+  connections: RecipeConnection[];
+}
+
 export interface UsageSummary {
   total_messages: number;
   total_tokens: number;

@@ -11,6 +11,7 @@ import {
   Settings,
   Shield,
   ShieldCheck,
+  Sparkles,
   Workflow,
 } from "lucide-react";
 import Link from "next/link";
@@ -22,6 +23,7 @@ const NAV = [
   {
     group: "PLATAFORMA",
     items: [
+      { href: "/recipes", label: "Casos de uso", icon: Sparkles },
       { href: "/agents", label: "Agentes", icon: Bot },
       { href: "/documents", label: "Documentos", icon: FileText },
       { href: "/chat", label: "Chat con fuentes", icon: MessageSquare },

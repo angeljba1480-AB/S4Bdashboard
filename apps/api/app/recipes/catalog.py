@@ -1,0 +1,252 @@
+"""Use-case recipes ("Casos de uso") — a data-driven, scalable catalog.
+
+Goal: thousands of use cases for businesses of every size (including the
+informal economy), grouped by category. Adding a use case is *data*, not code:
+a declarative recipe (inputs + optional connections + a prompt) runs through the
+generic AI pre-fill. A few high-value cases keep custom handlers.
+
+The non-technical user picks a case, gives the minimum, the platform pre-fills
+and executes, and the user only approves (an action or a connection).
+"""
+from __future__ import annotations
+
+from sqlmodel import Session
+
+from ..ai.rag import retrieve
+
+# --- Categories -------------------------------------------------------------
+CATEGORIES: list[dict] = [
+    {"id": "crecer", "label": "Crecer el negocio"},
+    {"id": "abrir", "label": "Abrir / lanzar"},
+    {"id": "cumplimiento", "label": "Cumplimiento (CEP / legal)"},
+    {"id": "operaciones", "label": "Operaciones"},
+    {"id": "dia_a_dia", "label": "Día a día"},
+]
+
+
+def _r(**kw) -> dict:
+    """Recipe with sensible defaults so the catalog stays terse and scalable."""
+    kw.setdefault("icon", "sparkles")
+    kw.setdefault("connections", [])
+    kw.setdefault("approval", "draft")
+    kw.setdefault("approve_label", "Aprobar y generar")
+    kw.setdefault("handler", "generic")
+    kw.setdefault("produces", "el resultado")
+    kw.setdefault("prompt", "")
+    return kw
+
+
+# --- Catalog (curated seed; grows over time + with user proposals) ----------
+RECIPES: list[dict] = [
+    # ---- Custom-handler, high-value cases ---------------------------------
+    _r(
+        id="licitacion", category="crecer", handler="licitacion", icon="file-check",
+        name="Revisar licitación y pre-llenar respuesta",
+        description="Sube la licitación; extraigo los requisitos y pre-lleno tu respuesta. Tú apruebas.",
+        inputs=[
+            {"key": "document_id", "type": "document", "label": "Documento de la licitación", "required": True},
+            {"key": "empresa", "type": "text", "label": "Nombre de tu empresa", "required": True},
+        ],
+        approval="draft", approve_label="Aprobar respuesta pre-llenada",
+        produces="una respuesta de licitación pre-llenada",
+    ),
+    _r(
+        id="correo_agenda", category="dia_a_dia", handler="correo_agenda", icon="mail",
+        name="Resumen de correo y agenda",
+        description="Pon tu correo y elige el resumen; lo genero solo. Tú apruebas la conexión.",
+        inputs=[
+            {"key": "email", "type": "email", "label": "Tu correo", "required": True},
+            {"key": "output", "type": "choice", "label": "Tipo de salida",
+             "options": ["Resumen diario", "Horario del día", "Pendientes por responder"], "required": True},
+        ],
+        connections=[{"provider": "email", "label": "Correo"}, {"provider": "calendar", "label": "Calendario"}],
+        approval="connection", approve_label="Aprobar conexión y ejecutar",
+        produces="un resumen de tu correo y agenda",
+    ),
+
+    # ---- Crecer el negocio ------------------------------------------------
+    _r(id="propuesta_comercial", category="crecer", name="Propuesta comercial",
+       description="Genero una propuesta lista para enviar a tu cliente.",
+       inputs=[{"key": "cliente", "type": "text", "label": "Cliente", "required": True},
+               {"key": "servicio", "type": "text", "label": "Producto o servicio", "required": True},
+               {"key": "precio", "type": "text", "label": "Precio (aprox.)"}],
+       produces="una propuesta comercial",
+       prompt="Propuesta comercial para {cliente} sobre {servicio} (precio: {precio})."),
+    _r(id="post_redes", category="crecer", name="Publicación para redes sociales",
+       description="Creo el texto y hashtags para promocionar tu negocio.",
+       inputs=[{"key": "negocio", "type": "text", "label": "Tu negocio", "required": True},
+               {"key": "promo", "type": "text", "label": "Qué quieres promocionar", "required": True}],
+       produces="una publicación para redes",
+       prompt="Publicación atractiva para {negocio} promocionando {promo}."),
+
+    # ---- Abrir / lanzar ---------------------------------------------------
+    _r(id="plan_negocio", category="abrir", name="Plan de negocio express",
+       description="Bosquejo un plan simple para arrancar tu idea.",
+       inputs=[{"key": "idea", "type": "text", "label": "Tu idea de negocio", "required": True},
+               {"key": "ciudad", "type": "text", "label": "Ciudad / zona"}],
+       produces="un plan de negocio express",
+       prompt="Plan de negocio express para: {idea} en {ciudad}."),
+    _r(id="registro_tramites", category="abrir", name="Checklist de trámites para abrir",
+       description="Lista de pasos y trámites para formalizar tu negocio.",
+       inputs=[{"key": "giro", "type": "text", "label": "Giro del negocio", "required": True},
+               {"key": "ciudad", "type": "text", "label": "Ciudad / estado"}],
+       produces="un checklist de trámites",
+       prompt="Checklist de trámites para abrir un negocio de {giro} en {ciudad}."),
+
+    # ---- Cumplimiento (CEP / legal) ---------------------------------------
+    _r(id="aviso_privacidad", category="cumplimiento", name="Aviso de privacidad",
+       description="Genero un aviso de privacidad base para tu negocio.",
+       inputs=[{"key": "empresa", "type": "text", "label": "Nombre del negocio", "required": True},
+               {"key": "datos", "type": "text", "label": "Datos que recolectas"}],
+       produces="un aviso de privacidad",
+       prompt="Aviso de privacidad para {empresa} que recolecta {datos}."),
+    _r(id="contrato_simple", category="cumplimiento", name="Contrato sencillo",
+       description="Borrador de contrato de prestación de servicios.",
+       inputs=[{"key": "parte_a", "type": "text", "label": "Tú / tu empresa", "required": True},
+               {"key": "parte_b", "type": "text", "label": "Cliente", "required": True},
+               {"key": "objeto", "type": "text", "label": "Objeto del contrato", "required": True}],
+       produces="un contrato sencillo",
+       prompt="Contrato de servicios entre {parte_a} y {parte_b} por {objeto}."),
+
+    # ---- Operaciones ------------------------------------------------------
+    _r(id="cotizacion", category="operaciones", name="Cotización rápida",
+       description="Armo una cotización lista para mandar (ideal por WhatsApp).",
+       inputs=[{"key": "cliente", "type": "text", "label": "Cliente", "required": True},
+               {"key": "concepto", "type": "text", "label": "Concepto", "required": True},
+               {"key": "monto", "type": "text", "label": "Monto"}],
+       produces="una cotización",
+       prompt="Cotización para {cliente}: {concepto} por {monto}."),
+    _r(id="inventario_alerta", category="operaciones", name="Control de inventario",
+       description="Registro y alerta de productos por agotarse.",
+       inputs=[{"key": "productos", "type": "text", "label": "Productos y cantidades", "required": True}],
+       produces="un control de inventario con alertas",
+       prompt="Control de inventario y alertas de stock bajo para: {productos}."),
+
+    # ---- Día a día (incluye economía informal) ----------------------------
+    _r(id="precio_venta", category="dia_a_dia", name="Calcular precio de venta",
+       description="Te digo a cuánto vender según tu costo y ganancia deseada.",
+       inputs=[{"key": "costo", "type": "text", "label": "Costo del producto", "required": True},
+               {"key": "ganancia", "type": "text", "label": "Ganancia que quieres (%)"}],
+       produces="tu precio de venta sugerido",
+       prompt="Calcula precio de venta con costo {costo} y ganancia {ganancia}%."),
+    _r(id="corte_caja", category="dia_a_dia", name="Corte de caja del día",
+       description="Resumo tus ventas y gastos del día.",
+       inputs=[{"key": "ventas", "type": "text", "label": "Ventas del día", "required": True},
+               {"key": "gastos", "type": "text", "label": "Gastos del día"}],
+       produces="tu corte de caja",
+       prompt="Corte de caja: ventas {ventas}, gastos {gastos}."),
+]
+
+
+def get_recipe(recipe_id: str) -> dict | None:
+    return next((r for r in RECIPES if r["id"] == recipe_id), None)
+
+
+def public_recipe(r: dict) -> dict:
+    keys = ("id", "category", "name", "icon", "description", "inputs",
+            "connections", "approval", "approve_label")
+    return {k: r[k] for k in keys}
+
+
+def validate_inputs(recipe: dict, inputs: dict) -> list[str]:
+    return [f["label"] for f in recipe["inputs"]
+            if f.get("required") and not str(inputs.get(f["key"], "")).strip()]
+
+
+class _SafeDict(dict):
+    def __missing__(self, key):  # leave unknown placeholders readable
+        return "(por definir)"
+
+
+# --- AI pre-fill (draft) ----------------------------------------------------
+_REQ_KEYWORDS = (
+    "requisito", "deberá", "debera", "presentar", "acredit", "experiencia",
+    "plazo", "garantía", "garantia", "propuesta", "criterio", "evaluación",
+    "evaluacion", "documento", "anexo", "vigencia", "fianza", "constancia",
+)
+
+
+def prefill(recipe: dict, session: Session, tenant_id: str, inputs: dict) -> dict:
+    handler = recipe.get("handler", "generic")
+    if handler == "licitacion":
+        return _prefill_licitacion(session, tenant_id, inputs)
+    if handler == "correo_agenda":
+        return _prefill_correo_agenda(inputs)
+    return _prefill_generic(recipe, inputs)
+
+
+def _prefill_generic(recipe: dict, inputs: dict) -> dict:
+    plan = recipe.get("prompt", "").format_map(_SafeDict(inputs)).strip()
+    return {
+        "tipo": "generico",
+        "plan": plan or recipe["name"],
+        "produces": recipe.get("produces", "el resultado"),
+        "summary": (f"Preparé {recipe.get('produces', 'el resultado')} con lo que diste. "
+                    f"Revisa y aprueba; el dato se procesa de forma privada y queda auditado."),
+        "route": "vpc",
+    }
+
+
+def _prefill_licitacion(session: Session, tenant_id: str, inputs: dict) -> dict:
+    doc_id = inputs.get("document_id") or None
+    empresa = (inputs.get("empresa") or "Nuestra empresa").strip()
+    citations = retrieve(
+        session, tenant_id,
+        "requisitos, requerimientos, criterios de evaluación, documentos a presentar, plazos",
+        [doc_id] if doc_id else None, top_k=6,
+    )
+
+    requisitos: list[str] = []
+    for c in citations:
+        for raw in c.text.replace("•", "\n").splitlines():
+            line = raw.strip(" -\t")
+            if len(line) > 12 and any(k in line.lower() for k in _REQ_KEYWORDS):
+                requisitos.append(line[:220])
+    requisitos = list(dict.fromkeys(requisitos))[:12]
+    if not requisitos:
+        requisitos = [c.text.strip()[:200] for c in citations[:5] if c.text.strip()]
+
+    campos = [
+        {"requisito": r, "respuesta_sugerida": f"{empresa} cumple con este requisito. [Confirmar evidencia]",
+         "estado": "pre-llenado"}
+        for r in requisitos
+    ]
+    return {
+        "tipo": "respuesta_licitacion", "empresa": empresa, "fuentes": len(citations), "campos": campos,
+        "summary": (f"Detecté {len(campos)} requisitos y pre-llené las respuestas para {empresa}. "
+                    f"Revisa y aprueba; el dato no salió de tu infraestructura."),
+        "route": "local",
+    }
+
+
+def _prefill_correo_agenda(inputs: dict) -> dict:
+    output = inputs.get("output") or "Resumen diario"
+    plan = {
+        "Resumen diario": "Leeré tu bandeja de hoy y tu agenda y generaré un resumen ejecutivo.",
+        "Horario del día": "Compilaré tus eventos del día en orden y detectaré huecos libres.",
+        "Pendientes por responder": "Identificaré correos que esperan tu respuesta y los priorizaré.",
+    }.get(output, "Generaré el resumen solicitado.")
+    return {
+        "tipo": "correo_agenda", "email": inputs.get("email", ""), "output": output,
+        "summary": f"{plan} Para hacerlo necesito que apruebes la conexión a tu correo y calendario.",
+        "route": "vpc",
+    }
+
+
+# --- Execution (after approval) ---------------------------------------------
+def execute(recipe: dict, session: Session, tenant_id: str, inputs: dict, draft: dict) -> dict:
+    handler = recipe.get("handler", "generic")
+    if handler == "licitacion":
+        campos = draft.get("campos", [])
+        cuerpo = "\n\n".join(f"Requisito: {c['requisito']}\nRespuesta: {c['respuesta_sugerida']}" for c in campos)
+        return {"tipo": "respuesta_licitacion",
+                "documento": f"RESPUESTA A LICITACIÓN — {draft.get('empresa', '')}\n\n{cuerpo}",
+                "campos_completados": len(campos),
+                "message": "Respuesta compilada y lista para descargar/enviar."}
+    if handler == "correo_agenda":
+        return {"tipo": "correo_agenda", "output": inputs.get("output"), "email": inputs.get("email"),
+                "message": ("Conexión aprobada. El resumen se generará con tu proveedor de "
+                            "correo/calendario y se entregará según la salida elegida."),
+                "items": []}
+    return {"tipo": "generico", "output": draft.get("plan"),
+            "message": f"{recipe['name']}: {recipe.get('produces', 'resultado')} listo."}

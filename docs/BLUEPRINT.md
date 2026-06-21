@@ -44,6 +44,7 @@ Frontend Web / Portal Empresas
 | AI Gateway | LiteLLM + router propio | `ai/router.py` + adapters |
 | RAG | Qdrant/pgvector + reranker | Vector store in-proc (pluggable a Qdrant) |
 | Workflows | n8n + Temporal | Catálogo + trigger real vía webhook n8n (simulado si off) |
+| Casos de uso | Catálogo escalable | Recetas data-driven por categoría (crecer/abrir/cumplimiento/operaciones/día a día), pre-llenado por IA, aprobación de acción/conexión, propuestas de usuarios |
 | Model Serving | Ollama lab; vLLM/TGI prod; NaN Builders (open/volumen) | Mock + adapters OpenAI-compatible (open = NaN Builders) |
 | Observabilidad | Langfuse, OTel, Grafana, SIEM | audit_events + cost meter |
 

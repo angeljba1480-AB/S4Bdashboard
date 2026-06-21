@@ -5,6 +5,8 @@ import type {
   ChatResponse,
   DocumentItem,
   Me,
+  Recipe,
+  RecipeRun,
   UsageSummary,
 } from "@shared/types";
 
@@ -61,6 +63,34 @@ export const api = {
     return data;
   },
   me: () => request<Me>("/me"),
+  recipes: (params?: { category?: string; q?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.category) qs.set("category", params.category);
+    if (params?.q) qs.set("q", params.q);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<Recipe[]>(`/recipes${suffix}`);
+  },
+  recipeCategories: () =>
+    request<{ id: string; label: string; count: number }[]>("/recipes/categories"),
+  proposeRecipe: (body: { title: string; description?: string; category?: string }) =>
+    request<{ id: string; title: string; status: string }>("/recipes/propose", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  recipeProposals: () =>
+    request<{ id: string; title: string; description: string; category: string; status: string }[]>(
+      "/recipes/proposals",
+    ),
+  startRecipe: (id: string, inputs: Record<string, unknown>) =>
+    request<RecipeRun>(`/recipes/${id}/start`, { method: "POST", body: JSON.stringify({ inputs }) }),
+  recipeRun: (runId: string) => request<RecipeRun>(`/recipes/runs/${runId}`),
+  approveRun: (runId: string) =>
+    request<RecipeRun>(`/recipes/runs/${runId}/approve`, { method: "POST" }),
+  approveConnection: (connId: string) =>
+    request<{ id: string; status: string }>(`/recipes/connections/${connId}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ prefs: {} }),
+    }),
   agents: () => request<Agent[]>("/agents"),
   agent: (id: string) => request<Agent>(`/agents/${id}`),
   createAgent: (body: Partial<Agent>) =>

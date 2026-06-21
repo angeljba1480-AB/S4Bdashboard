@@ -1,0 +1,111 @@
+"""Use-case recipe engine tests (pre-fill + approval gates)."""
+from __future__ import annotations
+
+import os
+import tempfile
+
+import pytest
+
+_db_fd, _db_path = tempfile.mkstemp(suffix=".db")
+os.environ["DATABASE_URL"] = f"sqlite:///{_db_path}"
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.main import app  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(app) as c:
+        yield c
+
+
+def _auth(client) -> dict:
+    tok = client.post("/auth/login", json={"email": "admin@s4b.mx", "password": "demo1234"}).json()["access_token"]
+    return {"Authorization": f"Bearer {tok}"}
+
+
+def test_catalog_lists_two_use_cases(client):
+    r = client.get("/recipes", headers=_auth(client)).json()
+    ids = {x["id"] for x in r}
+    assert {"licitacion", "correo_agenda"} <= ids
+
+
+def test_licitacion_prefills_and_approves(client):
+    h = _auth(client)
+    # upload a tender-like document so retrieval has content
+    doc = client.post("/documents/upload", headers=h, data={
+        "filename": "licitacion.txt",
+        "text": ("Bases de la licitación.\n"
+                 "Requisito 1: El proveedor deberá acreditar 3 años de experiencia.\n"
+                 "Requisito 2: Presentar fianza de garantía vigente.\n"
+                 "Criterio de evaluación: propuesta técnica y económica."),
+    }).json()
+
+    start = client.post("/recipes/licitacion/start", headers=h, json={
+        "inputs": {"document_id": doc["id"], "empresa": "ACME SA"},
+    }).json()
+    assert start["status"] == "draft"  # no connections needed
+    assert start["draft"]["campos"], "debe pre-llenar requisitos"
+    assert start["draft"]["route"] == "local"
+
+    done = client.post(f"/recipes/runs/{start['id']}/approve", headers=h).json()
+    assert done["status"] == "completed"
+    assert "RESPUESTA A LICITACIÓN" in done["result"]["documento"]
+
+
+def test_correo_agenda_requires_connection_then_runs(client):
+    h = _auth(client)
+    start = client.post("/recipes/correo_agenda/start", headers=h, json={
+        "inputs": {"email": "user@empresa.mx", "output": "Resumen diario"},
+    }).json()
+    assert start["status"] == "needs_connection"
+    assert start["connections"] and all(c["status"] == "pending" for c in start["connections"])
+
+    # approving the run before connections -> 409 with pending connections
+    blocked = client.post(f"/recipes/runs/{start['id']}/approve", headers=h)
+    assert blocked.status_code == 409
+
+    for c in start["connections"]:
+        client.post(f"/recipes/connections/{c['id']}/approve", headers=h, json={"prefs": {}})
+
+    done = client.post(f"/recipes/runs/{start['id']}/approve", headers=h).json()
+    assert done["status"] == "completed"
+    assert done["result"]["output"] == "Resumen diario"
+
+
+def test_missing_required_input_422(client):
+    h = _auth(client)
+    r = client.post("/recipes/licitacion/start", headers=h, json={"inputs": {"empresa": "X"}})
+    assert r.status_code == 422
+
+
+def test_categories_and_filter(client):
+    h = _auth(client)
+    cats = client.get("/recipes/categories", headers=h).json()
+    ids = {c["id"] for c in cats}
+    assert {"crecer", "abrir", "cumplimiento", "operaciones", "dia_a_dia"} <= ids
+    assert all("count" in c for c in cats)
+    filtered = client.get("/recipes?category=operaciones", headers=h).json()
+    assert filtered and all(r["category"] == "operaciones" for r in filtered)
+
+
+def test_generic_recipe_prefills_and_runs(client):
+    h = _auth(client)
+    start = client.post("/recipes/cotizacion/start", headers=h, json={
+        "inputs": {"cliente": "Juan", "concepto": "10 playeras", "monto": "1500"},
+    }).json()
+    assert start["status"] == "draft"
+    assert "Juan" in start["draft"]["plan"]
+    done = client.post(f"/recipes/runs/{start['id']}/approve", headers=h).json()
+    assert done["status"] == "completed"
+
+
+def test_propose_use_case(client):
+    h = _auth(client)
+    r = client.post("/recipes/propose", headers=h, json={
+        "title": "Recordatorio de pagos a proveedores", "category": "operaciones",
+    }).json()
+    assert r["status"] == "proposed"
+    titles = [p["title"] for p in client.get("/recipes/proposals", headers=h).json()]
+    assert "Recordatorio de pagos a proveedores" in titles
