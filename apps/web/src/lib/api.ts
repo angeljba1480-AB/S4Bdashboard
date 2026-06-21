@@ -96,6 +96,21 @@ export const api = {
   recipeRun: (runId: string) => request<RecipeRun>(`/recipes/runs/${runId}`),
   approveRun: (runId: string) =>
     request<RecipeRun>(`/recipes/runs/${runId}/approve`, { method: "POST" }),
+  async downloadRun(runId: string, format: "pdf" | "md" = "pdf") {
+    const res = await fetch(`${API_BASE}/recipes/runs/${runId}/export?format=${format}`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (!res.ok) throw new Error("No se pudo exportar el resultado");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `caso-${runId}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
   approveConnection: (connId: string) =>
     request<{ id: string; status: string }>(`/recipes/connections/${connId}/approve`, {
       method: "POST",

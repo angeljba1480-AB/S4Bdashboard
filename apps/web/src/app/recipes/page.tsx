@@ -3,7 +3,7 @@
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
 import type { DocumentItem, Recipe, RecipeRun } from "@shared/types";
-import { CheckCircle2, ChevronLeft, Link2, Sparkles } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Download, Link2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function RecipesPage() {
@@ -279,6 +279,20 @@ export default function RecipesPage() {
                           {run.result.documento as string}
                         </pre>
                       )}
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={() => api.downloadRun(run.id, "pdf")}
+                          className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
+                        >
+                          <Download className="h-4 w-4" /> Descargar PDF
+                        </button>
+                        <button
+                          onClick={() => api.downloadRun(run.id, "md")}
+                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600"
+                        >
+                          Markdown
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button

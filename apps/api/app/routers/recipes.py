@@ -6,9 +6,11 @@ Everything is tenant-scoped and audited.
 """
 from __future__ import annotations
 
+import io
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -34,6 +36,7 @@ from ..recipes.catalog import (
     public_recipe,
     validate_inputs,
 )
+from .export import _render_md, _render_pdf
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
@@ -222,6 +225,59 @@ def get_run(
     identifier = str(json.loads(run.inputs or "{}").get("email", "")).strip()
     conns = _pending_connections(session, tenant.id, user.id, recipe, identifier) if recipe else []
     return _run_out(run, recipe, [_conn_out(s, c) for s, c in conns])
+
+
+def _run_blocks(run: RecipeRun, recipe: dict) -> list[tuple[str, str]]:
+    """Flatten a run (inputs + AI draft + result) into (heading, body) blocks."""
+    inputs = json.loads(run.inputs or "{}")
+    draft = json.loads(run.draft or "{}")
+    result = json.loads(run.result) if run.result else {}
+    blocks: list[tuple[str, str]] = []
+
+    if inputs:
+        blocks.append(("Datos proporcionados",
+                       "\n".join(f"{k}: {v}" for k, v in inputs.items())))
+
+    # The finished deliverable takes priority, then the reviewed draft.
+    if result.get("documento"):
+        blocks.append(("Documento", result["documento"]))
+    elif result.get("output"):
+        blocks.append(("Resultado", str(result["output"])))
+    elif draft.get("contenido"):
+        blocks.append(("Borrador generado", draft["contenido"]))
+
+    if isinstance(draft.get("campos"), list):
+        body = "\n\n".join(f"Requisito: {c.get('requisito', '')}\n"
+                           f"Respuesta: {c.get('respuesta_sugerida', '')}"
+                           for c in draft["campos"])
+        if body:
+            blocks.append(("Requisitos y respuestas", body))
+
+    if not blocks:
+        blocks.append(("Resumen", draft.get("summary", recipe.get("name", ""))))
+    return blocks
+
+
+@router.get("/runs/{run_id}/export")
+def export_run(
+    run_id: str,
+    format: str = "pdf",
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Download a use-case result as PDF or Markdown."""
+    run = _load_run(session, tenant, user, run_id)
+    recipe = _resolve(session, tenant.id, run.recipe_id) or {"name": run.recipe_id}
+    title = recipe.get("name", "Caso de uso")
+    blocks = _run_blocks(run, recipe)
+    fname = f"{run.recipe_id}-{run.id}"
+    if format == "md":
+        return Response(_render_md(title, blocks), media_type="text/markdown",
+                        headers={"Content-Disposition": f'attachment; filename="{fname}.md"'})
+    pdf = _render_pdf(title, blocks)
+    return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf",
+                             headers={"Content-Disposition": f'attachment; filename="{fname}.pdf"'})
 
 
 @router.post("/runs/{run_id}/approve")

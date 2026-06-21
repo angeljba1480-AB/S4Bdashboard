@@ -165,6 +165,23 @@ def test_curate_proposal_into_catalog(client):
     assert statuses[prop["id"]] == "curated"
 
 
+def test_export_run_pdf_and_md(client):
+    h = _auth(client)
+    start = client.post("/recipes/cotizacion/start", headers=h, json={
+        "inputs": {"cliente": "Marta", "concepto": "servicio", "monto": "999"},
+    }).json()
+    client.post(f"/recipes/runs/{start['id']}/approve", headers=h)
+
+    pdf = client.get(f"/recipes/runs/{start['id']}/export?format=pdf", headers=h)
+    assert pdf.status_code == 200
+    assert pdf.headers["content-type"] == "application/pdf"
+    assert pdf.content[:4] == b"%PDF"
+
+    md = client.get(f"/recipes/runs/{start['id']}/export?format=md", headers=h)
+    assert md.status_code == 200
+    assert "Marta" in md.text
+
+
 def test_reject_proposal(client):
     h = _auth(client)
     prop = client.post("/recipes/propose", headers=h, json={"title": "Caso a rechazar"}).json()
