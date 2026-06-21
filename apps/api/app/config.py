@@ -41,8 +41,9 @@ class Settings(BaseSettings):
     local_base_url: str = "http://localhost:11434/v1"
     local_model: str = "llama3.1"
 
-    # Embeddings / RAG
+    # Embeddings / RAG. Provider: "local" | "open" (NaN Builders) | "premium".
     embeddings_provider: str = "local"
+    embeddings_model: str = "text-embedding-3-small"
     embeddings_dim: int = 384
 
     # Vector store: "inprocess" (default) or "qdrant"

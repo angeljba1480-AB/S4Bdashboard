@@ -38,20 +38,30 @@ def _local_embed(text: str, dim: int) -> list[float]:
 def embed(text: str) -> list[float]:
     if settings.embeddings_provider == "local":
         return _local_embed(text, settings.embeddings_dim)
-    # Hook for real providers (OpenAI-compatible). Falls back to local on error.
+
+    # Real provider (OpenAI-compatible). "open"/"nan" -> NaN Builders endpoint,
+    # "premium" -> premium endpoint. Falls back to local embedder on any error.
+    base, key = _embeddings_endpoint()
     try:  # pragma: no cover - network path
         import httpx
 
         resp = httpx.post(
-            f"{settings.premium_base_url}/embeddings",
-            headers={"Authorization": f"Bearer {settings.premium_api_key}"},
-            json={"model": "text-embedding-3-small", "input": text},
+            f"{base.rstrip('/')}/embeddings",
+            headers={"Authorization": f"Bearer {key}"},
+            json={"model": settings.embeddings_model, "input": text},
             timeout=20,
         )
         resp.raise_for_status()
         return resp.json()["data"][0]["embedding"]
     except Exception:
         return _local_embed(text, settings.embeddings_dim)
+
+
+def _embeddings_endpoint() -> tuple[str, str]:
+    provider = settings.embeddings_provider
+    if provider in ("open", "nan", "nanbuilders"):
+        return settings.open_base_url, settings.open_api_key
+    return settings.premium_base_url, settings.premium_api_key
 
 
 def cosine(a: list[float], b: list[float]) -> float:
