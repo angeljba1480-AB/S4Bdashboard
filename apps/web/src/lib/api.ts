@@ -81,6 +81,16 @@ export const api = {
     request<{ id: string; title: string; description: string; category: string; status: string }[]>(
       "/recipes/proposals",
     ),
+  curateProposal: (
+    id: string,
+    body: { name?: string; category?: string; inputs?: unknown[]; prompt?: string; produces?: string },
+  ) =>
+    request<{ id: string; slug: string; name: string; status: string }>(
+      `/recipes/proposals/${id}/curate`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  rejectProposal: (id: string) =>
+    request<{ id: string; status: string }>(`/recipes/proposals/${id}/reject`, { method: "POST" }),
   startRecipe: (id: string, inputs: Record<string, unknown>) =>
     request<RecipeRun>(`/recipes/${id}/start`, { method: "POST", body: JSON.stringify({ inputs }) }),
   recipeRun: (runId: string) => request<RecipeRun>(`/recipes/runs/${runId}`),

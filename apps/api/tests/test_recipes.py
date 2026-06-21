@@ -109,3 +109,42 @@ def test_propose_use_case(client):
     assert r["status"] == "proposed"
     titles = [p["title"] for p in client.get("/recipes/proposals", headers=h).json()]
     assert "Recordatorio de pagos a proveedores" in titles
+
+
+def test_curate_proposal_into_catalog(client):
+    h = _auth(client)
+    prop = client.post("/recipes/propose", headers=h, json={
+        "title": "Carta de cobranza", "category": "operaciones",
+        "description": "Genera una carta para cobrar a un cliente moroso.",
+    }).json()
+
+    curated = client.post(f"/recipes/proposals/{prop['id']}/curate", headers=h, json={
+        "inputs": [{"key": "cliente", "type": "text", "label": "Cliente", "required": True},
+                   {"key": "monto", "type": "text", "label": "Monto"}],
+        "prompt": "Carta de cobranza para {cliente} por {monto}.",
+        "produces": "una carta de cobranza",
+    }).json()
+    assert curated["status"] == "curated"
+    slug = curated["slug"]
+
+    # now it appears in the catalog and can run end-to-end
+    catalog_ids = {r["id"] for r in client.get("/recipes", headers=h).json()}
+    assert slug in catalog_ids
+
+    start = client.post(f"/recipes/{slug}/start", headers=h, json={
+        "inputs": {"cliente": "Pedro", "monto": "2000"},
+    }).json()
+    assert "Pedro" in start["draft"]["plan"]
+    done = client.post(f"/recipes/runs/{start['id']}/approve", headers=h).json()
+    assert done["status"] == "completed"
+
+    # proposal now marked curated
+    statuses = {p["id"]: p["status"] for p in client.get("/recipes/proposals", headers=h).json()}
+    assert statuses[prop["id"]] == "curated"
+
+
+def test_reject_proposal(client):
+    h = _auth(client)
+    prop = client.post("/recipes/propose", headers=h, json={"title": "Caso a rechazar"}).json()
+    r = client.post(f"/recipes/proposals/{prop['id']}/reject", headers=h).json()
+    assert r["status"] == "rejected"

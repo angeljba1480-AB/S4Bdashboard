@@ -142,6 +142,23 @@ def get_recipe(recipe_id: str) -> dict | None:
     return next((r for r in RECIPES if r["id"] == recipe_id), None)
 
 
+def db_recipe_to_dict(row) -> dict:
+    """Convert a curated CatalogRecipe DB row into a runnable recipe dict."""
+    import json
+    try:
+        fields = json.loads(row.inputs) if row.inputs else []
+    except (ValueError, TypeError):
+        fields = []
+    if not fields:  # default: one free-text field
+        fields = [{"key": "detalle", "type": "text", "label": "Detalle", "required": True}]
+    return _r(
+        id=row.slug, category=row.category, name=row.name, icon=row.icon or "sparkles",
+        description=row.description, inputs=fields, handler="generic",
+        produces=row.produces or "el resultado",
+        prompt=row.prompt or f"{row.name}: {{detalle}}",
+    )
+
+
 def public_recipe(r: dict) -> dict:
     keys = ("id", "category", "name", "icon", "description", "inputs",
             "connections", "approval", "approve_label")

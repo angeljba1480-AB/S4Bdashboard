@@ -15,7 +15,14 @@ export default function AdminPage() {
   const [n8nUrl, setN8nUrl] = useState("");
   const [n8nKey, setN8nKey] = useState("");
   const [n8nMsg, setN8nMsg] = useState("");
+  const [proposals, setProposals] = useState<
+    { id: string; title: string; description: string; category: string; status: string }[]
+  >([]);
   const [error, setError] = useState("");
+
+  function loadProposals() {
+    api.recipeProposals().then(setProposals).catch(() => {});
+  }
 
   function loadN8n() {
     api.getN8n().then((c) => {
@@ -29,7 +36,17 @@ export default function AdminPage() {
     api.users().then(setUsers).catch(() => {});
     api.security().then(setSecurity).catch(() => {});
     loadN8n();
+    loadProposals();
   }, []);
+
+  async function curate(id: string) {
+    await api.curateProposal(id, {});
+    loadProposals();
+  }
+  async function reject(id: string) {
+    await api.rejectProposal(id);
+    loadProposals();
+  }
 
   async function saveN8n(e: React.FormEvent) {
     e.preventDefault();
@@ -166,6 +183,50 @@ export default function AdminPage() {
             {n8nMsg && <div className="mt-2 text-xs text-slate-500">{n8nMsg}</div>}
           </div>
         )}
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h2 className="mb-1 font-semibold text-slate-800">Propuestas de casos de uso</h2>
+          <p className="mb-4 text-sm text-slate-500">
+            Revisa lo que piden los usuarios y cúralos al catálogo con un clic.
+          </p>
+          {proposals.length === 0 ? (
+            <div className="text-sm text-slate-400">Sin propuestas todavía.</div>
+          ) : (
+            <div className="space-y-2">
+              {proposals.map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
+                  <div>
+                    <div className="text-sm font-medium text-slate-800">{p.title}</div>
+                    <div className="text-xs text-slate-400">
+                      {p.category}
+                      {p.description ? ` · ${p.description}` : ""}
+                    </div>
+                  </div>
+                  {p.status === "proposed" ? (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => curate(p.id)}
+                        className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white"
+                      >
+                        Curar al catálogo
+                      </button>
+                      <button
+                        onClick={() => reject(p.id)}
+                        className="rounded-md border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600"
+                      >
+                        Rechazar
+                      </button>
+                    </div>
+                  ) : (
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${p.status === "curated" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                      {p.status === "curated" ? "En catálogo" : "Rechazada"}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="mb-4 font-semibold text-slate-800">Usuarios del tenant</h2>

@@ -184,6 +184,27 @@ class Connection(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class CatalogRecipe(SQLModel, table=True):
+    """A curated, DB-backed use case (so the catalog scales without redeploys).
+
+    Created when an admin curates a user proposal. Tenant-scoped; merged with the
+    in-code seed catalog at read time.
+    """
+    __tablename__ = "catalog_recipes"
+    id: str = Field(default_factory=lambda: _uuid("rcp"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    slug: str = Field(index=True)   # public recipe id
+    category: str = "dia_a_dia"
+    name: str = ""
+    description: str = ""
+    icon: str = "sparkles"
+    inputs: str = ""               # JSON list of input fields
+    prompt: str = ""               # generic pre-fill template
+    produces: str = "el resultado"
+    proposal_id: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class RecipeProposal(SQLModel, table=True):
     """A use case proposed by a user. Curated into the catalog over time."""
     __tablename__ = "recipe_proposals"

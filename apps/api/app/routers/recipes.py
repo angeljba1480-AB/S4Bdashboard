@@ -12,12 +12,22 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from ..auth import get_current_tenant, get_current_user
+from ..auth import get_current_tenant, get_current_user, require_roles
 from ..db import get_session
-from ..models import AuditEvent, Connection, RecipeProposal, RecipeRun, Tenant, User
+from ..models import (
+    AuditEvent,
+    CatalogRecipe,
+    Connection,
+    RecipeProposal,
+    RecipeRun,
+    Role,
+    Tenant,
+    User,
+)
 from ..recipes.catalog import (
     CATEGORIES,
     RECIPES,
+    db_recipe_to_dict,
     execute,
     get_recipe,
     prefill,
@@ -40,6 +50,14 @@ class ProposeRecipe(BaseModel):
     title: str
     description: str = ""
     category: str = "dia_a_dia"
+
+
+class CurateProposal(BaseModel):
+    name: str | None = None
+    category: str | None = None
+    inputs: list[dict] | None = None
+    prompt: str | None = None
+    produces: str | None = None
 
 
 # --- helpers ----------------------------------------------------------------
@@ -86,14 +104,30 @@ def _now():
     return datetime.utcnow()
 
 
+def _db_recipes(session: Session, tenant_id: str) -> list[dict]:
+    rows = session.exec(select(CatalogRecipe).where(CatalogRecipe.tenant_id == tenant_id)).all()
+    return [db_recipe_to_dict(r) for r in rows]
+
+
+def _all_recipes(session: Session, tenant_id: str) -> list[dict]:
+    """In-code seed catalog (global) + curated DB recipes (tenant-scoped)."""
+    return list(RECIPES) + _db_recipes(session, tenant_id)
+
+
+def _resolve(session: Session, tenant_id: str, recipe_id: str) -> dict | None:
+    return next((r for r in _all_recipes(session, tenant_id) if r["id"] == recipe_id), None)
+
+
 # --- catalog ----------------------------------------------------------------
 @router.get("")
 def list_recipes(
     category: str | None = None,
     q: str | None = None,
+    tenant: Tenant = Depends(get_current_tenant),
     _: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> list[dict]:
-    items = RECIPES
+    items = _all_recipes(session, tenant.id)
     if category:
         items = [r for r in items if r.get("category") == category]
     if q:
@@ -103,9 +137,13 @@ def list_recipes(
 
 
 @router.get("/categories")
-def list_categories(_: User = Depends(get_current_user)) -> list[dict]:
+def list_categories(
+    tenant: Tenant = Depends(get_current_tenant),
+    _: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> list[dict]:
     counts: dict[str, int] = {}
-    for r in RECIPES:
+    for r in _all_recipes(session, tenant.id):
         counts[r.get("category", "otros")] = counts.get(r.get("category", "otros"), 0) + 1
     return [{**c, "count": counts.get(c["id"], 0)} for c in CATEGORIES]
 
@@ -119,7 +157,7 @@ def start_recipe(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> dict:
-    recipe = get_recipe(recipe_id)
+    recipe = _resolve(session, tenant.id, recipe_id)
     if not recipe:
         raise HTTPException(status_code=404, detail="Caso de uso no encontrado")
 
@@ -160,7 +198,7 @@ def list_runs(
     ).all()
     out = []
     for r in runs:
-        recipe = get_recipe(r.recipe_id) or {"name": r.recipe_id, "approval": "", "approve_label": ""}
+        recipe = _resolve(session, tenant.id, r.recipe_id) or {"name": r.recipe_id, "approval": "", "approve_label": ""}
         out.append(_run_out(r, recipe))
     return out
 
@@ -180,7 +218,7 @@ def get_run(
     session: Session = Depends(get_session),
 ) -> dict:
     run = _load_run(session, tenant, user, run_id)
-    recipe = get_recipe(run.recipe_id)
+    recipe = _resolve(session, tenant.id, run.recipe_id)
     identifier = str(json.loads(run.inputs or "{}").get("email", "")).strip()
     conns = _pending_connections(session, tenant.id, user.id, recipe, identifier) if recipe else []
     return _run_out(run, recipe, [_conn_out(s, c) for s, c in conns])
@@ -194,7 +232,7 @@ def approve_run(
     session: Session = Depends(get_session),
 ) -> dict:
     run = _load_run(session, tenant, user, run_id)
-    recipe = get_recipe(run.recipe_id)
+    recipe = _resolve(session, tenant.id, run.recipe_id)
     if not recipe:
         raise HTTPException(status_code=404, detail="Caso de uso no encontrado")
 
@@ -296,3 +334,62 @@ def list_proposals(
     ).all()
     return [{"id": p.id, "title": p.title, "description": p.description,
              "category": p.category, "status": p.status, "votes": p.votes} for p in props]
+
+
+def _slugify(text: str) -> str:
+    import re
+    base = re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")[:40] or "caso"
+    return f"{base}_{__import__('uuid').uuid4().hex[:6]}"
+
+
+@router.post("/proposals/{proposal_id}/curate")
+def curate_proposal(
+    proposal_id: str,
+    body: CurateProposal,
+    _: User = Depends(require_roles(Role.ADMIN, Role.SUPER_ADMIN)),
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Turn a user proposal into a live, DB-backed catalog use case."""
+    prop = session.get(RecipeProposal, proposal_id)
+    if not prop or prop.tenant_id != tenant.id:
+        raise HTTPException(status_code=404, detail="Propuesta no encontrada")
+
+    name = (body.name or prop.title).strip()
+    inputs = body.inputs or [{"key": "detalle", "type": "text", "label": "Detalle", "required": True}]
+    recipe = CatalogRecipe(
+        tenant_id=tenant.id, slug=_slugify(name), category=body.category or prop.category,
+        name=name, description=prop.description or name,
+        inputs=json.dumps(inputs),
+        prompt=body.prompt or f"{name}: {{detalle}}",
+        produces=body.produces or "el resultado", proposal_id=prop.id,
+    )
+    prop.status = "curated"
+    session.add(recipe)
+    session.add(prop)
+    session.add(AuditEvent(
+        tenant_id=tenant.id, user_id=user.id, event_type="recipe_curated",
+        object_type="catalog_recipe", object_id=recipe.id, risk_level="low",
+        reason=f"caso de uso curado al catálogo: {name}",
+    ))
+    session.commit()
+    session.refresh(recipe)
+    return {"id": recipe.id, "slug": recipe.slug, "name": recipe.name,
+            "category": recipe.category, "status": "curated"}
+
+
+@router.post("/proposals/{proposal_id}/reject")
+def reject_proposal(
+    proposal_id: str,
+    _: User = Depends(require_roles(Role.ADMIN, Role.SUPER_ADMIN)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    prop = session.get(RecipeProposal, proposal_id)
+    if not prop or prop.tenant_id != tenant.id:
+        raise HTTPException(status_code=404, detail="Propuesta no encontrada")
+    prop.status = "rejected"
+    session.add(prop)
+    session.commit()
+    return {"id": prop.id, "status": prop.status}
