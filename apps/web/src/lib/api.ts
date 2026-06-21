@@ -63,6 +63,15 @@ export const api = {
     return data;
   },
   me: () => request<Me>("/me"),
+  getBranding: () =>
+    request<{ brand_name: string; brand_logo_url: string; brand_color: string; brand_tagline: string; tenant_name: string }>(
+      "/admin/branding",
+    ),
+  setBranding: (body: { brand_name: string; brand_logo_url: string; brand_color: string; brand_tagline: string }) =>
+    request<{ brand_name: string; brand_color: string }>("/admin/branding", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
   recipes: (params?: { category?: string; q?: string }) => {
     const qs = new URLSearchParams();
     if (params?.category) qs.set("category", params.category);

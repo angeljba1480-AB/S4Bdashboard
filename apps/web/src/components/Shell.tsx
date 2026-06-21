@@ -53,16 +53,28 @@ export function Shell({ children }: { children: React.ReactNode }) {
     router.push("/login");
   }
 
+  const brand = me?.brand_color || "#7c3aed";
+  const brandName = me?.brand_name || "Private AI";
+  const tagline = me?.brand_tagline || "Gateway + Agentes";
+
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50" style={{ ["--brand" as string]: brand }}>
       <aside className="flex w-64 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
         <div className="flex items-center gap-2.5 border-b border-slate-200 px-5 py-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600">
-            <Shield className="h-5 w-5 text-white" />
-          </div>
+          {me?.brand_logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={me.brand_logo_url} alt={brandName} className="h-9 w-9 rounded-lg object-contain" />
+          ) : (
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-lg"
+              style={{ background: `linear-gradient(135deg, ${brand}, #4f46e5)` }}
+            >
+              <Shield className="h-5 w-5 text-white" />
+            </div>
+          )}
           <div>
-            <div className="text-sm font-extrabold text-slate-900">Private AI</div>
-            <div className="text-[11px] text-slate-400">Gateway + Agentes</div>
+            <div className="text-sm font-extrabold text-slate-900">{brandName}</div>
+            <div className="text-[11px] text-slate-400">{tagline}</div>
           </div>
         </div>
         <nav className="flex-1 space-y-6 px-3 py-5">
@@ -78,10 +90,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   <Link
                     key={it.href}
                     href={it.href}
+                    style={active ? { background: `${brand}14`, color: brand } : undefined}
                     className={`mb-0.5 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                      active
-                        ? "bg-violet-50 text-violet-700"
-                        : "text-slate-600 hover:bg-slate-100"
+                      active ? "" : "text-slate-600 hover:bg-slate-100"
                     }`}
                   >
                     <Icon className="h-4 w-4" /> {it.label}

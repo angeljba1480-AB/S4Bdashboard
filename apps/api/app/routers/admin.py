@@ -1,7 +1,9 @@
 """Admin endpoints: tenant settings, users and configured model routes."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+import re
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -26,6 +28,44 @@ class N8nSettings(BaseModel):
     webhook_base_url: str = ""
     api_key: str = ""          # write-only; stored encrypted, never returned
     auth_header: str = ""
+
+
+class BrandSettings(BaseModel):
+    brand_name: str = ""
+    brand_logo_url: str = ""
+    brand_color: str = ""
+    brand_tagline: str = ""
+
+
+@router.get("/branding")
+def get_branding(
+    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+) -> dict:
+    return {"brand_name": tenant.brand_name, "brand_logo_url": tenant.brand_logo_url,
+            "brand_color": tenant.brand_color, "brand_tagline": tenant.brand_tagline,
+            "tenant_name": tenant.name}
+
+
+@router.put("/branding")
+def update_branding(
+    body: BrandSettings,
+    _: User = Depends(require_roles(Role.ADMIN)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """White-label the portal for this tenant (name, logo, color, tagline)."""
+    color = body.brand_color.strip()
+    if color and not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+        raise HTTPException(status_code=422, detail="Color inválido (usa formato #RRGGBB)")
+    tenant.brand_name = body.brand_name.strip()
+    tenant.brand_logo_url = body.brand_logo_url.strip()
+    tenant.brand_color = color
+    tenant.brand_tagline = body.brand_tagline.strip()
+    session.add(tenant)
+    session.commit()
+    return {"brand_name": tenant.brand_name, "brand_logo_url": tenant.brand_logo_url,
+            "brand_color": tenant.brand_color, "brand_tagline": tenant.brand_tagline}
 
 
 @router.get("/users")

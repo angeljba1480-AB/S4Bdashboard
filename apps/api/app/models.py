@@ -47,6 +47,11 @@ class Tenant(SQLModel, table=True):
     retention_days: int = 365
     allows_external: bool = True
     allows_vpc: bool = True
+    # White-label branding (per tenant). Empty -> platform defaults.
+    brand_name: str = ""
+    brand_logo_url: str = ""
+    brand_color: str = ""          # primary hex, e.g. #7c3aed
+    brand_tagline: str = ""
     # Per-tenant n8n override (advanced/BYO). Empty base_url -> managed n8n.
     n8n_webhook_base_url: str = ""
     n8n_api_key_enc: str = ""        # encrypted at rest (AES-256-GCM per tenant)

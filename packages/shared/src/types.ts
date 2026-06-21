@@ -12,6 +12,10 @@ export interface Me {
   tenant_id: string;
   tenant_name: string;
   mfa_enabled: boolean;
+  brand_name?: string;
+  brand_logo_url?: string;
+  brand_color?: string;
+  brand_tagline?: string;
 }
 
 export interface Agent {

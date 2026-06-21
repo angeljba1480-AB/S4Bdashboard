@@ -20,8 +20,26 @@ export default function AdminPage() {
   >([]);
   const [error, setError] = useState("");
 
+  const [brand, setBrand] = useState({ brand_name: "", brand_logo_url: "", brand_color: "", brand_tagline: "" });
+  const [brandMsg, setBrandMsg] = useState("");
+
   function loadProposals() {
     api.recipeProposals().then(setProposals).catch(() => {});
+  }
+  function loadBranding() {
+    api.getBranding()
+      .then((b) => setBrand({ brand_name: b.brand_name, brand_logo_url: b.brand_logo_url, brand_color: b.brand_color, brand_tagline: b.brand_tagline }))
+      .catch(() => {});
+  }
+  async function saveBranding(e: React.FormEvent) {
+    e.preventDefault();
+    setBrandMsg("Guardando…");
+    try {
+      await api.setBranding(brand);
+      setBrandMsg("✓ Marca actualizada. Recarga para verla en todo el portal.");
+    } catch (err) {
+      setBrandMsg(err instanceof Error ? err.message : "Error");
+    }
   }
 
   function loadN8n() {
@@ -37,6 +55,7 @@ export default function AdminPage() {
     api.security().then(setSecurity).catch(() => {});
     loadN8n();
     loadProposals();
+    loadBranding();
   }, []);
 
   async function curate(id: string) {
@@ -67,6 +86,47 @@ export default function AdminPage() {
       <PageHeader title="Administración" subtitle="Usuarios, roles, modelos habilitados y rutas de privacidad." />
       <div className="space-y-6 p-8">
         {error && <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h2 className="mb-1 font-semibold text-slate-800">Marca (white-label)</h2>
+          <p className="mb-4 text-sm text-slate-500">
+            Personaliza el portal para tu organización: nombre, logo y color. Cada tenant tiene la suya.
+          </p>
+          <form onSubmit={saveBranding} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <input
+              value={brand.brand_name}
+              onChange={(e) => setBrand((b) => ({ ...b, brand_name: e.target.value }))}
+              placeholder="Nombre de marca (ej. Acme AI)"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+            <input
+              value={brand.brand_tagline}
+              onChange={(e) => setBrand((b) => ({ ...b, brand_tagline: e.target.value }))}
+              placeholder="Tagline (ej. IA privada de Acme)"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+            <input
+              value={brand.brand_logo_url}
+              onChange={(e) => setBrand((b) => ({ ...b, brand_logo_url: e.target.value }))}
+              placeholder="URL del logo (https://…)"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
+            />
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={brand.brand_color || "#7c3aed"}
+                onChange={(e) => setBrand((b) => ({ ...b, brand_color: e.target.value }))}
+                className="h-9 w-12 rounded border border-slate-300"
+              />
+              <span className="text-sm text-slate-500">Color primario {brand.brand_color || "#7c3aed"}</span>
+            </div>
+            <button className="rounded-lg px-4 py-2 text-sm font-semibold text-white sm:col-span-2"
+              style={{ background: brand.brand_color || "#7c3aed" }}>
+              Guardar marca
+            </button>
+          </form>
+          {brandMsg && <div className="mt-2 text-xs text-slate-500">{brandMsg}</div>}
+        </div>
 
         {security && (
           <div className="rounded-2xl border border-slate-200 bg-white p-5">

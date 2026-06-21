@@ -27,6 +27,10 @@ class MeResponse(BaseModel):
     tenant_id: str
     tenant_name: str
     mfa_enabled: bool
+    brand_name: str = ""
+    brand_logo_url: str = ""
+    brand_color: str = ""
+    brand_tagline: str = ""
 
 
 # --- Agents -----------------------------------------------------------------

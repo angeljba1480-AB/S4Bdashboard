@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup white-label — Private AI</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#f1f5f9;color:#0f172a;padding:24px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  h1.title{font-size:18px;margin:0 0 4px}
+  p.sub{margin:0 0 20px;color:#64748b;font-size:14px}
+  .row{display:flex;gap:20px;flex-wrap:wrap}
+  .tenant{flex:1;min-width:280px;background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;
+    box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .top{display:flex;align-items:center;gap:10px;padding:18px;border-bottom:1px solid #eef2f7}
+  .logo{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:800;font-size:15px}
+  .top b{display:block;font-size:14px;font-weight:800}
+  .top span{font-size:11px;color:#94a3b8}
+  nav{padding:12px}
+  .item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;margin-bottom:3px;
+    font-size:13px;font-weight:600;color:#475569}
+  .dotico{width:14px;height:14px;border-radius:4px;background:#cbd5e1;flex:none}
+  .pill{margin-left:auto;font-size:10px;color:#fff;border-radius:999px;padding:1px 7px}
+  .cta{margin:8px 12px 16px;padding:10px 12px;border-radius:10px;color:#fff;font-size:13px;font-weight:700;text-align:center}
+  .swatch{font-size:11px;color:#94a3b8;padding:0 14px 14px}
+  .note{margin-top:20px;background:#fff;border:1px dashed #cbd5e1;border-radius:14px;padding:16px;font-size:13px;color:#475569}
+  .note b{color:#0f172a}
+  code{background:#f1f5f9;border-radius:5px;padding:1px 5px;font-size:12px}
+</style>
+</head>
+<body>
+  <h1 class="title">White-label por tenant</h1>
+  <p class="sub">Mismo producto, marca distinta para cada cliente: nombre, logo, color y tagline. Se configura en <code>Admin → Marca</code>.</p>
+
+  <div class="row">
+    <!-- Tenant A -->
+    <div class="tenant">
+      <div class="top">
+        <div class="logo" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">S4B</div>
+        <div><b>Silent4Business</b><span>IA privada empresarial</span></div>
+      </div>
+      <nav>
+        <div class="item" style="background:#7c3aed14;color:#7c3aed"><span class="dotico" style="background:#7c3aed"></span> Casos de uso <span class="pill" style="background:#7c3aed">nuevo</span></div>
+        <div class="item"><span class="dotico"></span> Agentes</div>
+        <div class="item"><span class="dotico"></span> Documentos</div>
+        <div class="item"><span class="dotico"></span> Auditoría</div>
+      </nav>
+      <div class="cta" style="background:#7c3aed">Pre-llenar con IA</div>
+      <div class="swatch">Color de marca: #7c3aed</div>
+    </div>
+
+    <!-- Tenant B -->
+    <div class="tenant">
+      <div class="top">
+        <div class="logo" style="background:linear-gradient(135deg,#0ea5e9,#0369a1)">AC</div>
+        <div><b>Acme AI</b><span>IA privada de Acme</span></div>
+      </div>
+      <nav>
+        <div class="item" style="background:#0ea5e914;color:#0369a1"><span class="dotico" style="background:#0ea5e9"></span> Casos de uso <span class="pill" style="background:#0ea5e9">nuevo</span></div>
+        <div class="item"><span class="dotico"></span> Agentes</div>
+        <div class="item"><span class="dotico"></span> Documentos</div>
+        <div class="item"><span class="dotico"></span> Auditoría</div>
+      </nav>
+      <div class="cta" style="background:#0ea5e9">Pre-llenar con IA</div>
+      <div class="swatch">Color de marca: #0ea5e9</div>
+    </div>
+
+    <!-- Tenant C -->
+    <div class="tenant">
+      <div class="top">
+        <div class="logo" style="background:linear-gradient(135deg,#059669,#047857)">VM</div>
+        <div><b>Verde Market</b><span>Tu negocio, más fácil</span></div>
+      </div>
+      <nav>
+        <div class="item" style="background:#05966914;color:#047857"><span class="dotico" style="background:#059669"></span> Casos de uso <span class="pill" style="background:#059669">nuevo</span></div>
+        <div class="item"><span class="dotico"></span> Agentes</div>
+        <div class="item"><span class="dotico"></span> Documentos</div>
+        <div class="item"><span class="dotico"></span> Auditoría</div>
+      </nav>
+      <div class="cta" style="background:#059669">Pre-llenar con IA</div>
+      <div class="swatch">Color de marca: #059669</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Cómo funciona:</b> el portal lee la marca del tenant al iniciar sesión (<code>/me</code>) y aplica
+    logo, nombre, tagline y color en el menú, el logotipo y los acentos. El Admin de cada empresa la edita
+    en <code>Admin → Marca (white-label)</code>. Sin tocar código, sin re-desplegar.
+  </div>
+</body>
+</html>

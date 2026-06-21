@@ -32,4 +32,8 @@ def me(user: User = Depends(get_current_user), session: Session = Depends(get_se
         id=user.id, email=user.email, name=user.name, role=user.role,
         tenant_id=user.tenant_id, tenant_name=tenant.name if tenant else "",
         mfa_enabled=user.mfa_enabled,
+        brand_name=tenant.brand_name if tenant else "",
+        brand_logo_url=tenant.brand_logo_url if tenant else "",
+        brand_color=tenant.brand_color if tenant else "",
+        brand_tagline=tenant.brand_tagline if tenant else "",
     )
