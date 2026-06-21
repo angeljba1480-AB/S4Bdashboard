@@ -25,6 +25,37 @@ def login(body: LoginRequest, session: Session = Depends(get_session)) -> TokenR
     return TokenResponse(access_token=create_access_token(user))
 
 
+@router.get("/account")
+def account(user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    """The user's own license + the company's license pool (seats)."""
+    tenant = session.get(Tenant, user.tenant_id)
+    seat_holders = session.exec(
+        select(User).where(User.tenant_id == user.tenant_id, User.status == "active")
+    ).all()
+    used = len(seat_holders)
+    return {
+        "user": {"id": user.id, "email": user.email, "name": user.name, "role": user.role.value},
+        "license": {
+            "type": user.role.value,            # license tier follows the role
+            "status": "active" if user.status == "active" else "inactive",
+            "seat_assigned": user.status == "active",
+        },
+        "company": {
+            "name": tenant.name if tenant else "",
+            "plan": tenant.plan if tenant else "",
+            "subscription_status": tenant.subscription_status if tenant else "",
+            "renews_at": (tenant.subscription_renews_at or None) if tenant else None,
+            "seats_licensed": tenant.seats_licensed if tenant else 0,
+            "seats_used": used,
+            "seats_available": max(0, (tenant.seats_licensed if tenant else 0) - used),
+        },
+        "licensed_users": [
+            {"name": u.name, "email": u.email, "role": u.role.value, "status": u.status}
+            for u in seat_holders
+        ],
+    }
+
+
 @router.get("/me", response_model=MeResponse)
 def me(user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> MeResponse:
     tenant = session.get(Tenant, user.tenant_id)

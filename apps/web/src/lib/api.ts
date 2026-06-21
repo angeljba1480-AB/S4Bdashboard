@@ -215,6 +215,24 @@ export const api = {
     return request<AuditEvent[]>(`/audit${q ? `?${q}` : ""}`);
   },
   usage: () => request<UsageSummary>("/usage"),
+  operations: () =>
+    request<{
+      cases: { total: number; completed: number; in_progress: number; by_status: Record<string, number>; by_recipe: Record<string, number> };
+      searches: number;
+      tokens: { total: number; by_source: Record<string, number> };
+      cost: { total: number };
+      apps: { built: number; deployed: number };
+      recent_cases: { id: string; recipe: string; status: string; tokens: number; cost: number; created_at: string }[];
+    }>("/usage/operations"),
+  account: () =>
+    request<{
+      user: { id: string; email: string; name: string; role: string };
+      license: { type: string; status: string; seat_assigned: boolean };
+      company: { name: string; plan: string; subscription_status: string; renews_at: string | null; seats_licensed: number; seats_used: number; seats_available: number };
+      licensed_users: { name: string; email: string; role: string; status: string }[];
+    }>("/account"),
+  plans: () =>
+    request<{ currency: string; plans: { id: string; name: string; audience: string; setup_fee: number | null; annual_per_seat: number | null; seats_range: string; prod_deploy_price: number | null; includes: string[]; recommended_for: string[] }[] }>("/admin/plans"),
   workflows: () => request<{ id: string; name: string; steps: string }[]>("/workflows"),
   runWorkflow: (id: string) =>
     request<{ run_id: string; status: string; engine: string; detail: string; steps: string }>(

@@ -177,6 +177,8 @@ def start_recipe(
         tenant_id=tenant.id, user_id=user.id, recipe_id=recipe_id,
         status="needs_connection" if needs_conn else "draft",
         inputs=json.dumps(body.inputs), draft=json.dumps(draft),
+        token_count=int(draft.get("tokens", 0) or 0),
+        cost_estimate=float(draft.get("cost", 0.0) or 0.0),
     )
     session.add(run)
     session.add(AuditEvent(

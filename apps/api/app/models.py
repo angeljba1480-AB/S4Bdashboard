@@ -209,6 +209,8 @@ class AppProject(SQLModel, table=True):
     status: str = "draft"          # draft | built | pending_payment | deployed
     paid: bool = False
     deploy_url: str = ""
+    token_count: int = 0
+    cost_estimate: float = 0.0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -259,5 +261,7 @@ class RecipeRun(SQLModel, table=True):
     inputs: str = ""               # JSON
     draft: str = ""                # JSON — AI pre-filled output awaiting approval
     result: str = ""               # JSON — after approval/execution
+    token_count: int = 0           # tokens burned generating the draft
+    cost_estimate: float = 0.0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

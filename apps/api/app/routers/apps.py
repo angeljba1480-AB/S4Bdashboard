@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from ..ai.cost import estimate_cost, estimate_tokens
 from ..ai.resilience import generate_with_fallback
 from ..ai.router import route_request
 from ..auth import get_current_tenant, get_current_user
@@ -79,13 +80,17 @@ def create_app(
         f"integraciones y pasos para construirla. En español, conciso."
     )
     decision = route_request(tenant, None, instruction, [], task="app_build")
-    spec = ""
+    spec, route = "", decision.route
     if decision.route != ModelRoute.BLOCKED:
         gen = generate_with_fallback(decision.route, "Arquitecto de software.", instruction, decision.context)
         spec = gen.response.content if gen.route != ModelRoute.BLOCKED else ""
+        route = gen.route
+    tokens = estimate_tokens(instruction + spec)
+    cost = estimate_cost(route, tokens)
 
     p = AppProject(tenant_id=tenant.id, user_id=user.id, name=body.name.strip(),
-                   description=body.description.strip(), spec=spec, status="built")
+                   description=body.description.strip(), spec=spec, status="built",
+                   token_count=tokens, cost_estimate=cost)
     session.add(p)
     session.add(AuditEvent(
         tenant_id=tenant.id, user_id=user.id, event_type="app_build",

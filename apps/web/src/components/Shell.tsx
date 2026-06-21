@@ -3,8 +3,10 @@
 import { api, clearToken } from "@/lib/api";
 import type { Me } from "@shared/types";
 import {
+  Activity,
   Bot,
   FileText,
+  IdCard,
   LayoutDashboard,
   LogOut,
   MapPin,
@@ -21,7 +23,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const NAV = [
-  { group: "GENERAL", items: [{ href: "/dashboard", label: "Resumen", icon: LayoutDashboard }] },
+  {
+    group: "GENERAL",
+    items: [
+      { href: "/dashboard", label: "Resumen", icon: LayoutDashboard },
+      { href: "/operations", label: "Operación", icon: Activity },
+    ],
+  },
   {
     group: "PLATAFORMA",
     items: [
@@ -37,6 +45,7 @@ const NAV = [
   {
     group: "GOBIERNO",
     items: [
+      { href: "/account", label: "Mi cuenta", icon: IdCard },
       { href: "/audit", label: "Auditoría", icon: ShieldCheck },
       { href: "/admin", label: "Admin", icon: Settings },
     ],

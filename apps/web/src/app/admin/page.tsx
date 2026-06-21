@@ -23,6 +23,7 @@ export default function AdminPage() {
   const [brand, setBrand] = useState({ brand_name: "", brand_logo_url: "", brand_color: "", brand_tagline: "" });
   const [brandMsg, setBrandMsg] = useState("");
   const [billing, setBilling] = useState<Awaited<ReturnType<typeof api.getBilling>> | null>(null);
+  const [plans, setPlans] = useState<Awaited<ReturnType<typeof api.plans>> | null>(null);
   const [newUser, setNewUser] = useState({ email: "", name: "", role: "user" });
   const [billingMsg, setBillingMsg] = useState("");
 
@@ -82,6 +83,7 @@ export default function AdminPage() {
     loadProposals();
     loadBranding();
     loadBilling();
+    api.plans().then(setPlans).catch(() => {});
   }, []);
 
   async function curate(id: string) {
@@ -168,6 +170,35 @@ export default function AdminPage() {
               </form>
             </div>
             {billingMsg && <div className="mt-2 text-xs text-slate-500">{billingMsg}</div>}
+
+            {plans && (
+              <div className="mt-5 border-t border-slate-100 pt-4">
+                <div className="mb-1 text-sm font-semibold text-slate-700">Esquema de licencias recomendado</div>
+                <p className="mb-3 text-xs text-slate-400">
+                  Precios indicativos por industria (MXN, estimados/ajustables). Anual prepagado por asiento +
+                  setup; sacar a prod en App Studio se cobra aparte.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {plans.plans.map((p) => (
+                    <div key={p.id} className="rounded-xl border border-slate-200 p-3">
+                      <div className="font-semibold text-slate-800">{p.name}</div>
+                      <div className="text-xs text-slate-400">{p.audience} · {p.seats_range} asientos</div>
+                      <div className="mt-2 text-lg font-bold text-slate-900">
+                        {p.annual_per_seat != null ? `$${p.annual_per_seat.toLocaleString()}` : "A cotizar"}
+                        {p.annual_per_seat != null && <span className="text-xs font-normal text-slate-400"> /asiento/año</span>}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Setup: {p.setup_fee != null ? `$${p.setup_fee.toLocaleString()}` : "—"} ·
+                        Prod: {p.prod_deploy_price != null ? (p.prod_deploy_price === 0 ? "incluido" : `$${p.prod_deploy_price}`) : "—"}
+                      </div>
+                      <ul className="mt-2 space-y-0.5 text-xs text-slate-500">
+                        {p.includes.slice(0, 3).map((i) => <li key={i}>• {i}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

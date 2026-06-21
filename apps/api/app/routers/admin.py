@@ -122,6 +122,25 @@ def create_user(
     return {"id": u.id, "email": u.email, "name": u.name, "role": u.role.value}
 
 
+@router.get("/plans")
+def list_plans(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS, Role.SECURITY))) -> dict:
+    """Recommended licensing scheme + indicative pricing (industry-aligned, MXN)."""
+    from ..billing.plans import CURRENCY, PLANS
+    return {"currency": CURRENCY, "plans": PLANS}
+
+
+@router.get("/plans/estimate")
+def estimate_plan(
+    plan: str, seats: int = 1,
+    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+) -> dict:
+    from ..billing.plans import estimate
+    out = estimate(plan, seats)
+    if not out:
+        raise HTTPException(status_code=404, detail="Plan sin precio público (cotización a la medida)")
+    return out
+
+
 @router.get("/billing")
 def get_billing(
     _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),

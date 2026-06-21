@@ -49,6 +49,21 @@ def test_seat_limit_enforced(client):
     assert ok.status_code == 201
 
 
+def test_plans_and_estimate(client):
+    h = _auth(client)
+    plans = client.get("/admin/plans", headers=h).json()
+    ids = {p["id"] for p in plans["plans"]}
+    assert {"emprende", "negocio", "empresa"} <= ids
+    assert plans["currency"] == "MXN"
+
+    est = client.get("/admin/plans/estimate?plan=negocio&seats=10", headers=h).json()
+    assert est["seats"] == 10
+    assert est["first_year_total"] == est["setup_fee"] + est["annual_total"]
+
+    # gobierno has no public price -> 404
+    assert client.get("/admin/plans/estimate?plan=gobierno&seats=5", headers=h).status_code == 404
+
+
 def test_expired_subscription_blocks_new_users(client):
     h = _auth(client)
     client.put("/admin/billing", headers=h, json={"seats_licensed": 50, "subscription_status": "expired"})

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from sqlmodel import Session
 
+from ..ai.cost import estimate_cost, estimate_tokens
 from ..ai.rag import retrieve
 from ..ai.resilience import generate_with_fallback
 from ..ai.router import route_request
@@ -358,6 +359,8 @@ def _prefill_generic(recipe: dict, tenant: Tenant, inputs: dict) -> dict:
 
     gen = generate_with_fallback(decision.route, system, instruction, decision.context)
     contenido = gen.response.content if gen.route != ModelRoute.BLOCKED else ""
+    tokens = estimate_tokens(instruction + contenido)
+    cost = estimate_cost(gen.route, tokens)
     summary = (f"Generé {produces} con tus datos por la ruta «{gen.route.value}». "
                f"Revisa y aprueba; el dato se procesó de forma privada y queda auditado.")
     if region_aware:
@@ -369,6 +372,8 @@ def _prefill_generic(recipe: dict, tenant: Tenant, inputs: dict) -> dict:
         "produces": produces,
         "route": gen.route.value,
         "region_aware": region_aware,
+        "tokens": tokens,
+        "cost": cost,
         "summary": summary,
     }
 
