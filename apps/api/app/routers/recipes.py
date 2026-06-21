@@ -169,7 +169,7 @@ def start_recipe(
     conns = _pending_connections(session, tenant.id, user.id, recipe, identifier)
     needs_conn = any(c.status != "approved" for _, c in conns)
 
-    draft = prefill(recipe, session, tenant.id, body.inputs)
+    draft = prefill(recipe, session, tenant, body.inputs)
     run = RecipeRun(
         tenant_id=tenant.id, user_id=user.id, recipe_id=recipe_id,
         status="needs_connection" if needs_conn else "draft",

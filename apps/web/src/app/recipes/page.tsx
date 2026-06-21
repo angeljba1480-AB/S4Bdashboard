@@ -221,6 +221,15 @@ export default function RecipesPage() {
                     </div>
                   )}
 
+                  {typeof run.draft?.contenido === "string" && run.draft.contenido && (
+                    <div>
+                      <div className="mb-1 text-xs font-semibold uppercase text-slate-400">Borrador generado (revisa)</div>
+                      <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                        {run.draft.contenido as string}
+                      </pre>
+                    </div>
+                  )}
+
                   {Array.isArray(run.draft?.campos) && (
                     <div className="space-y-2">
                       <div className="text-xs font-semibold uppercase text-slate-400">Pre-llenado (revisa)</div>

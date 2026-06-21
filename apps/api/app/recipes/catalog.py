@@ -13,6 +13,9 @@ from __future__ import annotations
 from sqlmodel import Session
 
 from ..ai.rag import retrieve
+from ..ai.resilience import generate_with_fallback
+from ..ai.router import route_request
+from ..models import ModelRoute, Tenant
 
 # --- Categories -------------------------------------------------------------
 CATEGORIES: list[dict] = [
@@ -183,24 +186,42 @@ _REQ_KEYWORDS = (
 )
 
 
-def prefill(recipe: dict, session: Session, tenant_id: str, inputs: dict) -> dict:
+def prefill(recipe: dict, session: Session, tenant: Tenant, inputs: dict) -> dict:
     handler = recipe.get("handler", "generic")
     if handler == "licitacion":
-        return _prefill_licitacion(session, tenant_id, inputs)
+        return _prefill_licitacion(session, tenant.id, inputs)
     if handler == "correo_agenda":
         return _prefill_correo_agenda(inputs)
-    return _prefill_generic(recipe, inputs)
+    return _prefill_generic(recipe, tenant, inputs)
 
 
-def _prefill_generic(recipe: dict, inputs: dict) -> dict:
-    plan = recipe.get("prompt", "").format_map(_SafeDict(inputs)).strip()
+def _prefill_generic(recipe: dict, tenant: Tenant, inputs: dict) -> dict:
+    """Generate real content through the privacy router + model fallback.
+
+    The instruction is classified and routed (local/VPC for sensitive inputs,
+    open/premium otherwise). Offline, the MOCK adapter still returns content.
+    """
+    instruction = recipe.get("prompt", "").format_map(_SafeDict(inputs)).strip() or recipe["name"]
+    produces = recipe.get("produces", "el resultado")
+    system = (f"Eres un asistente que genera {produces} para un negocio en México. "
+              f"Responde en español, claro y listo para usar.")
+
+    decision = route_request(tenant, None, instruction, [], task="recipe")
+    if decision.route == ModelRoute.BLOCKED:
+        return {"tipo": "generico", "plan": instruction, "contenido": "", "produces": produces,
+                "route": "blocked", "blocked": True,
+                "summary": f"⛔ No puedo continuar: {decision.reason}"}
+
+    gen = generate_with_fallback(decision.route, system, instruction, decision.context)
+    contenido = gen.response.content if gen.route != ModelRoute.BLOCKED else ""
     return {
         "tipo": "generico",
-        "plan": plan or recipe["name"],
-        "produces": recipe.get("produces", "el resultado"),
-        "summary": (f"Preparé {recipe.get('produces', 'el resultado')} con lo que diste. "
-                    f"Revisa y aprueba; el dato se procesa de forma privada y queda auditado."),
-        "route": "vpc",
+        "plan": instruction,            # what I understood (transparency)
+        "contenido": contenido,         # AI-generated draft to review
+        "produces": produces,
+        "route": gen.route.value,
+        "summary": (f"Generé {produces} con tus datos por la ruta «{gen.route.value}». "
+                    f"Revisa y aprueba; el dato se procesó de forma privada y queda auditado."),
     }
 
 
@@ -265,5 +286,5 @@ def execute(recipe: dict, session: Session, tenant_id: str, inputs: dict, draft:
                 "message": ("Conexión aprobada. El resumen se generará con tu proveedor de "
                             "correo/calendario y se entregará según la salida elegida."),
                 "items": []}
-    return {"tipo": "generico", "output": draft.get("plan"),
+    return {"tipo": "generico", "output": draft.get("contenido") or draft.get("plan"),
             "message": f"{recipe['name']}: {recipe.get('produces', 'resultado')} listo."}

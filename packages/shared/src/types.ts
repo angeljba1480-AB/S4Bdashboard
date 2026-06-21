@@ -113,7 +113,12 @@ export interface RecipeRun {
   approval: string;
   approve_label: string;
   inputs: Record<string, unknown>;
-  draft: Record<string, unknown> & { summary?: string; campos?: { requisito: string; respuesta_sugerida: string }[] };
+  draft: Record<string, unknown> & {
+    summary?: string;
+    contenido?: string;
+    route?: string;
+    campos?: { requisito: string; respuesta_sugerida: string }[];
+  };
   result: (Record<string, unknown> & { message?: string; documento?: string }) | null;
   connections: RecipeConnection[];
 }

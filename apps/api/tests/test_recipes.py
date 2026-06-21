@@ -101,6 +101,28 @@ def test_generic_recipe_prefills_and_runs(client):
     assert done["status"] == "completed"
 
 
+def test_generic_recipe_generates_content_via_router(client):
+    h = _auth(client)
+    start = client.post("/recipes/propuesta_comercial/start", headers=h, json={
+        "inputs": {"cliente": "ACME", "servicio": "consultoría", "precio": "50000"},
+    }).json()
+    assert start["draft"]["contenido"], "el LLM (mock offline) debe generar contenido"
+    assert start["draft"]["route"] in ("local", "vpc", "open", "premium")
+    done = client.post(f"/recipes/runs/{start['id']}/approve", headers=h).json()
+    assert done["status"] == "completed"
+    assert done["result"]["output"]
+
+
+def test_generic_recipe_routes_sensitive_input_privately(client):
+    h = _auth(client)
+    start = client.post("/recipes/contrato_simple/start", headers=h, json={
+        "inputs": {"parte_a": "Mi Empresa SA", "parte_b": "Cliente con RFC BBM930101XYZ",
+                   "objeto": "servicios y CURP BEAA900101HDFLNN09"},
+    }).json()
+    # PII present -> never external by default
+    assert start["draft"]["route"] in ("local", "vpc")
+
+
 def test_propose_use_case(client):
     h = _auth(client)
     r = client.post("/recipes/propose", headers=h, json={
