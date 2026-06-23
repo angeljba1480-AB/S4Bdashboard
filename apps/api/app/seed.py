@@ -17,7 +17,7 @@ def seed() -> None:
         if session.exec(select(Tenant)).first():
             return  # already seeded
 
-        tenant = Tenant(name="Silent4Business", plan="enterprise", region="mx-central",
+        tenant = Tenant(name="MaestroAI", plan="enterprise", region="mx-central",
                         country="MX", brand_name="MaestroAI", brand_tagline="Agentes y casos para LATAM",
                         subscription_status="active", seats_licensed=25)
         session.add(tenant)
@@ -25,11 +25,11 @@ def seed() -> None:
         session.refresh(tenant)
 
         users = [
-            User(tenant_id=tenant.id, email="admin@s4b.mx", name="Layla Delgadillo",
+            User(tenant_id=tenant.id, email="admin@maestroai.mx", name="Layla Delgadillo",
                  role=Role.ADMIN, password_hash=hash_password(DEMO_PASSWORD), mfa_enabled=True),
-            User(tenant_id=tenant.id, email="user@s4b.mx", name="Usuario Negocio",
+            User(tenant_id=tenant.id, email="user@maestroai.mx", name="Usuario Negocio",
                  role=Role.USER, password_hash=hash_password(DEMO_PASSWORD)),
-            User(tenant_id=tenant.id, email="security@s4b.mx", name="Roberto Silva",
+            User(tenant_id=tenant.id, email="security@maestroai.mx", name="Roberto Silva",
                  role=Role.SECURITY, password_hash=hash_password(DEMO_PASSWORD)),
         ]
         session.add_all(users)
@@ -62,7 +62,7 @@ def seed() -> None:
              "Acuerdo de confidencialidad (NDA). Contacto: andres.romo@bbva.mx, "
              "RFC BBM930101XYZ. Montos y estados financieros restringidos."),
             ("comunicado_prensa.txt",
-             "Comunicado público: Silent4Business anuncia nuevo centro de operaciones "
+             "Comunicado público: MaestroAI anuncia nuevo centro de operaciones "
              "de seguridad para el mercado mexicano. Para marketing y prensa."),
         ]
         for filename, text in sample_docs:
@@ -84,4 +84,4 @@ if __name__ == "__main__":
 
     init_db()
     seed()
-    print("Seed complete. Login: admin@s4b.mx / demo1234")
+    print("Seed complete. Login: admin@maestroai.mx / demo1234")

@@ -24,7 +24,7 @@ def client():
 
 
 def _auth(client) -> dict:
-    tok = client.post("/auth/login", json={"email": "admin@s4b.mx", "password": "demo1234"}).json()["access_token"]
+    tok = client.post("/auth/login", json={"email": "admin@maestroai.mx", "password": "demo1234"}).json()["access_token"]
     return {"Authorization": f"Bearer {tok}"}
 
 

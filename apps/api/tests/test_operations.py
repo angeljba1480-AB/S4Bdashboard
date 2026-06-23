@@ -21,7 +21,7 @@ def client():
 
 
 def _auth(client) -> dict:
-    tok = client.post("/auth/login", json={"email": "admin@s4b.mx", "password": "demo1234"}).json()["access_token"]
+    tok = client.post("/auth/login", json={"email": "admin@maestroai.mx", "password": "demo1234"}).json()["access_token"]
     return {"Authorization": f"Bearer {tok}"}
 
 
@@ -42,7 +42,7 @@ def test_operations_counts_cases_and_tokens(client):
 def test_account_shows_user_and_company_licenses(client):
     h = _auth(client)
     acc = client.get("/account", headers=h).json()
-    assert acc["user"]["email"] == "admin@s4b.mx"
+    assert acc["user"]["email"] == "admin@maestroai.mx"
     assert acc["license"]["seat_assigned"] is True
     assert acc["company"]["seats_licensed"] >= acc["company"]["seats_used"]
-    assert any(u["email"] == "admin@s4b.mx" for u in acc["licensed_users"])
+    assert any(u["email"] == "admin@maestroai.mx" for u in acc["licensed_users"])

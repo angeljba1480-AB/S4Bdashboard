@@ -21,7 +21,7 @@ def client():
 
 
 def _auth(client) -> dict:
-    tok = client.post("/auth/login", json={"email": "admin@s4b.mx", "password": "demo1234"}).json()["access_token"]
+    tok = client.post("/auth/login", json={"email": "admin@maestroai.mx", "password": "demo1234"}).json()["access_token"]
     return {"Authorization": f"Bearer {tok}"}
 
 
@@ -39,13 +39,13 @@ def test_seat_limit_enforced(client):
     used = client.get("/admin/billing", headers=h).json()["seats_used"]
     client.put("/admin/billing", headers=h, json={"seats_licensed": used})
     r = client.post("/admin/users", headers=h, json={
-        "email": "extra@s4b.mx", "name": "Extra", "role": "user"})
+        "email": "extra@maestroai.mx", "name": "Extra", "role": "user"})
     assert r.status_code == 402
 
     # raise seats, now it works
     client.put("/admin/billing", headers=h, json={"seats_licensed": used + 1})
     ok = client.post("/admin/users", headers=h, json={
-        "email": "extra@s4b.mx", "name": "Extra", "role": "user"})
+        "email": "extra@maestroai.mx", "name": "Extra", "role": "user"})
     assert ok.status_code == 201
 
 
@@ -68,6 +68,6 @@ def test_expired_subscription_blocks_new_users(client):
     h = _auth(client)
     client.put("/admin/billing", headers=h, json={"seats_licensed": 50, "subscription_status": "expired"})
     r = client.post("/admin/users", headers=h, json={
-        "email": "blocked@s4b.mx", "name": "Blocked", "role": "user"})
+        "email": "blocked@maestroai.mx", "name": "Blocked", "role": "user"})
     assert r.status_code == 402
     client.put("/admin/billing", headers=h, json={"subscription_status": "active"})

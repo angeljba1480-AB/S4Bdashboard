@@ -25,7 +25,7 @@ def client():
 
 
 def _auth(client) -> dict:
-    tok = client.post("/auth/login", json={"email": "admin@s4b.mx", "password": "demo1234"}).json()["access_token"]
+    tok = client.post("/auth/login", json={"email": "admin@maestroai.mx", "password": "demo1234"}).json()["access_token"]
     return {"Authorization": f"Bearer {tok}"}
 
 
@@ -54,7 +54,7 @@ def test_run_simulated_when_n8n_disabled(client):
 def test_set_tenant_n8n_and_resolve(client):
     h = _auth(client)
     put = client.put("/admin/n8n", headers=h, json={
-        "webhook_base_url": "https://n8n.s4b.mx/webhook", "api_key": "secret-token", "auth_header": "",
+        "webhook_base_url": "https://n8n.maestroai.mx/webhook", "api_key": "secret-token", "auth_header": "",
     }).json()
     assert put["source"] == "tenant"
 
@@ -67,7 +67,7 @@ def test_set_tenant_n8n_and_resolve(client):
 
 def test_run_uses_tenant_source(client, monkeypatch):
     h = _auth(client)
-    client.put("/admin/n8n", headers=h, json={"webhook_base_url": "https://n8n.s4b.mx/webhook", "api_key": "t"})
+    client.put("/admin/n8n", headers=h, json={"webhook_base_url": "https://n8n.maestroai.mx/webhook", "api_key": "t"})
 
     def fake_trigger(cfg, workflow_id, payload, webhook_path=None):
         assert cfg.source == "tenant"

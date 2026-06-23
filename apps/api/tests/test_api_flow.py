@@ -21,7 +21,7 @@ def client():
         yield c
 
 
-def _token(client, email="admin@s4b.mx", password="demo1234") -> str:
+def _token(client, email="admin@maestroai.mx", password="demo1234") -> str:
     r = client.post("/auth/login", json={"email": email, "password": password})
     assert r.status_code == 200, r.text
     return r.json()["access_token"]
@@ -38,12 +38,12 @@ def test_health(client):
 def test_login_and_me(client):
     token = _token(client)
     me = client.get("/me", headers=_auth(token)).json()
-    assert me["email"] == "admin@s4b.mx"
-    assert me["tenant_name"] == "Silent4Business"
+    assert me["email"] == "admin@maestroai.mx"
+    assert me["tenant_name"] == "MaestroAI"
 
 
 def test_login_rejects_bad_password(client):
-    r = client.post("/auth/login", json={"email": "admin@s4b.mx", "password": "wrong"})
+    r = client.post("/auth/login", json={"email": "admin@maestroai.mx", "password": "wrong"})
     assert r.status_code == 401
 
 

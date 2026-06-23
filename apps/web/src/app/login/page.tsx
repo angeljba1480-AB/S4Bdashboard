@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@s4b.mx");
+  const [email, setEmail] = useState("admin@maestroai.mx");
   const [password, setPassword] = useState("demo1234");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -77,7 +77,7 @@ export default function LoginPage() {
             </a>
           )}
           <div className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-            Demo: <b>admin@s4b.mx</b> · <b>demo1234</b> (también user@ / security@)
+            Demo: <b>admin@maestroai.mx</b> · <b>demo1234</b> (también user@ / security@)
           </div>
         </form>
       </div>

@@ -24,7 +24,7 @@ def client():
         yield c
 
 
-def _auth(client, email="admin@s4b.mx", password="demo1234") -> dict:
+def _auth(client, email="admin@maestroai.mx", password="demo1234") -> dict:
     tok = client.post("/auth/login", json={"email": email, "password": password}).json()["access_token"]
     return {"Authorization": f"Bearer {tok}"}
 

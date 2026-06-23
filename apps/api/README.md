@@ -12,7 +12,7 @@ app/
                      conversations, messages, audit_events, api_keys.
   auth.py            JWT, hashing PBKDF2, RBAC (require_roles), deps de tenant.
   schemas.py         Contratos Pydantic.
-  seed.py            Datos demo (tenant Silent4Business + agentes + docs).
+  seed.py            Datos demo (tenant MaestroAI + agentes + docs).
   security/
     pii.py           Detección de PII (RFC, CURP, CLABE, tarjetas, email…).
     classifier.py    Clasificación de sensibilidad.

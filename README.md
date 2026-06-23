@@ -46,7 +46,7 @@ cp .env.example .env.local
 npm install
 npm run dev
 ```
-Portal: http://localhost:3000 · Login demo: `admin@s4b.mx` / `demo1234`
+Portal: http://localhost:3000 · Login demo: `admin@maestroai.mx` / `demo1234`
 
 ### 3. Todo con Docker
 ```bash

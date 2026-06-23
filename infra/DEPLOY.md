@@ -67,7 +67,7 @@ fly deploy
 | `N8N_*` | — | Workflows gestionados (sección 5). |
 
 > Verifica con `GET https://<tu-api>/health` → `{"status":"ok"}`. Usuario demo:
-> `admin@s4b.mx` / `demo1234` (cámbialo en producción).
+> `admin@maestroai.mx` / `demo1234` (cámbialo en producción).
 
 ## 3. Vercel (portal web)
 
