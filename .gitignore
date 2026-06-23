@@ -43,3 +43,4 @@ venv/
 *.njsproj
 *.sln
 *.sw?
+*.tsbuildinfo

@@ -68,6 +68,31 @@ class Tenant(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class CompanyProfile(SQLModel, table=True):
+    """Per-company configuration captured in an onboarding workflow.
+
+    Pre-loads the business context (who they are, their areas/org chart, the
+    tech they use, tone) so every use case runs pre-configured and integrated —
+    the user gives less and the output lands closer to ready. One row per tenant.
+    """
+    __tablename__ = "company_profiles"
+    id: str = Field(default_factory=lambda: _uuid("cprof"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    industry: str = ""             # giro / sector (ej. retail, fintech, salud)
+    company_size: str = ""         # micro | pequeña | mediana | grande | gobierno
+    description: str = ""          # contexto: a qué se dedica la empresa
+    audience: str = ""             # clientes / mercado objetivo
+    value_prop: str = ""           # propuesta de valor / diferenciadores
+    goals: str = ""                # objetivos del negocio
+    tone: str = ""                 # tono de comunicación (formal, cercano, ...)
+    website: str = ""
+    areas: str = "[]"              # JSON list [{name, responsible, email}]
+    tech_stack: str = "[]"         # JSON list of tools/systems they use
+    completed: bool = False        # onboarding workflow finished
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class User(SQLModel, table=True):
     __tablename__ = "users"
     id: str = Field(default_factory=lambda: _uuid("usr"), primary_key=True)

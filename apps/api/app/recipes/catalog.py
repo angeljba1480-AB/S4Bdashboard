@@ -48,6 +48,17 @@ def _municipio_input() -> dict:
     return {"key": "municipio", "type": "text", "label": "Municipio / localidad", "required": True}
 
 
+def _area_input() -> dict:
+    # Filled from the company profile's areas (frontend turns it into a dropdown).
+    return {"key": "area", "type": "area", "label": "Área responsable",
+            "help": "Se llena con las áreas de tu empresa (configúralas en Configuración)."}
+
+
+def _tono_input() -> dict:
+    return {"key": "tono", "type": "choice", "label": "Tono",
+            "options": ["Formal", "Cercano", "Persuasivo", "Directo", "Institucional"]}
+
+
 _REGION_DISCLAIMER = ("⚠️ Los requisitos, costos y plazos cambian por región y localidad (y por país). "
                       "Esto es una guía; confirma siempre con tu autoridad local.")
 
@@ -95,25 +106,60 @@ RECIPES: list[dict] = [
     # ---- Crecer el negocio ------------------------------------------------
     _r(id="propuesta_comercial", category="crecer", name="Propuesta comercial",
        description="Genero una propuesta lista para enviar a tu cliente.",
-       inputs=[{"key": "cliente", "type": "text", "label": "Cliente", "required": True},
-               {"key": "servicio", "type": "text", "label": "Producto o servicio", "required": True},
-               {"key": "precio", "type": "text", "label": "Precio (aprox.)"}],
+       inputs=[{"key": "cliente", "type": "text", "label": "Cliente", "required": True,
+                "placeholder": "Ej. Grupo Bimbo"},
+               {"key": "contacto", "type": "text", "label": "Persona de contacto",
+                "placeholder": "Nombre y puesto"},
+               {"key": "servicio", "type": "text", "label": "Producto o servicio", "required": True,
+                "placeholder": "Ej. Implementación de CRM"},
+               {"key": "necesidad", "type": "textarea", "label": "Necesidad o problema del cliente",
+                "placeholder": "¿Qué dolor resuelves? Contexto del cliente…"},
+               {"key": "alcance", "type": "textarea", "label": "Alcance / entregables",
+                "placeholder": "Qué incluye: fases, entregables, soporte…"},
+               {"key": "precio", "type": "text", "label": "Precio (aprox.)", "placeholder": "Ej. $250,000 MXN"},
+               {"key": "plazo", "type": "text", "label": "Plazo de entrega", "placeholder": "Ej. 8 semanas"},
+               {"key": "diferenciadores", "type": "textarea", "label": "Por qué elegirte",
+                "placeholder": "Ventajas, casos de éxito, garantías…"},
+               {"key": "vigencia", "type": "text", "label": "Vigencia de la oferta", "placeholder": "Ej. 30 días"},
+               _tono_input(), _area_input()],
        produces="una propuesta comercial",
-       prompt="Propuesta comercial para {cliente} sobre {servicio} (precio: {precio})."),
+       prompt=("Propuesta comercial para {cliente} (contacto: {contacto}) sobre {servicio}. "
+               "Necesidad del cliente: {necesidad}. Alcance/entregables: {alcance}. "
+               "Precio: {precio}. Plazo: {plazo}. Diferenciadores: {diferenciadores}. "
+               "Vigencia: {vigencia}. Tono: {tono}. Incluye introducción, alcance, "
+               "inversión, beneficios y siguiente paso.")),
     _r(id="post_redes", category="crecer", name="Publicación para redes sociales",
        description="Creo el texto y hashtags para promocionar tu negocio.",
        inputs=[{"key": "negocio", "type": "text", "label": "Tu negocio", "required": True},
-               {"key": "promo", "type": "text", "label": "Qué quieres promocionar", "required": True}],
+               {"key": "promo", "type": "text", "label": "Qué quieres promocionar", "required": True,
+                "placeholder": "Producto, oferta o anuncio"},
+               {"key": "red", "type": "choice", "label": "Red social",
+                "options": ["Instagram", "Facebook", "TikTok", "LinkedIn", "X (Twitter)", "WhatsApp"]},
+               {"key": "objetivo", "type": "choice", "label": "Objetivo",
+                "options": ["Vender", "Dar a conocer", "Interacción", "Atraer seguidores"]},
+               {"key": "cta", "type": "text", "label": "Llamada a la acción",
+                "placeholder": "Ej. Escríbenos por DM / Visita la tienda"},
+               _tono_input()],
        produces="una publicación para redes",
-       prompt="Publicación atractiva para {negocio} promocionando {promo}."),
+       prompt=("Publicación para {red} de {negocio} promocionando {promo}. Objetivo: {objetivo}. "
+               "Llamada a la acción: {cta}. Tono: {tono}. Incluye copy + 5 a 8 hashtags relevantes.")),
 
     # ---- Abrir / lanzar ---------------------------------------------------
     _r(id="plan_negocio", category="abrir", name="Plan de negocio express",
        description="Bosquejo un plan simple para arrancar tu idea.",
-       inputs=[{"key": "idea", "type": "text", "label": "Tu idea de negocio", "required": True},
-               {"key": "ciudad", "type": "text", "label": "Ciudad / zona"}],
+       inputs=[{"key": "idea", "type": "textarea", "label": "Tu idea de negocio", "required": True,
+                "placeholder": "Describe qué vas a vender y a quién"},
+               {"key": "ciudad", "type": "text", "label": "Ciudad / zona"},
+               {"key": "clientes", "type": "text", "label": "Clientes objetivo",
+                "placeholder": "¿A quién le vendes?"},
+               {"key": "inversion", "type": "text", "label": "Inversión disponible",
+                "placeholder": "Ej. $50,000 MXN"},
+               {"key": "modelo", "type": "choice", "label": "Modelo de venta",
+                "options": ["Local físico", "En línea", "Mixto", "A domicilio", "Por catálogo"]}],
        produces="un plan de negocio express",
-       prompt="Plan de negocio express para: {idea} en {ciudad}."),
+       prompt=("Plan de negocio express para: {idea} en {ciudad}. Clientes objetivo: {clientes}. "
+               "Inversión: {inversion}. Modelo de venta: {modelo}. Incluye propuesta de valor, "
+               "mercado, costos/ingresos estimados, primeros pasos y riesgos.")),
     _r(id="registro_tramites", category="abrir", name="Checklist de trámites para abrir",
        description="Lista de pasos y trámites para formalizar tu negocio.",
        inputs=[{"key": "giro", "type": "text", "label": "Giro del negocio", "required": True},
@@ -125,65 +171,115 @@ RECIPES: list[dict] = [
     _r(id="aviso_privacidad", category="cumplimiento", name="Aviso de privacidad",
        description="Genero un aviso de privacidad base para tu negocio.",
        inputs=[{"key": "empresa", "type": "text", "label": "Nombre del negocio", "required": True},
-               {"key": "datos", "type": "text", "label": "Datos que recolectas"}],
+               {"key": "datos", "type": "textarea", "label": "Datos que recolectas",
+                "placeholder": "Ej. nombre, correo, teléfono, dirección, RFC…"},
+               {"key": "finalidad", "type": "textarea", "label": "Para qué los usas",
+                "placeholder": "Ej. facturación, envíos, contacto, marketing"},
+               {"key": "canal", "type": "choice", "label": "Dónde se publicará",
+                "options": ["Sitio web", "Local físico", "App", "Redes sociales"]},
+               {"key": "contacto_arco", "type": "email", "label": "Correo para derechos ARCO",
+                "placeholder": "privacidad@tunegocio.com"}],
        produces="un aviso de privacidad",
-       prompt="Aviso de privacidad para {empresa} que recolecta {datos}."),
+       prompt=("Aviso de privacidad para {empresa} que recolecta {datos} con finalidad {finalidad}, "
+               "publicado en {canal}, contacto ARCO {contacto_arco}. Conforme a la LFPDPPP de México.")),
     _r(id="contrato_simple", category="cumplimiento", name="Contrato sencillo",
        description="Borrador de contrato de prestación de servicios.",
        inputs=[{"key": "parte_a", "type": "text", "label": "Tú / tu empresa", "required": True},
                {"key": "parte_b", "type": "text", "label": "Cliente", "required": True},
-               {"key": "objeto", "type": "text", "label": "Objeto del contrato", "required": True}],
+               {"key": "objeto", "type": "textarea", "label": "Objeto del contrato", "required": True,
+                "placeholder": "Qué servicio/producto se entrega"},
+               {"key": "monto", "type": "text", "label": "Monto y forma de pago",
+                "placeholder": "Ej. $30,000 MXN, 50% anticipo"},
+               {"key": "plazo", "type": "text", "label": "Plazo / vigencia", "placeholder": "Ej. 3 meses"},
+               {"key": "lugar", "type": "text", "label": "Ciudad de firma"}],
        produces="un contrato sencillo",
-       prompt="Contrato de servicios entre {parte_a} y {parte_b} por {objeto}."),
+       prompt=("Contrato de prestación de servicios entre {parte_a} (prestador) y {parte_b} (cliente) "
+               "por {objeto}. Monto y pago: {monto}. Plazo: {plazo}. Lugar: {lugar}. Incluye cláusulas "
+               "de objeto, contraprestación, obligaciones, confidencialidad, vigencia y terminación.")),
 
     # ---- Operaciones ------------------------------------------------------
     _r(id="cotizacion", category="operaciones", name="Cotización rápida",
        description="Armo una cotización lista para mandar (ideal por WhatsApp).",
        inputs=[{"key": "cliente", "type": "text", "label": "Cliente", "required": True},
-               {"key": "concepto", "type": "text", "label": "Concepto", "required": True},
-               {"key": "monto", "type": "text", "label": "Monto"}],
+               {"key": "concepto", "type": "textarea", "label": "Conceptos (uno por línea)", "required": True,
+                "placeholder": "Producto/servicio — cantidad — precio unitario"},
+               {"key": "descuento", "type": "text", "label": "Descuento", "placeholder": "Ej. 10% o $500"},
+               {"key": "iva", "type": "choice", "label": "¿Incluye IVA?", "options": ["Sí", "No"]},
+               {"key": "validez", "type": "text", "label": "Vigencia", "placeholder": "Ej. 15 días"},
+               {"key": "pago", "type": "text", "label": "Condiciones de pago", "placeholder": "Ej. 50% anticipo"}],
        produces="una cotización",
-       prompt="Cotización para {cliente}: {concepto} por {monto}."),
+       prompt=("Cotización para {cliente} con conceptos: {concepto}. Descuento: {descuento}. "
+               "IVA: {iva}. Vigencia: {validez}. Pago: {pago}. Incluye tabla con subtotal, IVA y total.")),
     _r(id="inventario_alerta", category="operaciones", name="Control de inventario",
        description="Registro y alerta de productos por agotarse.",
-       inputs=[{"key": "productos", "type": "text", "label": "Productos y cantidades", "required": True}],
+       inputs=[{"key": "productos", "type": "textarea", "label": "Productos y cantidades", "required": True,
+                "placeholder": "Producto — existencia actual (uno por línea)"},
+               {"key": "minimo", "type": "number", "label": "Stock mínimo de alerta", "placeholder": "Ej. 5"}],
        produces="un control de inventario con alertas",
-       prompt="Control de inventario y alertas de stock bajo para: {productos}."),
+       prompt=("Control de inventario y alertas de stock bajo para: {productos}. "
+               "Marca en rojo lo que esté por debajo de {minimo} unidades y sugiere reorden.")),
 
     # ---- Día a día (incluye economía informal) ----------------------------
     _r(id="precio_venta", category="dia_a_dia", name="Calcular precio de venta",
        description="Te digo a cuánto vender según tu costo y ganancia deseada.",
-       inputs=[{"key": "costo", "type": "text", "label": "Costo del producto", "required": True},
-               {"key": "ganancia", "type": "text", "label": "Ganancia que quieres (%)"}],
+       inputs=[{"key": "costo", "type": "number", "label": "Costo del producto", "required": True,
+                "placeholder": "Ej. 120"},
+               {"key": "ganancia", "type": "number", "label": "Ganancia que quieres (%)", "placeholder": "Ej. 40"},
+               {"key": "gastos_extra", "type": "text", "label": "Gastos extra por unidad",
+                "placeholder": "Envío, empaque, comisión…"}],
        produces="tu precio de venta sugerido",
-       prompt="Calcula precio de venta con costo {costo} y ganancia {ganancia}%."),
+       prompt=("Calcula precio de venta con costo {costo} y ganancia {ganancia}%, considerando "
+               "gastos extra {gastos_extra}. Muestra el desglose y el margen final.")),
     _r(id="corte_caja", category="dia_a_dia", name="Corte de caja del día",
        description="Resumo tus ventas y gastos del día.",
-       inputs=[{"key": "ventas", "type": "text", "label": "Ventas del día", "required": True},
-               {"key": "gastos", "type": "text", "label": "Gastos del día"}],
+       inputs=[{"key": "fecha", "type": "date", "label": "Fecha"},
+               {"key": "ventas", "type": "textarea", "label": "Ventas del día", "required": True,
+                "placeholder": "Concepto — monto (uno por línea), o total"},
+               {"key": "gastos", "type": "textarea", "label": "Gastos del día",
+                "placeholder": "Concepto — monto (uno por línea)"},
+               {"key": "fondo", "type": "number", "label": "Fondo de caja inicial"}],
        produces="tu corte de caja",
-       prompt="Corte de caja: ventas {ventas}, gastos {gastos}."),
+       prompt=("Corte de caja del {fecha}: fondo inicial {fondo}, ventas {ventas}, gastos {gastos}. "
+               "Calcula total de ventas, total de gastos, efectivo esperado y utilidad del día.")),
 
     # ===== Más casos sembrados =====
     # ---- Crecer el negocio ----
     _r(id="guion_ventas", category="crecer", name="Guion de ventas",
        description="Un guion para vender por teléfono o en persona.",
        inputs=[{"key": "producto", "type": "text", "label": "Producto/servicio", "required": True},
-               {"key": "cliente_tipo", "type": "text", "label": "Tipo de cliente"}],
+               {"key": "cliente_tipo", "type": "text", "label": "Tipo de cliente",
+                "placeholder": "Ej. dueños de restaurantes"},
+               {"key": "canal", "type": "choice", "label": "Canal",
+                "options": ["Teléfono", "En persona", "Videollamada", "WhatsApp"]},
+               {"key": "objeciones", "type": "textarea", "label": "Objeciones comunes",
+                "placeholder": "Ej. precio alto, ya tienen proveedor…"},
+               _tono_input()],
        produces="un guion de ventas",
-       prompt="Guion de ventas para vender {producto} a {cliente_tipo}."),
+       prompt=("Guion de ventas para vender {producto} a {cliente_tipo} por {canal}. Tono: {tono}. "
+               "Incluye apertura, descubrimiento, pitch, manejo de objeciones ({objeciones}) y cierre.")),
     _r(id="correo_frio", category="crecer", name="Correo de prospección",
        description="Correo en frío para conseguir una reunión.",
        inputs=[{"key": "prospecto", "type": "text", "label": "Empresa/persona objetivo", "required": True},
-               {"key": "oferta", "type": "text", "label": "Qué ofreces", "required": True}],
+               {"key": "oferta", "type": "text", "label": "Qué ofreces", "required": True},
+               {"key": "gancho", "type": "textarea", "label": "Gancho / por qué ahora",
+                "placeholder": "Dato, logro o dolor del prospecto"},
+               {"key": "cta", "type": "text", "label": "Llamada a la acción",
+                "placeholder": "Ej. ¿15 min el jueves?"},
+               _tono_input()],
        produces="un correo de prospección",
-       prompt="Correo en frío a {prospecto} ofreciendo {oferta}, con llamada a la acción para reunión."),
+       prompt=("Correo en frío a {prospecto} ofreciendo {oferta}. Gancho: {gancho}. Tono: {tono}. "
+               "Asunto atractivo + cuerpo breve + llamada a la acción: {cta}.")),
     _r(id="promo_temporada", category="crecer", name="Promoción de temporada",
        description="Idea y texto de una promoción para fechas clave.",
        inputs=[{"key": "negocio", "type": "text", "label": "Tu negocio", "required": True},
-               {"key": "fecha", "type": "text", "label": "Temporada/fecha (ej. Buen Fin)"}],
+               {"key": "fecha", "type": "text", "label": "Temporada/fecha", "placeholder": "Ej. Buen Fin"},
+               {"key": "productos", "type": "text", "label": "Qué entra en promoción"},
+               {"key": "tipo_promo", "type": "choice", "label": "Tipo de promoción",
+                "options": ["Descuento %", "2x1", "Regalo por compra", "Envío gratis", "Paquete"]},
+               {"key": "vigencia", "type": "text", "label": "Vigencia", "placeholder": "Ej. 13–18 nov"}],
        produces="una promoción de temporada",
-       prompt="Promoción para {negocio} en {fecha} con mensaje y mecánica."),
+       prompt=("Promoción para {negocio} en {fecha} sobre {productos}, tipo {tipo_promo}, vigencia {vigencia}. "
+               "Incluye mecánica clara, mensaje de difusión y condiciones.")),
 
     # ---- Abrir / lanzar (REGIÓN) ----
     _r(id="licencia_funcionamiento", category="abrir", name="Licencia de funcionamiento",
@@ -240,21 +336,36 @@ RECIPES: list[dict] = [
     _r(id="orden_compra", category="operaciones", name="Orden de compra a proveedor",
        description="Genero una orden de compra lista para enviar.",
        inputs=[{"key": "proveedor", "type": "text", "label": "Proveedor", "required": True},
-               {"key": "articulos", "type": "text", "label": "Artículos y cantidades", "required": True}],
+               {"key": "articulos", "type": "textarea", "label": "Artículos y cantidades", "required": True,
+                "placeholder": "Artículo — cantidad — precio (uno por línea)"},
+               {"key": "fecha_entrega", "type": "date", "label": "Fecha de entrega requerida"},
+               {"key": "lugar_entrega", "type": "text", "label": "Lugar de entrega"},
+               {"key": "pago", "type": "text", "label": "Condiciones de pago", "placeholder": "Ej. 30 días"}],
        produces="una orden de compra",
-       prompt="Orden de compra a {proveedor} por {articulos}."),
+       prompt=("Orden de compra a {proveedor} por: {articulos}. Entrega {fecha_entrega} en {lugar_entrega}. "
+               "Pago: {pago}. Incluye folio, tabla de artículos con totales y datos de entrega.")),
     _r(id="recordatorio_cobranza", category="operaciones", name="Recordatorio de cobranza",
        description="Mensaje amable para cobrar a un cliente.",
        inputs=[{"key": "cliente", "type": "text", "label": "Cliente", "required": True},
-               {"key": "monto", "type": "text", "label": "Monto/adeudo", "required": True}],
+               {"key": "monto", "type": "text", "label": "Monto/adeudo", "required": True},
+               {"key": "vencimiento", "type": "date", "label": "Fecha de vencimiento"},
+               {"key": "factura", "type": "text", "label": "Folio de factura", "placeholder": "Ej. F-1024"},
+               {"key": "etapa", "type": "choice", "label": "Etapa del recordatorio",
+                "options": ["Primer aviso (amable)", "Segundo aviso", "Vencido (firme)"]},
+               {"key": "pagos", "type": "text", "label": "Opciones de pago", "placeholder": "Transferencia, link…"}],
        produces="un recordatorio de cobranza",
-       prompt="Mensaje cordial de cobranza a {cliente} por {monto}, con opciones de pago."),
+       prompt=("Mensaje de cobranza a {cliente} por {monto} (factura {factura}, vence {vencimiento}). "
+               "Etapa: {etapa}. Opciones de pago: {pagos}. Cordial pero claro.")),
     _r(id="horario_turnos", category="operaciones", name="Rol de turnos del personal",
        description="Arma un rol de turnos simple para tu equipo.",
-       inputs=[{"key": "personas", "type": "text", "label": "Personas y disponibilidad", "required": True},
-               {"key": "horario", "type": "text", "label": "Horario del negocio"}],
+       inputs=[{"key": "personas", "type": "textarea", "label": "Personas y disponibilidad", "required": True,
+                "placeholder": "Nombre — días/horas disponibles (uno por línea)"},
+               {"key": "horario", "type": "text", "label": "Horario del negocio", "placeholder": "Ej. 9–21h"},
+               {"key": "dias", "type": "text", "label": "Días de operación", "placeholder": "Ej. Lun a Sáb"},
+               {"key": "min_por_turno", "type": "number", "label": "Personas mínimas por turno"}],
        produces="un rol de turnos",
-       prompt="Rol de turnos para {personas} con horario {horario}."),
+       prompt=("Rol de turnos semanal para {personas}. Horario {horario}, días {dias}, "
+               "mínimo {min_por_turno} por turno. Devuélvelo como tabla por día.")),
 
     # ---- Día a día (incluye economía informal) ----
     _r(id="carta_precios", category="dia_a_dia", name="Carta / lista de precios",
@@ -342,6 +453,7 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
     The instruction is classified and routed (local/VPC for sensitive inputs,
     open/premium otherwise). Offline, the MOCK adapter still returns content.
     """
+    from ..company_profile import context_block, get_or_create
     from ..regional.countries import get_country
     from ..regional.tramites import to_context
     from ..routers.tramites import layered_search
@@ -352,6 +464,14 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
     system = (f"Eres un asistente que genera {produces} para un negocio en {country['name']}. "
               f"Responde en español, claro y listo para usar. Usa el contexto de trámites "
               f"(empresa → estado → país) cuando aplique y cita la autoridad/fuente.")
+
+    # Pre-configured company context (onboarding profile) personalizes the output.
+    company_ctx = context_block(get_or_create(session, tenant.id),
+                                getattr(tenant, "brand_name", "") or tenant.name)
+    if company_ctx:
+        system += "\n\n" + company_ctx
+    if str(inputs.get("area", "")).strip():
+        system += f"\n\nEsta solicitud proviene del área «{inputs['area']}»; adáptala a esa área."
 
     # Ground in the layered KB: company-private + state + country curated.
     matches = layered_search(session, tenant, q=f"{recipe.get('name', '')} {instruction}",

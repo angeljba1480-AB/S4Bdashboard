@@ -2,8 +2,9 @@
 
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
-import type { DocumentItem, Recipe, RecipeRun } from "@shared/types";
-import { CheckCircle2, ChevronLeft, Download, Link2, Sparkles } from "lucide-react";
+import type { CompanyProfile, DocumentItem, Recipe, RecipeRun } from "@shared/types";
+import { Building2, CheckCircle2, ChevronLeft, Download, Link2, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function RecipesPage() {
@@ -12,6 +13,7 @@ export default function RecipesPage() {
   const [cat, setCat] = useState<string>("");
   const [q, setQ] = useState("");
   const [docs, setDocs] = useState<DocumentItem[]>([]);
+  const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [active, setActive] = useState<Recipe | null>(null);
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [run, setRun] = useState<RecipeRun | null>(null);
@@ -23,6 +25,7 @@ export default function RecipesPage() {
   useEffect(() => {
     api.recipeCategories().then(setCategories).catch(() => {});
     api.documents().then(setDocs).catch(() => {});
+    api.companyProfile().then(setProfile).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -85,6 +88,26 @@ export default function RecipesPage() {
       />
       <div className="p-8">
         {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
+
+        {!active && profile && profile.completion < 100 && (
+          <Link
+            href="/company"
+            className="mb-5 flex items-center gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4 transition hover:border-violet-400"
+          >
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white">
+              <Building2 className="h-5 w-5 text-violet-600" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-violet-900">
+                Configura tu empresa para mejores resultados ({profile.completion}%)
+              </div>
+              <p className="text-xs text-violet-700">
+                Con el contexto de tu empresa (giro, áreas, tecnología) los casos de uso quedan
+                preconfigurados y los documentos salen más completos. →
+              </p>
+            </div>
+          </Link>
+        )}
 
         {!active && (
           <>
@@ -169,39 +192,52 @@ export default function RecipesPage() {
               {/* Step 1: minimal inputs */}
               {!run && (
                 <div className="mt-5 space-y-4">
-                  {active.inputs.map((f) => (
-                    <div key={f.key}>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">{f.label}</label>
-                      {f.type === "document" ? (
-                        <select
-                          value={inputs[f.key] || ""}
-                          onChange={(e) => setInputs((s) => ({ ...s, [f.key]: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                        >
-                          <option value="">Selecciona un documento…</option>
-                          {docs.map((d) => (
-                            <option key={d.id} value={d.id}>{d.filename}</option>
-                          ))}
-                        </select>
-                      ) : f.type === "choice" ? (
-                        <select
-                          value={inputs[f.key] || ""}
-                          onChange={(e) => setInputs((s) => ({ ...s, [f.key]: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                        >
-                          <option value="">Elige…</option>
-                          {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                      ) : (
-                        <input
-                          type={f.type === "email" ? "email" : "text"}
-                          value={inputs[f.key] || ""}
-                          onChange={(e) => setInputs((s) => ({ ...s, [f.key]: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                        />
-                      )}
-                    </div>
-                  ))}
+                  {active.inputs.map((f) => {
+                    const cls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm";
+                    const val = inputs[f.key] || "";
+                    const onChange = (v: string) => setInputs((s) => ({ ...s, [f.key]: v }));
+                    const areaOptions = (profile?.areas || []).map((a) => a.name).filter(Boolean);
+                    return (
+                      <div key={f.key}>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                          {f.label}
+                          {f.required && <span className="text-red-500"> *</span>}
+                        </label>
+                        {f.type === "document" ? (
+                          <select value={val} onChange={(e) => onChange(e.target.value)} className={cls}>
+                            <option value="">Selecciona un documento…</option>
+                            {docs.map((d) => <option key={d.id} value={d.id}>{d.filename}</option>)}
+                          </select>
+                        ) : f.type === "choice" ? (
+                          <select value={val} onChange={(e) => onChange(e.target.value)} className={cls}>
+                            <option value="">Elige…</option>
+                            {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        ) : f.type === "area" ? (
+                          areaOptions.length > 0 ? (
+                            <select value={val} onChange={(e) => onChange(e.target.value)} className={cls}>
+                              <option value="">Selecciona un área…</option>
+                              {areaOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                          ) : (
+                            <input value={val} placeholder={f.placeholder} onChange={(e) => onChange(e.target.value)} className={cls} />
+                          )
+                        ) : f.type === "textarea" ? (
+                          <textarea rows={3} value={val} placeholder={f.placeholder}
+                            onChange={(e) => onChange(e.target.value)} className={cls} />
+                        ) : (
+                          <input
+                            type={f.type === "email" ? "email" : f.type === "number" ? "number" : f.type === "date" ? "date" : "text"}
+                            value={val}
+                            placeholder={f.placeholder}
+                            onChange={(e) => onChange(e.target.value)}
+                            className={cls}
+                          />
+                        )}
+                        {f.help && <p className="mt-1 text-xs text-slate-400">{f.help}</p>}
+                      </div>
+                    );
+                  })}
                   <button
                     onClick={start}
                     disabled={busy}

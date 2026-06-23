@@ -4,6 +4,7 @@ import type {
   AppProject,
   AuditEvent,
   ChatResponse,
+  CompanyProfile,
   DocumentItem,
   Eje,
   Me,
@@ -189,6 +190,10 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+  // Company configuration (onboarding workflow)
+  companyProfile: () => request<CompanyProfile>("/company/profile"),
+  saveCompanyProfile: (body: Partial<CompanyProfile>) =>
+    request<CompanyProfile>("/company/profile", { method: "PUT", body: JSON.stringify(body) }),
   recipes: (params?: { category?: string; q?: string }) => {
     const qs = new URLSearchParams();
     if (params?.category) qs.set("category", params.category);
