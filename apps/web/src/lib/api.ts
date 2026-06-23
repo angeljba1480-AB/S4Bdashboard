@@ -222,7 +222,7 @@ export const api = {
   recipeRun: (runId: string) => request<RecipeRun>(`/recipes/runs/${runId}`),
   approveRun: (runId: string) =>
     request<RecipeRun>(`/recipes/runs/${runId}/approve`, { method: "POST" }),
-  async downloadRun(runId: string, format: "pdf" | "md" = "pdf") {
+  async downloadRun(runId: string, format: "pdf" | "md" | "docx" = "pdf") {
     const res = await fetch(`${API_BASE}/recipes/runs/${runId}/export?format=${format}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     });

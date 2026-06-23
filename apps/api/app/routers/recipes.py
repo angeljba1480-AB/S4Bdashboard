@@ -36,7 +36,7 @@ from ..recipes.catalog import (
     public_recipe,
     validate_inputs,
 )
-from .export import _render_md, _render_pdf
+from .export import deliver as _deliver_export
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
@@ -274,18 +274,17 @@ def export_run(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Download a use-case result as PDF or Markdown."""
+    """Download a use-case result as Word (.docx), PDF or Markdown."""
     run = _load_run(session, tenant, user, run_id)
     recipe = _resolve(session, tenant.id, run.recipe_id) or {"name": run.recipe_id}
     title = recipe.get("name", "Caso de uso")
     blocks = _run_blocks(run, recipe)
     fname = f"{run.recipe_id}-{run.id}"
-    if format == "md":
-        return Response(_render_md(title, blocks), media_type="text/markdown",
-                        headers={"Content-Disposition": f'attachment; filename="{fname}.md"'})
-    pdf = _render_pdf(title, blocks)
-    return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf",
-                             headers={"Content-Disposition": f'attachment; filename="{fname}.pdf"'})
+    inputs = json.loads(run.inputs or "{}")
+    meta = {"Preparado por": user.name}
+    if inputs.get("cliente"):
+        meta["Cliente"] = inputs["cliente"]
+    return _deliver_export(title, blocks, format, fname, tenant=tenant, meta=meta)
 
 
 @router.post("/runs/{run_id}/approve")

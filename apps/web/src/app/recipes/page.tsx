@@ -288,12 +288,18 @@ export default function RecipesPage() {
                           {run.result.documento as string}
                         </pre>
                       )}
-                      <div className="mt-3 flex gap-2">
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          onClick={() => api.downloadRun(run.id, "docx")}
+                          className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+                        >
+                          <Download className="h-4 w-4" /> Descargar Word
+                        </button>
                         <button
                           onClick={() => api.downloadRun(run.id, "pdf")}
                           className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
                         >
-                          <Download className="h-4 w-4" /> Descargar PDF
+                          <Download className="h-4 w-4" /> PDF
                         </button>
                         <button
                           onClick={() => api.downloadRun(run.id, "md")}
