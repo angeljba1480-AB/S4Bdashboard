@@ -52,6 +52,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
+    # Also accept any Vercel deployment (production + preview URLs) so the portal
+    # connects without having to enumerate every preview domain. Configurable via
+    # CORS_ORIGIN_REGEX; defaults to *.vercel.app.
+    allow_origin_regex=settings.cors_origin_regex or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

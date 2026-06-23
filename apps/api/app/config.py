@@ -15,6 +15,10 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./privateai.db"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    # Regex of allowed origins (in addition to cors_origins). Defaults to any
+    # Vercel deployment so production + preview portals connect without listing
+    # each domain. Set to "" to disable.
+    cors_origin_regex: str = r"https://.*\.vercel\.app"
 
     # Premium external (OpenAI / Claude / Gemini compatible)
     premium_enabled: bool = False
