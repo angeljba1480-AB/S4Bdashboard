@@ -1,0 +1,50 @@
+# Local stack for the Private AI Platform.
+# `docker compose -f infra/docker-compose.yml up --build`
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: privateai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrantdata:/qdrant/storage
+
+  api:
+    build:
+      context: ../apps/api
+    environment:
+      # Default SQLite keeps it runnable even without Postgres; switch to:
+      # DATABASE_URL: postgresql://postgres:postgres@db:5432/privateai
+      DATABASE_URL: sqlite:///./privateai.db
+      SECRET_KEY: change-me-in-production-please-32-chars-min
+      CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - qdrant
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  qdrantdata:
