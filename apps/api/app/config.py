@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     local_base_url: str = "http://localhost:11434/v1"
     local_model: str = "llama3.1"
 
+    # HTTP timeout (seconds) for model providers. Cloud routes (open/premium) are
+    # fast; self-hosted routes (local Ollama / VPC) run on CPU/GPU that must load
+    # the model then generate, so they get a much longer default to avoid a
+    # premature timeout falling back to a less-private cloud route.
+    model_request_timeout: int = 120
+    local_request_timeout: int = 300
+
     # Embeddings / RAG. Provider: "local" | "open" (NaN Builders) | "premium".
     embeddings_provider: str = "local"
     embeddings_model: str = "text-embedding-3-small"

@@ -68,6 +68,13 @@ class OpenAICompatAdapter(ModelAdapter):
 
         ctx = "\n\n".join(context)
         user = f"Contexto:\n{ctx}\n\nPregunta: {prompt}" if ctx else prompt
+        # Self-hosted routes (local Ollama / VPC) load the model then generate on
+        # CPU/GPU, so they need a longer timeout than the fast cloud routes.
+        timeout = (
+            settings.local_request_timeout
+            if self.route in (ModelRoute.LOCAL, ModelRoute.VPC)
+            else settings.model_request_timeout
+        )
         resp = httpx.post(
             f"{self.base_url}/chat/completions",
             headers={"Authorization": f"Bearer {self.api_key}"},
@@ -79,7 +86,7 @@ class OpenAICompatAdapter(ModelAdapter):
                 ],
                 "temperature": 0.2,
             },
-            timeout=60,
+            timeout=timeout,
         )
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"]
