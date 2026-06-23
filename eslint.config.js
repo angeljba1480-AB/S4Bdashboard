@@ -5,7 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // S4BFinanceDashboard.jsx es la versión preservada del dashboard financiero
+  // original (referencia); el desarrollo activo es la app de ligas.
+  globalIgnores(['dist', 'src/S4BFinanceDashboard.jsx']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

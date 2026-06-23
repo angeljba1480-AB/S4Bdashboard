@@ -1,16 +1,63 @@
-# React + Vite
+# S4B · Administración de Ligas (prototipo)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Plataforma **multideporte** para administrar ligas deportivas como SaaS:
+tú rentas la plataforma a cada liga, las ligas llevan sus partidos
+(ganados / perdidos / empates) y tabla de posiciones, y los papás pueden
+pagar inscripciones y cuotas dentro de la app.
 
-Currently, two official plugins are available:
+> Este es un **prototipo visual** con datos de ejemplo (sin backend todavía).
+> Sirve para validar el flujo y la interfaz antes de conectar base de datos,
+> inicio de sesión y pagos reales.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Deportes incluidos
 
-## React Compiler
+⚽ Fútbol · ⚾ Béisbol · 🏀 Básquetbol · 🏐 Voleibol
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Vistas
 
-## Expanding the ESLint configuration
+- **Panel del dueño** — KPIs de la plataforma (ingreso recurrente / MRR,
+  número de ligas, equipos totales, volumen cobrado a papás), gráficas y
+  listado de ligas suscritas.
+- **Ligas** — buscador y filtro por deporte; tarjeta de cada liga con su plan
+  y renta mensual. Al abrir una liga:
+  - **Posiciones** — tabla ordenada (puntos en fútbol, % de victorias en el
+    resto).
+  - **Partidos** — calendario con resultados (ganados/perdidos) y próximos
+    juegos.
+  - **Equipos** — ganados, perdidos y empates por equipo.
+- **Pagos** — suscripciones que pagan las ligas (lo que te rentan) y los pagos
+  de papás/tutores (inscripciones, cuotas, uniformes).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Cómo correrlo
+
+```bash
+npm install
+npm run dev      # servidor de desarrollo
+npm run build    # build de producción
+npm run lint     # revisión de código
+```
+
+## Estructura
+
+```
+src/
+  App.jsx                  # shell + navegación de la app de ligas
+  data/mockData.js         # ligas, equipos, partidos y pagos de ejemplo
+  utils.js                 # formato de moneda y cálculo de posiciones
+  components/
+    ui.jsx                 # tarjetas, badges, etc.
+    OwnerDashboard.jsx     # panel del dueño de la plataforma
+    LeaguesView.jsx        # listado y filtro de ligas
+    LeagueDetail.jsx       # posiciones, partidos y equipos de una liga
+    PaymentsView.jsx       # suscripciones y pagos de papás
+  S4BFinanceDashboard.jsx  # dashboard financiero original (referencia)
+```
+
+## Próximos pasos sugeridos
+
+1. **Backend y base de datos** (p. ej. Supabase) para guardar ligas, equipos
+   y resultados reales.
+2. **Inicio de sesión y roles** (dueño de plataforma / admin de liga / papás).
+3. **Pagos reales** (Stripe / Mercado Pago) para suscripciones de ligas y
+   cobros a papás.
+4. **Multi-liga real** (cada liga ve solo sus datos).
