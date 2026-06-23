@@ -77,6 +77,13 @@ class Settings(BaseSettings):
     # Provider resilience: fallback order tried when a route's adapter fails.
     fallback_order: str = "vpc,open,local"
 
+    # When a private route (local/VPC) has NO real provider configured, allow the
+    # router to climb to the best available real provider (open/premium) instead
+    # of returning the offline MOCK. Opt-in: this lets cloud models handle data
+    # that would otherwise stay private, so enable it only when that trade-off is
+    # acceptable (e.g. while a local Ollama/VPC model is not yet connected).
+    allow_cloud_fallback: bool = False
+
     # SSO / OIDC (optional, pluggable). When disabled, password login is used.
     sso_enabled: bool = False
     oidc_issuer: str = ""

@@ -43,3 +43,38 @@ def test_no_fallback_when_primary_ok(monkeypatch):
     result = resilience.generate_with_fallback(ModelRoute.OPEN, "sys", "hola", [])
     assert result.fell_back is False
     assert result.route == ModelRoute.OPEN
+
+
+class _RealAdapter:
+    """A non-MOCK adapter standing in for a configured cloud provider."""
+
+    def __init__(self, route):
+        self.route = route
+        self.model_name = f"real-{route.value}"
+
+    def generate(self, system, prompt, context):
+        return ModelResponse(content="contenido real", model=self.model_name, provider="real")
+
+
+def _adapters_local_mock_open_real(route):
+    # LOCAL has no real provider (MOCK); OPEN is a real cloud provider.
+    return _RealAdapter(route) if route == ModelRoute.OPEN else MockAdapter(route, route.value)
+
+
+def test_cloud_fallback_off_keeps_private_route_on_mock(monkeypatch):
+    # Default: a private route with only MOCK must NOT climb to the cloud.
+    monkeypatch.setattr(resilience, "get_adapter", _adapters_local_mock_open_real)
+    monkeypatch.setattr(resilience.settings, "allow_cloud_fallback", False)
+    result = resilience.generate_with_fallback(ModelRoute.LOCAL, "sys", "propuesta", ["ctx"])
+    assert result.route == ModelRoute.LOCAL
+    assert result.response.provider == "mock"
+
+
+def test_cloud_fallback_on_climbs_to_real_provider(monkeypatch):
+    # Opt-in: with no private real provider, climb to the real cloud provider.
+    monkeypatch.setattr(resilience, "get_adapter", _adapters_local_mock_open_real)
+    monkeypatch.setattr(resilience.settings, "allow_cloud_fallback", True)
+    result = resilience.generate_with_fallback(ModelRoute.LOCAL, "sys", "propuesta", ["ctx"])
+    assert result.route == ModelRoute.OPEN
+    assert result.fell_back is True
+    assert result.response.provider == "real"
