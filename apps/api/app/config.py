@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     open_provider_name: str = "NaN Builders"
     open_base_url: str = "https://api.nan.builders/v1"
     open_api_key: str = ""
-    open_model: str = "meta-llama/llama-3.1-8b-instruct"
+    open_model: str = "qwen3.6"
 
     # VPC private (vLLM / TGI)
     vpc_enabled: bool = False
