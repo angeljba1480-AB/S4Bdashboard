@@ -5,6 +5,7 @@ import type { Me } from "@shared/types";
 import {
   Activity,
   Bot,
+  Building2,
   FileText,
   IdCard,
   LayoutDashboard,
@@ -51,6 +52,7 @@ const NAV = [
   {
     group: "GOBIERNO",
     items: [
+      { href: "/company", label: "Configuración", icon: Building2 },
       { href: "/account", label: "Mi cuenta", icon: IdCard },
       { href: "/audit", label: "Auditoría", icon: ShieldCheck },
       { href: "/admin", label: "Admin", icon: Settings },

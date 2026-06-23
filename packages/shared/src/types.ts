@@ -85,10 +85,34 @@ export interface AuditEvent {
 
 export interface RecipeInput {
   key: string;
-  type: "document" | "text" | "email" | "choice";
+  type: "document" | "text" | "email" | "choice" | "textarea" | "number" | "date" | "area" | "region";
   label: string;
   required?: boolean;
   options?: string[];
+  placeholder?: string;
+  help?: string;
+}
+
+export interface CompanyArea {
+  name: string;
+  responsible: string;
+  email: string;
+}
+
+export interface CompanyProfile {
+  industry: string;
+  company_size: string;
+  description: string;
+  audience: string;
+  value_prop: string;
+  goals: string;
+  tone: string;
+  website: string;
+  areas: CompanyArea[];
+  tech_stack: string[];
+  completed: boolean;
+  completion: number;
+  company_name?: string;
 }
 
 export interface Recipe {
