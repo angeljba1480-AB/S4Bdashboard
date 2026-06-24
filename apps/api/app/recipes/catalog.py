@@ -94,8 +94,8 @@ RECIPES: list[dict] = [
         name="Resumen de correo y agenda",
         description="Conecta tu correo (Outlook/Gmail) y genero el resumen del día. Tú apruebas.",
         inputs=[
-            {"key": "email", "type": "email", "label": "Tu correo", "required": True,
-             "help": "Conéctalo primero en Integraciones → «Conectar correo»."},
+            {"key": "email", "type": "mailbox", "label": "Cuenta a resumir", "required": True,
+             "help": "Elige una de tus cuentas conectadas. ¿No aparece? Conéctala en Integraciones → «Conectar correo»."},
             {"key": "output", "type": "choice", "label": "Tipo de salida",
              "options": ["Resumen diario", "Horario del día", "Pendientes por responder"], "required": True},
         ],

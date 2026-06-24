@@ -85,7 +85,7 @@ export interface AuditEvent {
 
 export interface RecipeInput {
   key: string;
-  type: "document" | "text" | "email" | "choice" | "textarea" | "number" | "date" | "area" | "region";
+  type: "document" | "text" | "email" | "mailbox" | "choice" | "textarea" | "number" | "date" | "area" | "region";
   label: string;
   required?: boolean;
   options?: string[];

@@ -13,6 +13,7 @@ export default function RecipesPage() {
   const [cat, setCat] = useState<string>("");
   const [q, setQ] = useState("");
   const [docs, setDocs] = useState<DocumentItem[]>([]);
+  const [mailboxes, setMailboxes] = useState<{ provider: string; label: string; identifier: string }[]>([]);
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [active, setActive] = useState<Recipe | null>(null);
   const [inputs, setInputs] = useState<Record<string, string>>({});
@@ -26,6 +27,13 @@ export default function RecipesPage() {
     api.recipeCategories().then(setCategories).catch(() => {});
     api.documents().then(setDocs).catch(() => {});
     api.companyProfile().then(setProfile).catch(() => {});
+    api.oauthProviders()
+      .then((r) => setMailboxes(
+        r.providers
+          .filter((p) => p.connected && p.identifier)
+          .map((p) => ({ provider: p.provider, label: p.label, identifier: p.identifier })),
+      ))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -203,7 +211,26 @@ export default function RecipesPage() {
                           {f.label}
                           {f.required && <span className="text-red-500"> *</span>}
                         </label>
-                        {f.type === "document" ? (
+                        {f.type === "mailbox" ? (
+                          mailboxes.length > 0 ? (
+                            <select value={val} onChange={(e) => onChange(e.target.value)} className={cls}>
+                              <option value="">Elige una cuenta…</option>
+                              {mailboxes.map((m) => (
+                                <option key={m.provider} value={m.identifier}>
+                                  {m.identifier} — {m.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                              No tienes cuentas conectadas.{" "}
+                              <Link href="/integrations" className="font-semibold underline">
+                                Conecta tu correo
+                              </Link>{" "}
+                              (Outlook, Gmail o IMAP) para usar este caso.
+                            </div>
+                          )
+                        ) : f.type === "document" ? (
                           <select value={val} onChange={(e) => onChange(e.target.value)} className={cls}>
                             <option value="">Selecciona un documento…</option>
                             {docs.map((d) => <option key={d.id} value={d.id}>{d.filename}</option>)}
