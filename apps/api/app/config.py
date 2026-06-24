@@ -91,6 +91,29 @@ class Settings(BaseSettings):
     # acceptable (e.g. while a local Ollama/VPC model is not yet connected).
     allow_cloud_fallback: bool = False
 
+    # Public URL of the web portal — used to redirect the browser back after an
+    # OAuth callback (mailbox connection). Defaults to the production domain.
+    app_public_url: str = "https://plataforma.maestroai.mx"
+
+    # Mailbox/calendar OAuth — Microsoft (Outlook/Graph) and Google (Gmail).
+    # Set client id/secret + redirect uri (must match the app registration) to
+    # enable "Conectar correo". Disabled until configured.
+    microsoft_oauth_enabled: bool = False
+    microsoft_client_id: str = ""
+    microsoft_client_secret: str = ""
+    microsoft_tenant: str = "common"   # 'common' for personal + work accounts
+    microsoft_redirect_uri: str = ""   # e.g. https://<api>/oauth/microsoft/callback
+    microsoft_scopes: str = "offline_access User.Read Mail.Read Calendars.Read"
+
+    google_oauth_enabled: bool = False
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = ""      # e.g. https://<api>/oauth/google/callback
+    google_scopes: str = (
+        "openid email https://www.googleapis.com/auth/gmail.readonly "
+        "https://www.googleapis.com/auth/calendar.readonly"
+    )
+
     # SSO / OIDC (optional, pluggable). When disabled, password login is used.
     sso_enabled: bool = False
     oidc_issuer: str = ""

@@ -21,6 +21,7 @@ from .routers import (
     documents,
     export,
     integrations,
+    oauth,
     recipes,
     regional,
     sso,
@@ -74,6 +75,7 @@ app.include_router(dashboards.router)
 app.include_router(apps.router)
 app.include_router(automations.router)
 app.include_router(integrations.router)
+app.include_router(oauth.router)
 app.include_router(v1.router)
 app.include_router(workflows.router)
 app.include_router(audit.router)

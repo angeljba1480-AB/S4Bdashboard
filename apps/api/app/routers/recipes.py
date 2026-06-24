@@ -178,7 +178,7 @@ def start_recipe(
     conns = _pending_connections(session, tenant.id, user.id, recipe, identifier)
     needs_conn = any(c.status != "approved" for _, c in conns)
 
-    draft = prefill(recipe, session, tenant, body.inputs)
+    draft = prefill(recipe, session, tenant, body.inputs, user_id=user.id)
     run = RecipeRun(
         tenant_id=tenant.id, user_id=user.id, recipe_id=recipe_id,
         status="needs_connection" if needs_conn else "draft",
@@ -309,7 +309,7 @@ def approve_run(
         raise HTTPException(status_code=409, detail={
             "message": "Aprueba primero la conexión.", "connections": pending})
 
-    result = execute(recipe, session, tenant.id, inputs, json.loads(run.draft or "{}"))
+    result = execute(recipe, session, tenant.id, inputs, json.loads(run.draft or "{}"), user_id=user.id)
     run.status = "completed"
     run.result = json.dumps(result)
     run.updated_at = _now()

@@ -92,14 +92,14 @@ RECIPES: list[dict] = [
     _r(
         id="correo_agenda", category="dia_a_dia", handler="correo_agenda", icon="mail",
         name="Resumen de correo y agenda",
-        description="Pon tu correo y elige el resumen; lo genero solo. Tú apruebas la conexión.",
+        description="Conecta tu correo (Outlook/Gmail) y genero el resumen del día. Tú apruebas.",
         inputs=[
-            {"key": "email", "type": "email", "label": "Tu correo", "required": True},
+            {"key": "email", "type": "email", "label": "Tu correo", "required": True,
+             "help": "Conéctalo primero en Integraciones → «Conectar correo»."},
             {"key": "output", "type": "choice", "label": "Tipo de salida",
              "options": ["Resumen diario", "Horario del día", "Pendientes por responder"], "required": True},
         ],
-        connections=[{"provider": "email", "label": "Correo"}, {"provider": "calendar", "label": "Calendario"}],
-        approval="connection", approve_label="Aprobar conexión y ejecutar",
+        approve_label="Generar resumen",
         produces="un resumen de tu correo y agenda",
     ),
 
@@ -478,12 +478,12 @@ _REQ_KEYWORDS = (
 )
 
 
-def prefill(recipe: dict, session: Session, tenant: Tenant, inputs: dict) -> dict:
+def prefill(recipe: dict, session: Session, tenant: Tenant, inputs: dict, user_id: str | None = None) -> dict:
     handler = recipe.get("handler", "generic")
     if handler == "licitacion":
         return _prefill_licitacion(session, tenant.id, inputs)
     if handler == "correo_agenda":
-        return _prefill_correo_agenda(inputs)
+        return _prefill_correo_agenda(session, tenant, user_id, inputs)
     return _prefill_generic(recipe, session, tenant, inputs)
 
 
@@ -587,22 +587,37 @@ def _prefill_licitacion(session: Session, tenant_id: str, inputs: dict) -> dict:
     }
 
 
-def _prefill_correo_agenda(inputs: dict) -> dict:
+def _prefill_correo_agenda(session: Session, tenant: Tenant, user_id: str | None, inputs: dict) -> dict:
+    from ..integrations import token_store
     output = inputs.get("output") or "Resumen diario"
     plan = {
         "Resumen diario": "Leeré tu bandeja de hoy y tu agenda y generaré un resumen ejecutivo.",
         "Horario del día": "Compilaré tus eventos del día en orden y detectaré huecos libres.",
         "Pendientes por responder": "Identificaré correos que esperan tu respuesta y los priorizaré.",
     }.get(output, "Generaré el resumen solicitado.")
+
+    provider = token_store.active_provider(session, tenant.id, user_id, inputs.get("email", "")) if user_id else None
+    if provider:
+        conns = {c.provider: c.identifier for c in token_store.list_connections(session, tenant.id, user_id)}
+        ident = conns.get(provider, "")
+        return {
+            "tipo": "correo_agenda", "email": inputs.get("email", ""), "output": output,
+            "connected": True, "provider": provider,
+            "summary": f"{plan} Conectado como {ident} ({provider}). Aprueba para generarlo ahora con tu correo real.",
+            "route": "open",
+        }
     return {
         "tipo": "correo_agenda", "email": inputs.get("email", ""), "output": output,
-        "summary": f"{plan} Para hacerlo necesito que apruebes la conexión a tu correo y calendario.",
+        "connected": False, "needs_oauth": True,
+        "summary": (f"{plan} Primero conecta tu correo en Integraciones → «Conectar correo». "
+                    f"Aún no hay una cuenta conectada."),
         "route": "vpc",
     }
 
 
 # --- Execution (after approval) ---------------------------------------------
-def execute(recipe: dict, session: Session, tenant_id: str, inputs: dict, draft: dict) -> dict:
+def execute(recipe: dict, session: Session, tenant_id: str, inputs: dict, draft: dict,
+            user_id: str | None = None) -> dict:
     handler = recipe.get("handler", "generic")
     if handler == "licitacion":
         campos = draft.get("campos", [])
@@ -612,9 +627,30 @@ def execute(recipe: dict, session: Session, tenant_id: str, inputs: dict, draft:
                 "campos_completados": len(campos),
                 "message": "Respuesta compilada y lista para descargar/enviar."}
     if handler == "correo_agenda":
-        return {"tipo": "correo_agenda", "output": inputs.get("output"), "email": inputs.get("email"),
-                "message": ("Conexión aprobada. El resumen se generará con tu proveedor de "
-                            "correo/calendario y se entregará según la salida elegida."),
-                "items": []}
+        return _execute_correo_agenda(session, tenant_id, user_id, inputs)
     return {"tipo": "generico", "output": draft.get("contenido") or draft.get("plan"),
             "message": f"{recipe['name']}: {recipe.get('produces', 'resultado')} listo."}
+
+
+def _execute_correo_agenda(session: Session, tenant_id: str, user_id: str | None, inputs: dict) -> dict:
+    from ..integrations import mailbox, token_store
+    output = inputs.get("output") or "Resumen diario"
+    base = {"tipo": "correo_agenda", "output": output, "email": inputs.get("email"), "items": []}
+
+    provider = token_store.active_provider(session, tenant_id, user_id, inputs.get("email", "")) if user_id else None
+    if not provider:
+        return {**base, "message": ("Conecta tu correo en Integraciones → «Conectar correo» y "
+                                    "vuelve a ejecutar este caso.")}
+    tenant = session.get(Tenant, tenant_id)
+    access = token_store.get_valid_access_token(session, tenant, user_id, provider)
+    if not access:
+        return {**base, "message": "La conexión expiró o fue revocada. Reconéctala en Integraciones."}
+
+    data = mailbox.fetch(provider, access)
+    summary = mailbox.summarize(session, tenant, data, output)
+    if summary.get("empty"):
+        return {**base, "message": "No se encontraron correos ni eventos recientes para resumir."}
+    counts = summary.get("counts", {})
+    return {**base, "documento": summary["content"], "route": summary.get("route", ""),
+            "message": (f"{output} generado desde {provider}: "
+                        f"{counts.get('messages', 0)} correos, {counts.get('events', 0)} eventos.")}

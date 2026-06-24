@@ -253,6 +253,27 @@ class Connection(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class OAuthToken(SQLModel, table=True):
+    """OAuth tokens for a user's connected mailbox/calendar (Microsoft / Google).
+
+    Stored in its own table (auto-created by create_all) so we never alter the
+    existing connections table. Access/refresh tokens are encrypted at rest.
+    """
+    __tablename__ = "oauth_tokens"
+    id: str = Field(default_factory=lambda: _uuid("oat"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    provider: str = ""             # microsoft | google
+    identifier: str = ""           # connected email address
+    access_token_enc: str = ""     # encrypted at rest (AES-256-GCM per tenant)
+    refresh_token_enc: str = ""    # encrypted at rest
+    expires_at: float = 0.0        # unix epoch seconds
+    scopes: str = ""
+    status: str = "active"         # active | revoked
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class Automation(SQLModel, table=True):
     """A user automation: trigger (manual/schedule/event) -> action (workflow /
     recipe / notify). Schedules/events are executed by the workflows layer

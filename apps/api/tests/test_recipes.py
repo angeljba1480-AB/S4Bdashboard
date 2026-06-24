@@ -54,24 +54,63 @@ def test_licitacion_prefills_and_approves(client):
     assert "RESPUESTA A LICITACIÓN" in done["result"]["documento"]
 
 
-def test_correo_agenda_requires_connection_then_runs(client):
+def test_correo_agenda_without_connection_prompts_to_connect(client):
+    """With no mailbox connected, the case runs but asks the user to connect."""
     h = _auth(client)
     start = client.post("/recipes/correo_agenda/start", headers=h, json={
         "inputs": {"email": "user@empresa.mx", "output": "Resumen diario"},
     }).json()
-    assert start["status"] == "needs_connection"
-    assert start["connections"] and all(c["status"] == "pending" for c in start["connections"])
-
-    # approving the run before connections -> 409 with pending connections
-    blocked = client.post(f"/recipes/runs/{start['id']}/approve", headers=h)
-    assert blocked.status_code == 409
-
-    for c in start["connections"]:
-        client.post(f"/recipes/connections/{c['id']}/approve", headers=h, json={"prefs": {}})
+    assert start["status"] == "draft"
+    assert start["draft"].get("needs_oauth") is True
 
     done = client.post(f"/recipes/runs/{start['id']}/approve", headers=h).json()
     assert done["status"] == "completed"
-    assert done["result"]["output"] == "Resumen diario"
+    assert "Conecta tu correo" in done["result"]["message"]
+
+
+def test_correo_agenda_with_connected_mailbox_summarizes(client, monkeypatch):
+    """With a connected mailbox (mocked fetch), the case produces a real summary."""
+    import time
+
+    from sqlmodel import Session
+
+    from app.db import engine
+    from app.integrations import mailbox
+    from app.models import OAuthToken, Tenant
+    from app.security.crypto import encrypt
+
+    h = _auth(client)
+    me = client.get("/me", headers=h).json()
+    with Session(engine) as s:
+        tenant = s.get(Tenant, me["tenant_id"])
+        s.add(OAuthToken(
+            tenant_id=me["tenant_id"], user_id=me["id"], provider="microsoft",
+            identifier="user@empresa.mx",
+            access_token_enc=encrypt("fake-access", tenant.kms_key_id),
+            expires_at=time.time() + 3600, status="active",
+        ))
+        s.commit()
+
+    monkeypatch.setattr(mailbox, "fetch", lambda provider, token: {
+        "messages": [{"from": "Ana", "subject": "Pago", "received": "", "preview": "Favor de revisar la factura", "unread": True}],
+        "events": [{"subject": "Junta", "start": "2026-06-24T10:00:00", "end": "", "location": "Sala 2"}],
+    })
+
+    start = client.post("/recipes/correo_agenda/start", headers=h, json={
+        "inputs": {"email": "user@empresa.mx", "output": "Resumen diario"},
+    }).json()
+    assert start["status"] == "draft"
+    assert start["draft"].get("connected") is True
+
+    done = client.post(f"/recipes/runs/{start['id']}/approve", headers=h).json()
+    assert done["status"] == "completed"
+    assert done["result"].get("documento"), "debe entregar un resumen generado"
+
+
+def test_oauth_providers_listed(client):
+    r = client.get("/oauth/providers", headers=_auth(client)).json()
+    provs = {p["provider"] for p in r["providers"]}
+    assert {"microsoft", "google"} <= provs
 
 
 def test_missing_required_input_422(client):
