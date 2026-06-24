@@ -72,6 +72,7 @@ def _r(**kw) -> dict:
     kw.setdefault("handler", "generic")
     kw.setdefault("produces", "el resultado")
     kw.setdefault("prompt", "")
+    kw.setdefault("rag_category", "")   # document category this recipe grounds in
     return kw
 
 
@@ -87,7 +88,7 @@ RECIPES: list[dict] = [
             {"key": "empresa", "type": "text", "label": "Nombre de tu empresa", "required": True},
         ],
         approval="draft", approve_label="Aprobar respuesta pre-llenada",
-        produces="una respuesta de licitación pre-llenada",
+        produces="una respuesta de licitación pre-llenada", rag_category="licitacion_madre",
     ),
     _r(
         id="correo_agenda", category="dia_a_dia", handler="correo_agenda", icon="mail",
@@ -122,7 +123,7 @@ RECIPES: list[dict] = [
                 "placeholder": "Ventajas, casos de éxito, garantías…"},
                {"key": "vigencia", "type": "text", "label": "Vigencia de la oferta", "placeholder": "Ej. 30 días"},
                _tono_input(), _area_input()],
-       produces="una propuesta comercial",
+       produces="una propuesta comercial", rag_category="propuesta_comercial",
        prompt=("Propuesta comercial para {cliente} (contacto: {contacto}) sobre {servicio}. "
                "Necesidad del cliente: {necesidad}. Alcance/entregables: {alcance}. "
                "Precio: {precio}. Plazo: {plazo}. Diferenciadores: {diferenciadores}. "
@@ -197,7 +198,7 @@ RECIPES: list[dict] = [
                 "placeholder": "Ej. $30,000 MXN, 50% anticipo"},
                {"key": "plazo", "type": "text", "label": "Plazo / vigencia", "placeholder": "Ej. 3 meses"},
                {"key": "lugar", "type": "text", "label": "Ciudad de firma"}],
-       produces="un contrato sencillo",
+       produces="un contrato sencillo", rag_category="contrato_cliente",
        prompt=("Contrato de prestación de servicios entre {parte_a} (prestador) y {parte_b} (cliente) "
                "por {objeto}. Monto y pago: {monto}. Plazo: {plazo}. Lugar: {lugar}. Incluye cláusulas "
                "de objeto, contraprestación, obligaciones, confidencialidad, vigencia y terminación.")),
@@ -456,7 +457,7 @@ def db_recipe_to_dict(row) -> dict:
 
 def public_recipe(r: dict) -> dict:
     keys = ("id", "category", "name", "icon", "description", "inputs",
-            "connections", "approval", "approve_label")
+            "connections", "approval", "approve_label", "rag_category")
     return {k: r[k] for k in keys}
 
 
@@ -481,7 +482,7 @@ _REQ_KEYWORDS = (
 def prefill(recipe: dict, session: Session, tenant: Tenant, inputs: dict, user_id: str | None = None) -> dict:
     handler = recipe.get("handler", "generic")
     if handler == "licitacion":
-        return _prefill_licitacion(session, tenant.id, inputs)
+        return _prefill_licitacion(session, tenant.id, inputs, recipe)
     if handler == "correo_agenda":
         return _prefill_correo_agenda(session, tenant, user_id, inputs)
     return _prefill_generic(recipe, session, tenant, inputs)
@@ -513,10 +514,13 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
     if str(inputs.get("area", "")).strip():
         system += f"\n\nEsta solicitud proviene del área «{inputs['area']}»; adáptala a esa área."
 
-    # Ground in the layered KB: company-private + state + country curated.
+    # Ground in the layered KB: company-private + state + country curated. When the
+    # recipe declares a rag_category, the company-RAG layer is restricted to that
+    # document type (e.g. "Propuesta comercial" → category propuesta_comercial).
     matches = layered_search(session, tenant, q=f"{recipe.get('name', '')} {instruction}",
                              region=inputs.get("region"), municipio=inputs.get("municipio"),
-                             country=country["code"], include_rag=True)[:6]
+                             country=country["code"], include_rag=True,
+                             rag_category=recipe.get("rag_category") or None)[:6]
     ground_context = [to_context(t) for t in matches]
     fuentes = [{"title": t["title"], "authority": t.get("authority", ""),
                 "fuente": t.get("fuente", ""), "source": t.get("source", "curado")} for t in matches]
@@ -555,13 +559,17 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
     }
 
 
-def _prefill_licitacion(session: Session, tenant_id: str, inputs: dict) -> dict:
+def _prefill_licitacion(session: Session, tenant_id: str, inputs: dict, recipe: dict | None = None) -> dict:
     doc_id = inputs.get("document_id") or None
     empresa = (inputs.get("empresa") or "Nuestra empresa").strip()
+    # Use the uploaded tender when given; otherwise ground in the company's
+    # "documento madre de licitación" category so reusable boilerplate is found.
+    rag_category = (recipe or {}).get("rag_category") or None
     citations = retrieve(
         session, tenant_id,
         "requisitos, requerimientos, criterios de evaluación, documentos a presentar, plazos",
         [doc_id] if doc_id else None, top_k=6,
+        category=None if doc_id else rag_category,
     )
 
     requisitos: list[str] = []

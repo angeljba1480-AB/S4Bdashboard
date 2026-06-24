@@ -136,6 +136,7 @@ export interface Recipe {
   connections: { provider: string; label: string }[];
   approval: "draft" | "connection";
   approve_label: string;
+  rag_category?: string;
 }
 
 export interface RecipeConnection {

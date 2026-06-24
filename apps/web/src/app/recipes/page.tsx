@@ -3,7 +3,7 @@
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
 import type { CompanyProfile, DocumentItem, Recipe, RecipeRun } from "@shared/types";
-import { Building2, CheckCircle2, ChevronLeft, Download, Link2, Sparkles } from "lucide-react";
+import { Building2, CheckCircle2, ChevronLeft, Download, FileText, Link2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -13,6 +13,7 @@ export default function RecipesPage() {
   const [cat, setCat] = useState<string>("");
   const [q, setQ] = useState("");
   const [docs, setDocs] = useState<DocumentItem[]>([]);
+  const [docCats, setDocCats] = useState<{ key: string; label: string }[]>([]);
   const [mailboxes, setMailboxes] = useState<{ id: string; provider: string; label: string; identifier: string }[]>([]);
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [active, setActive] = useState<Recipe | null>(null);
@@ -26,6 +27,7 @@ export default function RecipesPage() {
   useEffect(() => {
     api.recipeCategories().then(setCategories).catch(() => {});
     api.documents().then(setDocs).catch(() => {});
+    api.documentCategories().then((cs) => setDocCats(cs.map((c) => ({ key: c.key, label: c.label })))).catch(() => {});
     api.companyProfile().then(setProfile).catch(() => {});
     api.oauthProviders()
       .then((r) => setMailboxes(r.connections))
@@ -200,6 +202,17 @@ export default function RecipesPage() {
             <div className="rounded-2xl border border-slate-200 bg-white p-6">
               <h2 className="font-semibold text-slate-800">{active.name}</h2>
               <p className="mt-1 text-sm text-slate-500">{active.description}</p>
+
+              {active.rag_category && (
+                <div className="mt-3 flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800">
+                  <FileText className="h-4 w-4 flex-shrink-0" />
+                  <span>
+                    Se apoya en tus documentos de categoría{" "}
+                    <b>{docCats.find((c) => c.key === active.rag_category)?.label || active.rag_category}</b>.{" "}
+                    <Link href="/documents" className="font-semibold underline">Súbelos en Documentos</Link> para mejores resultados.
+                  </span>
+                </div>
+              )}
 
               {/* Step 1: minimal inputs */}
               {!run && (

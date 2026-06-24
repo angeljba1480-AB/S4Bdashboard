@@ -92,9 +92,25 @@ def retrieve(
     query: str,
     document_ids: list[str] | None = None,
     top_k: int = 4,
+    category: str | None = None,
 ) -> list[Citation]:
-    """Vector search scoped to a tenant (and optionally specific documents)."""
+    """Vector search scoped to a tenant (and optionally specific documents or a
+    document category — e.g. a recipe grounding only in 'propuesta_comercial')."""
     qvec = embed(query)
+
+    # Category filter: restrict to documents of that category (intersect with
+    # explicit document_ids when both are given). An active category with no
+    # matching documents yields no results (rather than falling back to all).
+    if category:
+        cat_ids = [d.id for d in session.exec(
+            select(Document).where(Document.tenant_id == tenant_id, Document.category == category)
+        ).all()]
+        if document_ids:
+            allowed = set(document_ids)
+            cat_ids = [i for i in cat_ids if i in allowed]
+        if not cat_ids:
+            return []
+        document_ids = cat_ids
 
     # Managed Qdrant path (when configured); in-process DB path otherwise.
     store = get_vector_store()

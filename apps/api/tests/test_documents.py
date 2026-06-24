@@ -94,6 +94,27 @@ def test_delete_document(client):
     assert all(d["id"] != doc["id"] for d in client.get("/documents", headers=h).json())
 
 
+def test_recipe_grounds_only_in_its_category(client):
+    """A recipe with rag_category pulls company context from that category only."""
+    h = _auth(client)
+    client.post("/documents/upload", headers=h, data={
+        "filename": "plantilla_prop.txt",
+        "text": "PLANTILLA ZXQW de propuesta comercial: estructura, alcance y precios.",
+        "category": "propuesta_comercial",
+    })
+    client.post("/documents/upload", headers=h, data={
+        "filename": "contrato_zxqw.txt",
+        "text": "PLANTILLA ZXQW de contrato laboral confidencial.",
+        "category": "contrato_empleado",
+    })
+    start = client.post("/recipes/propuesta_comercial/start", headers=h, json={
+        "inputs": {"cliente": "ACME", "servicio": "CRM"},
+    }).json()
+    rag_titles = {f["title"] for f in start["draft"].get("fuentes", []) if f.get("source") == "empresa-rag"}
+    assert "plantilla_prop.txt" in rag_titles
+    assert "contrato_zxqw.txt" not in rag_titles  # other category excluded
+
+
 def test_chat_without_context_has_no_citations(client):
     h = _auth(client)
     # Seed a document so "with context" would normally retrieve something.
