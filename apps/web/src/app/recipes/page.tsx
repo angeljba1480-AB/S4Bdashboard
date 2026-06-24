@@ -13,7 +13,7 @@ export default function RecipesPage() {
   const [cat, setCat] = useState<string>("");
   const [q, setQ] = useState("");
   const [docs, setDocs] = useState<DocumentItem[]>([]);
-  const [mailboxes, setMailboxes] = useState<{ provider: string; label: string; identifier: string }[]>([]);
+  const [mailboxes, setMailboxes] = useState<{ id: string; provider: string; label: string; identifier: string }[]>([]);
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [active, setActive] = useState<Recipe | null>(null);
   const [inputs, setInputs] = useState<Record<string, string>>({});
@@ -28,11 +28,7 @@ export default function RecipesPage() {
     api.documents().then(setDocs).catch(() => {});
     api.companyProfile().then(setProfile).catch(() => {});
     api.oauthProviders()
-      .then((r) => setMailboxes(
-        r.providers
-          .filter((p) => p.connected && p.identifier)
-          .map((p) => ({ provider: p.provider, label: p.label, identifier: p.identifier })),
-      ))
+      .then((r) => setMailboxes(r.connections))
       .catch(() => {});
   }, []);
 
@@ -41,6 +37,14 @@ export default function RecipesPage() {
       .then(setRecipes)
       .catch((e) => setError(e.message));
   }, [cat, q]);
+
+  // Default the mailbox field to the first connected account so there's always a
+  // visible, explicit selection the user can change (instead of a silent fallback).
+  useEffect(() => {
+    if (!active || mailboxes.length === 0) return;
+    const mf = active.inputs.find((f) => f.type === "mailbox");
+    if (mf && !inputs[mf.key]) setInputs((s) => ({ ...s, [mf.key]: mailboxes[0].id }));
+  }, [active, mailboxes]);
 
   async function propose() {
     if (!propTitle.trim()) return;
@@ -216,7 +220,7 @@ export default function RecipesPage() {
                             <select value={val} onChange={(e) => onChange(e.target.value)} className={cls}>
                               <option value="">Elige una cuenta…</option>
                               {mailboxes.map((m) => (
-                                <option key={m.provider} value={m.identifier}>
+                                <option key={m.id} value={m.id}>
                                   {m.identifier} — {m.label}
                                 </option>
                               ))}

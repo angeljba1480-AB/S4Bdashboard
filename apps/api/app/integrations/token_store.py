@@ -23,12 +23,17 @@ def _kms(tenant: Tenant) -> str:
 
 def save_imap(session: Session, tenant: Tenant, user_id: str,
               host: str, port: int, email: str, password: str) -> OAuthToken:
-    """Store generic IMAP credentials (encrypted) as a non-expiring connection."""
+    """Store generic IMAP credentials (encrypted) as a non-expiring connection.
+
+    Keyed by email so a user can connect several IMAP mailboxes; reconnecting the
+    same address updates it instead of creating a duplicate.
+    """
     row = session.exec(
         select(OAuthToken).where(
             OAuthToken.tenant_id == tenant.id,
             OAuthToken.user_id == user_id,
             OAuthToken.provider == "imap",
+            OAuthToken.identifier == email,
         )
     ).first() or OAuthToken(tenant_id=tenant.id, user_id=user_id, provider="imap")
     blob = json.dumps({"host": host, "port": int(port or 993), "email": email, "password": password})
@@ -47,13 +52,20 @@ def save_imap(session: Session, tenant: Tenant, user_id: str,
 
 def save_token(session: Session, tenant: Tenant, user_id: str, provider: str,
                identifier: str, token_resp: dict) -> OAuthToken:
-    row = session.exec(
-        select(OAuthToken).where(
-            OAuthToken.tenant_id == tenant.id,
-            OAuthToken.user_id == user_id,
-            OAuthToken.provider == provider,
-        )
-    ).first() or OAuthToken(tenant_id=tenant.id, user_id=user_id, provider=provider)
+    # Key by (provider, identifier) so a user can connect several accounts of the
+    # same provider (e.g. personal + work Google). Reconnecting the same address
+    # updates its row; a new address inserts a new one. When the identity couldn't
+    # be resolved (identifier empty) fall back to matching the provider alone to
+    # avoid orphaning a credential-less row.
+    query = select(OAuthToken).where(
+        OAuthToken.tenant_id == tenant.id,
+        OAuthToken.user_id == user_id,
+        OAuthToken.provider == provider,
+    )
+    if identifier:
+        query = query.where(OAuthToken.identifier == identifier)
+    row = session.exec(query).first() or OAuthToken(
+        tenant_id=tenant.id, user_id=user_id, provider=provider)
 
     access = token_resp.get("access_token", "")
     refresh = token_resp.get("refresh_token", "")
@@ -72,18 +84,16 @@ def save_token(session: Session, tenant: Tenant, user_id: str, provider: str,
     return row
 
 
-def get_valid_access_token(session: Session, tenant: Tenant, user_id: str, provider: str) -> str | None:
-    """Return a usable access token, refreshing it if expired. None if not connected."""
-    row = session.exec(
-        select(OAuthToken).where(
-            OAuthToken.tenant_id == tenant.id,
-            OAuthToken.user_id == user_id,
-            OAuthToken.provider == provider,
-            OAuthToken.status == "active",
-        )
-    ).first()
-    if not row:
+def get_connection(session: Session, tenant_id: str, user_id: str, conn_id: str) -> OAuthToken | None:
+    """Fetch one active connection by its id, scoped to the tenant + user."""
+    row = session.get(OAuthToken, conn_id)
+    if not row or row.tenant_id != tenant_id or row.user_id != user_id or row.status != "active":
         return None
+    return row
+
+
+def access_token_for(session: Session, tenant: Tenant, row: OAuthToken) -> str | None:
+    """Return a usable access token for a specific connection, refreshing if expired."""
     # expires_at == 0 means non-expiring (IMAP credentials blob).
     if row.expires_at == 0 or row.expires_at > time.time():
         return decrypt(row.access_token_enc, _kms(tenant))
@@ -92,11 +102,24 @@ def get_valid_access_token(session: Session, tenant: Tenant, user_id: str, provi
     if not refresh:
         return None
     try:
-        token_resp = oauth.refresh_access_token(provider, refresh)
+        token_resp = oauth.refresh_access_token(row.provider, refresh)
     except Exception:
         return None
-    row = save_token(session, tenant, user_id, provider, row.identifier, token_resp)
+    row = save_token(session, tenant, row.user_id, row.provider, row.identifier, token_resp)
     return decrypt(row.access_token_enc, _kms(tenant))
+
+
+def get_valid_access_token(session: Session, tenant: Tenant, user_id: str, provider: str) -> str | None:
+    """Back-compat: token for the first active connection of a provider."""
+    row = session.exec(
+        select(OAuthToken).where(
+            OAuthToken.tenant_id == tenant.id,
+            OAuthToken.user_id == user_id,
+            OAuthToken.provider == provider,
+            OAuthToken.status == "active",
+        )
+    ).first()
+    return access_token_for(session, tenant, row) if row else None
 
 
 def list_connections(session: Session, tenant_id: str, user_id: str) -> list[OAuthToken]:
@@ -109,31 +132,60 @@ def list_connections(session: Session, tenant_id: str, user_id: str) -> list[OAu
     ).all()
 
 
-def active_provider(session: Session, tenant_id: str, user_id: str, prefer_email: str = "") -> str | None:
-    """Pick the user's connected provider, preferring one matching prefer_email."""
+def resolve_connection(session: Session, tenant_id: str, user_id: str,
+                       prefer: str = "") -> OAuthToken | None:
+    """Pick a connection for the use case. `prefer` may be a connection id or an
+    email address; falls back to the first active connection."""
     conns = list_connections(session, tenant_id, user_id)
     if not conns:
         return None
-    if prefer_email:
+    if prefer:
         for c in conns:
-            if c.identifier and c.identifier.lower() == prefer_email.lower():
-                return c.provider
-    return conns[0].provider
+            if c.id == prefer:
+                return c
+        for c in conns:
+            if c.identifier and c.identifier.lower() == prefer.lower():
+                return c
+    return conns[0]
+
+
+def active_provider(session: Session, tenant_id: str, user_id: str, prefer_email: str = "") -> str | None:
+    """Pick the user's connected provider, preferring one matching prefer_email."""
+    conn = resolve_connection(session, tenant_id, user_id, prefer_email)
+    return conn.provider if conn else None
+
+
+def _revoke_row(row: OAuthToken) -> None:
+    row.status = "revoked"
+    row.access_token_enc = ""
+    row.refresh_token_enc = ""
 
 
 def revoke(session: Session, tenant_id: str, user_id: str, provider: str) -> bool:
-    row = session.exec(
+    """Disconnect every active account of a provider (e.g. all Gmail accounts)."""
+    rows = session.exec(
         select(OAuthToken).where(
             OAuthToken.tenant_id == tenant_id,
             OAuthToken.user_id == user_id,
             OAuthToken.provider == provider,
+            OAuthToken.status == "active",
         )
-    ).first()
+    ).all()
+    if not rows:
+        return False
+    for row in rows:
+        _revoke_row(row)
+        session.add(row)
+    session.commit()
+    return True
+
+
+def revoke_connection(session: Session, tenant_id: str, user_id: str, conn_id: str) -> bool:
+    """Disconnect a single account by its connection id."""
+    row = get_connection(session, tenant_id, user_id, conn_id)
     if not row:
         return False
-    row.status = "revoked"
-    row.access_token_enc = ""
-    row.refresh_token_enc = ""
+    _revoke_row(row)
     session.add(row)
     session.commit()
     return True

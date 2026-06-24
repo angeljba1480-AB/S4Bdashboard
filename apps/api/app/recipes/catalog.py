@@ -94,7 +94,7 @@ RECIPES: list[dict] = [
         name="Resumen de correo y agenda",
         description="Conecta tu correo (Outlook/Gmail) y genero el resumen del día. Tú apruebas.",
         inputs=[
-            {"key": "email", "type": "mailbox", "label": "Cuenta a resumir", "required": True,
+            {"key": "account", "type": "mailbox", "label": "Cuenta a resumir",
              "help": "Elige una de tus cuentas conectadas. ¿No aparece? Conéctala en Integraciones → «Conectar correo»."},
             {"key": "output", "type": "choice", "label": "Tipo de salida",
              "options": ["Resumen diario", "Horario del día", "Pendientes por responder"], "required": True},
@@ -596,18 +596,18 @@ def _prefill_correo_agenda(session: Session, tenant: Tenant, user_id: str | None
         "Pendientes por responder": "Identificaré correos que esperan tu respuesta y los priorizaré.",
     }.get(output, "Generaré el resumen solicitado.")
 
-    provider = token_store.active_provider(session, tenant.id, user_id, inputs.get("email", "")) if user_id else None
-    if provider:
-        conns = {c.provider: c.identifier for c in token_store.list_connections(session, tenant.id, user_id)}
-        ident = conns.get(provider, "")
+    prefer = inputs.get("account") or inputs.get("email", "")
+    conn = token_store.resolve_connection(session, tenant.id, user_id, prefer) if user_id else None
+    if conn:
         return {
-            "tipo": "correo_agenda", "email": inputs.get("email", ""), "output": output,
-            "connected": True, "provider": provider,
-            "summary": f"{plan} Conectado como {ident} ({provider}). Aprueba para generarlo ahora con tu correo real.",
+            "tipo": "correo_agenda", "account": conn.id, "output": output,
+            "connected": True, "provider": conn.provider,
+            "summary": f"{plan} Conectado como {conn.identifier} ({conn.provider}). "
+                       f"Aprueba para generarlo ahora con tu correo real.",
             "route": "open",
         }
     return {
-        "tipo": "correo_agenda", "email": inputs.get("email", ""), "output": output,
+        "tipo": "correo_agenda", "account": prefer, "output": output,
         "connected": False, "needs_oauth": True,
         "summary": (f"{plan} Primero conecta tu correo en Integraciones → «Conectar correo». "
                     f"Aún no hay una cuenta conectada."),
@@ -635,22 +635,23 @@ def execute(recipe: dict, session: Session, tenant_id: str, inputs: dict, draft:
 def _execute_correo_agenda(session: Session, tenant_id: str, user_id: str | None, inputs: dict) -> dict:
     from ..integrations import mailbox, token_store
     output = inputs.get("output") or "Resumen diario"
-    base = {"tipo": "correo_agenda", "output": output, "email": inputs.get("email"), "items": []}
+    prefer = inputs.get("account") or inputs.get("email", "")
+    base = {"tipo": "correo_agenda", "output": output, "account": prefer, "items": []}
 
-    provider = token_store.active_provider(session, tenant_id, user_id, inputs.get("email", "")) if user_id else None
-    if not provider:
+    conn = token_store.resolve_connection(session, tenant_id, user_id, prefer) if user_id else None
+    if not conn:
         return {**base, "message": ("Conecta tu correo en Integraciones → «Conectar correo» y "
                                     "vuelve a ejecutar este caso.")}
     tenant = session.get(Tenant, tenant_id)
-    access = token_store.get_valid_access_token(session, tenant, user_id, provider)
+    access = token_store.access_token_for(session, tenant, conn)
     if not access:
         return {**base, "message": "La conexión expiró o fue revocada. Reconéctala en Integraciones."}
 
-    data = mailbox.fetch(provider, access)
+    data = mailbox.fetch(conn.provider, access)
     summary = mailbox.summarize(session, tenant, data, output)
     if summary.get("empty"):
         return {**base, "message": "No se encontraron correos ni eventos recientes para resumir."}
     counts = summary.get("counts", {})
     return {**base, "documento": summary["content"], "route": summary.get("route", ""),
-            "message": (f"{output} generado desde {provider}: "
+            "message": (f"{output} generado desde {conn.identifier or conn.provider}: "
                         f"{counts.get('messages', 0)} correos, {counts.get('events', 0)} eventos.")}

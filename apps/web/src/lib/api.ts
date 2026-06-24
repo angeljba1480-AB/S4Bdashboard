@@ -192,13 +192,16 @@ export const api = {
     }),
   // Mailbox OAuth (Outlook / Gmail)
   oauthProviders: () =>
-    request<{ providers: { provider: string; label: string; kind: string; enabled: boolean; configured: boolean; connected: boolean; identifier: string }[] }>(
-      "/oauth/providers",
-    ),
+    request<{
+      providers: { provider: string; label: string; kind: string; enabled: boolean; configured: boolean }[];
+      connections: { id: string; provider: string; label: string; identifier: string }[];
+    }>("/oauth/providers"),
   oauthAuthorize: (provider: string) =>
     request<{ authorize_url: string }>(`/oauth/${provider}/authorize`),
   oauthDisconnect: (provider: string) =>
     request<{ ok: boolean }>(`/oauth/${provider}`, { method: "DELETE" }),
+  oauthDisconnectConnection: (connId: string) =>
+    request<{ ok: boolean }>(`/oauth/connection/${connId}`, { method: "DELETE" }),
   connectImap: (body: { host: string; port: number; email: string; password: string }) =>
     request<{ ok: boolean; identifier: string }>("/oauth/imap", { method: "POST", body: JSON.stringify(body) }),
   // Company configuration (onboarding workflow)
