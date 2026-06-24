@@ -55,7 +55,7 @@ def preview(
     if not agent or agent.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Agente no encontrado")
 
-    citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None)
+    citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None) if body.use_rag else []
     decision = route_request(tenant, agent, body.prompt, [c.text for c in citations], task="chat")
 
     route = decision.route.value
@@ -109,16 +109,20 @@ def chat(
         session.commit()
         session.refresh(conv)
 
-    # 2. Retrieval (tenant-scoped RAG)
-    citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None)
-    context_texts = [c.text for c in citations]
+    # 2. Retrieval (tenant-scoped RAG) — skipped entirely in "sin contexto" mode
+    # so the user can hold a plain conversation with the model.
+    citations = []
+    context_texts: list[str] = []
+    if body.use_rag:
+        citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None)
+        context_texts = [c.text for c in citations]
 
-    # 2b. Curated trámites MCP grounding (empresa → estado → país) so agents
-    # answer with real local context, not just the company's own documents.
-    from ..regional.tramites import to_context as _tramite_context
-    from .tramites import layered_search as _tramite_search
-    tramite_matches = _tramite_search(session, tenant, q=body.prompt, country=tenant.country)[:4]
-    context_texts = context_texts + [_tramite_context(t) for t in tramite_matches]
+        # 2b. Curated trámites MCP grounding (empresa → estado → país) so agents
+        # answer with real local context, not just the company's own documents.
+        from ..regional.tramites import to_context as _tramite_context
+        from .tramites import layered_search as _tramite_search
+        tramite_matches = _tramite_search(session, tenant, q=body.prompt, country=tenant.country)[:4]
+        context_texts = context_texts + [_tramite_context(t) for t in tramite_matches]
 
     # 3. Privacy Model Router
     decision = route_request(tenant, agent, body.prompt, context_texts, task="chat")

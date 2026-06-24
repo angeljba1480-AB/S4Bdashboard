@@ -3,11 +3,9 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from .ai.rag import index_document
 from .auth import hash_password
 from .db import engine
-from .models import Agent, Document, Role, Sensitivity, Tenant, User
-from .security.classifier import classify_data
+from .models import Agent, Role, Tenant, User
 
 DEMO_PASSWORD = "demo1234"
 
@@ -51,32 +49,12 @@ def seed() -> None:
         session.add_all(agents)
         session.commit()
 
-        owner = users[0]
-        session.refresh(owner)
-        sample_docs = [
-            ("politica_seguridad.txt",
-             "Política de seguridad de la información de uso interno. Define controles "
-             "de acceso, respaldo y continuidad. Documento interno borrador."),
-            ("contrato_bbva.txt",
-             "Contrato confidencial de servicios administrados con BBVA México. "
-             "Acuerdo de confidencialidad (NDA). Contacto: andres.romo@bbva.mx, "
-             "RFC BBM930101XYZ. Montos y estados financieros restringidos."),
-            ("comunicado_prensa.txt",
-             "Comunicado público: MaestroAI anuncia nuevo centro de operaciones "
-             "de seguridad para el mercado mexicano. Para marketing y prensa."),
-        ]
-        for filename, text in sample_docs:
-            cls = classify_data(text)
-            doc = Document(
-                tenant_id=tenant.id, owner_id=owner.id, filename=filename,
-                mime_type="text/plain", sensitivity=cls.sensitivity,
-                pii_score=cls.pii.score, pii_types=",".join(cls.pii.types),
-                text=text, storage_uri=f"local://{filename}",
-            )
-            session.add(doc)
-            session.commit()
-            session.refresh(doc)
-            index_document(session, doc)
+        # Seed the default document-category catalog so the repository is ready to
+        # organize uploads by type. We intentionally do NOT seed sample documents
+        # anymore — they polluted the RAG index (showing up as chat sources) and
+        # users couldn't tell them apart from real company files.
+        from . import doc_categories
+        doc_categories.ensure_defaults(session, tenant.id)
 
 
 if __name__ == "__main__":

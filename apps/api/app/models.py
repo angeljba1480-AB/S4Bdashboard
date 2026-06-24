@@ -128,6 +128,8 @@ class Document(SQLModel, table=True):
     owner_id: str = Field(foreign_key="users.id")
     filename: str
     mime_type: str = "text/plain"
+    area: str = ""                 # organizational area (Legal, Ventas, RH, …)
+    category: str = ""            # document type key (catalog) — e.g. propuesta_comercial
     sensitivity: Sensitivity = Sensitivity.INTERNAL
     pii_score: float = 0.0
     pii_types: str = ""            # comma separated
@@ -135,6 +137,19 @@ class Document(SQLModel, table=True):
     hash: str = ""
     text: str = ""                 # extracted text (MVP keeps it inline)
     indexed: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DocumentCategory(SQLModel, table=True):
+    """Per-tenant catalog of document types (extensible). Built-in defaults are
+    marked `system` and can't be deleted; users/recipes can add new ones."""
+    __tablename__ = "document_categories"
+    id: str = Field(default_factory=lambda: _uuid("dcat"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    key: str = ""                  # slug, unique per tenant
+    label: str = ""
+    description: str = ""
+    system: bool = False           # built-in default (protected from deletion)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

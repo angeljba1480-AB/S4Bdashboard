@@ -34,11 +34,22 @@ export interface DocumentItem {
   id: string;
   filename: string;
   mime_type: string;
+  area: string;
+  category: string;
+  category_label: string;
   sensitivity: Sensitivity;
   pii_score: number;
   pii_types: string[];
   indexed: boolean;
   created_at: string;
+}
+
+export interface DocumentCategory {
+  id: string;
+  key: string;
+  label: string;
+  description: string;
+  system: boolean;
 }
 
 export interface Citation {

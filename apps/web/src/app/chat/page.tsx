@@ -19,6 +19,7 @@ export default function ChatPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [agentId, setAgentId] = useState("");
+  const [ctxMode, setCtxMode] = useState<"none" | "all" | "select">("all");
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
@@ -47,12 +48,16 @@ export default function ChatPage() {
     }
     const t = setTimeout(() => {
       api
-        .previewRoute({ agent_id: agentId, prompt: input.trim(), document_ids: selectedDocs.length ? selectedDocs : undefined })
+        .previewRoute({
+          agent_id: agentId, prompt: input.trim(),
+          use_rag: ctxMode !== "none",
+          document_ids: ctxMode === "select" && selectedDocs.length ? selectedDocs : undefined,
+        })
         .then(setPreview)
         .catch(() => setPreview(null));
     }, 500);
     return () => clearTimeout(t);
-  }, [input, agentId, selectedDocs]);
+  }, [input, agentId, selectedDocs, ctxMode]);
 
   async function send() {
     if (!input.trim() || !agentId) return;
@@ -65,7 +70,8 @@ export default function ChatPage() {
         agent_id: agentId,
         prompt,
         conversation_id: convId,
-        document_ids: selectedDocs.length ? selectedDocs : undefined,
+        use_rag: ctxMode !== "none",
+        document_ids: ctxMode === "select" && selectedDocs.length ? selectedDocs : undefined,
       });
       setConvId(res.conversation_id);
       setTurns((t) => [...t, { role: "assistant", content: res.content, meta: res }]);
@@ -203,26 +209,46 @@ export default function ChatPage() {
         </div>
 
         <aside className="w-72 flex-shrink-0 border-l border-slate-200 bg-white p-4">
-          <h3 className="mb-3 text-sm font-semibold text-slate-700">Documentos en contexto</h3>
-          <p className="mb-3 text-xs text-slate-400">
-            Sin selección, el RAG busca en todo el tenant.
-          </p>
-          <div className="space-y-2">
-            {docs.map((d) => (
-              <label key={d.id} className="flex cursor-pointer items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={selectedDocs.includes(d.id)}
-                  onChange={() => toggleDoc(d.id)}
-                  className="mt-0.5"
-                />
-                <span>
-                  <span className="block text-slate-700">{d.filename}</span>
-                  <SensitivityBadge level={d.sensitivity} />
+          <h3 className="mb-3 text-sm font-semibold text-slate-700">Contexto</h3>
+          <div className="mb-4 space-y-1.5">
+            {([
+              ["none", "Sin contexto", "Solo IA, no usa tus documentos."],
+              ["all", "Buscar en todo", "El RAG busca en todos tus documentos."],
+              ["select", "Elegir documentos", "Solo los documentos que marques abajo."],
+            ] as const).map(([mode, label, hint]) => (
+              <label key={mode} className={`block cursor-pointer rounded-lg border px-3 py-2 text-sm ${ctxMode === mode ? "border-violet-400 bg-violet-50" : "border-slate-200 hover:bg-slate-50"}`}>
+                <span className="flex items-center gap-2">
+                  <input type="radio" name="ctxmode" checked={ctxMode === mode} onChange={() => setCtxMode(mode)} />
+                  <span className="font-medium text-slate-700">{label}</span>
                 </span>
+                <span className="ml-6 block text-xs text-slate-400">{hint}</span>
               </label>
             ))}
           </div>
+
+          {ctxMode === "select" && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase text-slate-400">Documentos</h4>
+              {docs.length === 0 && <p className="text-xs text-slate-400">No tienes documentos. Súbelos en «Documentos».</p>}
+              {docs.map((d) => (
+                <label key={d.id} className="flex cursor-pointer items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedDocs.includes(d.id)}
+                    onChange={() => toggleDoc(d.id)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block text-slate-700">{d.filename}</span>
+                    <SensitivityBadge level={d.sensitivity} />
+                  </span>
+                </label>
+              ))}
+              {ctxMode === "select" && selectedDocs.length === 0 && (
+                <p className="text-xs text-amber-600">Marca al menos un documento o cambia el modo.</p>
+              )}
+            </div>
+          )}
         </aside>
       </div>
     </Shell>

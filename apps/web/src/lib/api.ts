@@ -5,6 +5,7 @@ import type {
   AuditEvent,
   ChatResponse,
   CompanyProfile,
+  DocumentCategory,
   DocumentItem,
   Eje,
   Me,
@@ -265,25 +266,45 @@ export const api = {
   agent: (id: string) => request<Agent>(`/agents/${id}`),
   createAgent: (body: Partial<Agent>) =>
     request<Agent>("/agents", { method: "POST", body: JSON.stringify(body) }),
-  documents: () => request<DocumentItem[]>("/documents"),
-  uploadText: (filename: string, text: string) => {
+  documents: (params?: { area?: string; category?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.area) qs.set("area", params.area);
+    if (params?.category) qs.set("category", params.category);
+    const q = qs.toString();
+    return request<DocumentItem[]>(`/documents${q ? `?${q}` : ""}`);
+  },
+  uploadText: (filename: string, text: string, meta?: { area?: string; category?: string; sensitivity?: string }) => {
     const fd = new FormData();
     fd.append("filename", filename);
     fd.append("text", text);
+    if (meta?.area) fd.append("area", meta.area);
+    if (meta?.category) fd.append("category", meta.category);
+    if (meta?.sensitivity) fd.append("sensitivity", meta.sensitivity);
     return request<DocumentItem>("/documents/upload", { method: "POST", body: fd });
   },
-  uploadFile: (file: File) => {
+  uploadFile: (file: File, meta?: { area?: string; category?: string; sensitivity?: string }) => {
     const fd = new FormData();
     fd.append("file", file);
+    if (meta?.area) fd.append("area", meta.area);
+    if (meta?.category) fd.append("category", meta.category);
+    if (meta?.sensitivity) fd.append("sensitivity", meta.sensitivity);
     return request<DocumentItem>("/documents/upload", { method: "POST", body: fd });
   },
+  deleteDocument: (id: string) =>
+    request<{ ok: boolean }>(`/documents/${id}`, { method: "DELETE" }),
+  updateDocument: (id: string, body: { area?: string; category?: string; sensitivity?: string }) =>
+    request<DocumentItem>(`/documents/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  documentCategories: () => request<DocumentCategory[]>("/documents/categories"),
+  createDocumentCategory: (body: { label: string; description?: string }) =>
+    request<DocumentCategory>("/documents/categories", { method: "POST", body: JSON.stringify(body) }),
   chat: (body: {
     agent_id: string;
     prompt: string;
     conversation_id?: string;
     document_ids?: string[];
+    use_rag?: boolean;
   }) => request<ChatResponse>("/chat", { method: "POST", body: JSON.stringify(body) }),
-  previewRoute: (body: { agent_id: string; prompt: string; document_ids?: string[] }) =>
+  previewRoute: (body: { agent_id: string; prompt: string; document_ids?: string[]; use_rag?: boolean }) =>
     request<{
       classification: string;
       route: string;
