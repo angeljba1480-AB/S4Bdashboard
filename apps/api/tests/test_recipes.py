@@ -110,7 +110,34 @@ def test_correo_agenda_with_connected_mailbox_summarizes(client, monkeypatch):
 def test_oauth_providers_listed(client):
     r = client.get("/oauth/providers", headers=_auth(client)).json()
     provs = {p["provider"] for p in r["providers"]}
-    assert {"microsoft", "google"} <= provs
+    assert {"microsoft", "google", "imap"} <= provs
+    imap = next(p for p in r["providers"] if p["provider"] == "imap")
+    assert imap["kind"] == "imap" and imap["configured"] is True
+
+
+def test_imap_connect_and_summarize(client, monkeypatch):
+    """Generic IMAP: connect with user+password (mocked), then summarize."""
+    from app.integrations import mailbox
+
+    h = _auth(client)
+    monkeypatch.setattr(mailbox, "imap_test", lambda host, port, email, password: True)
+    r = client.post("/oauth/imap", headers=h, json={
+        "host": "imap.mail.yahoo.com", "port": 993,
+        "email": "user@yahoo.com", "password": "app-pass-1234",
+    })
+    assert r.status_code == 200, r.text
+    assert r.json()["identifier"] == "user@yahoo.com"
+
+    monkeypatch.setattr(mailbox, "fetch", lambda provider, token: {
+        "messages": [{"from": "Cliente", "subject": "Cotización", "received": "", "preview": "¿Sigue en pie?", "unread": True}],
+        "events": [],
+    })
+    start = client.post("/recipes/correo_agenda/start", headers=h, json={
+        "inputs": {"email": "user@yahoo.com", "output": "Pendientes por responder"},
+    }).json()
+    assert start["draft"].get("connected") is True
+    done = client.post(f"/recipes/runs/{start['id']}/approve", headers=h).json()
+    assert done["status"] == "completed" and done["result"].get("documento")
 
 
 def test_missing_required_input_422(client):

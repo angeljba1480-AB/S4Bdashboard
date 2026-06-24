@@ -102,16 +102,94 @@ def _g_events(token: str, limit: int = 15) -> list[dict]:
     return out
 
 
+# --- Generic IMAP (Yahoo, iCloud, Zoho, hosting/corporate, …) ---------------
+def imap_test(host: str, port: int, email_addr: str, password: str) -> bool:
+    """Try to log in; raise on failure so the caller can report a clear error."""
+    import imaplib
+    m = imaplib.IMAP4_SSL(host, int(port or 993))
+    try:
+        m.login(email_addr, password)
+        m.select("INBOX", readonly=True)
+        return True
+    finally:
+        try:
+            m.logout()
+        except Exception:
+            pass
+
+
+def _imap_messages(blob: str, limit: int = 8) -> list[dict]:
+    import email as emaillib
+    import imaplib
+    import json as _json
+    from email.header import decode_header, make_header
+
+    cfg = _json.loads(blob)
+    m = imaplib.IMAP4_SSL(cfg["host"], int(cfg.get("port", 993)))
+    out: list[dict] = []
+    try:
+        m.login(cfg["email"], cfg["password"])
+        m.select("INBOX", readonly=True)
+        typ, data = m.search(None, "ALL")
+        ids = data[0].split()[-limit:] if data and data[0] else []
+        typ, unseen = m.search(None, "UNSEEN")
+        unseen_ids = set(unseen[0].split()) if unseen and unseen[0] else set()
+        for i in reversed(ids):
+            typ, msgdata = m.fetch(i, "(RFC822)")
+            if typ != "OK" or not msgdata or not msgdata[0]:
+                continue
+            msg = emaillib.message_from_bytes(msgdata[0][1])
+            preview = ""
+            if msg.is_multipart():
+                for part in msg.walk():
+                    if part.get_content_type() == "text/plain":
+                        try:
+                            preview = part.get_payload(decode=True).decode(errors="ignore")
+                        except Exception:
+                            preview = ""
+                        break
+            else:
+                try:
+                    preview = msg.get_payload(decode=True).decode(errors="ignore")
+                except Exception:
+                    preview = ""
+            out.append({
+                "from": str(make_header(decode_header(msg.get("From", "")))),
+                "subject": str(make_header(decode_header(msg.get("Subject", "(sin asunto)")))),
+                "received": msg.get("Date", ""),
+                "preview": " ".join(preview.split())[:240],
+                "unread": i in unseen_ids,
+            })
+    finally:
+        try:
+            m.logout()
+        except Exception:
+            pass
+    return out
+
+
 def fetch(provider: str, token: str) -> dict:
-    """Return {messages, events}; never raises — partial data on API errors."""
+    """Return {messages, events}; never raises — partial data on API errors.
+
+    For OAuth providers `token` is the access token; for IMAP it is the encrypted
+    connection blob (already decrypted by the caller). IMAP has no calendar.
+    """
     messages: list[dict] = []
     events: list[dict] = []
     try:
-        messages = _ms_messages(token) if provider == "microsoft" else _g_messages(token)
+        if provider == "microsoft":
+            messages = _ms_messages(token)
+        elif provider == "google":
+            messages = _g_messages(token)
+        elif provider == "imap":
+            messages = _imap_messages(token)
     except Exception:
         messages = []
     try:
-        events = _ms_events(token) if provider == "microsoft" else _g_events(token)
+        if provider == "microsoft":
+            events = _ms_events(token)
+        elif provider == "google":
+            events = _g_events(token)
     except Exception:
         events = []
     return {"messages": messages, "events": events}

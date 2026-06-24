@@ -63,6 +63,28 @@ GOOGLE_REDIRECT_URI  = https://s4bdashboard.onrender.com/oauth/google/callback
 
 ---
 
+## C) Cualquier otro correo — IMAP (Yahoo, iCloud, Zoho, hosting, empresa…)
+
+**No requiere registrar ninguna app.** El usuario entra a **Integraciones →
+Conectar correo → “Otro correo (IMAP)”**, elige su proveedor (o pone el servidor),
+y escribe **su correo + contraseña**. Listo, queda conectado automáticamente.
+
+- La contraseña se guarda **cifrada (AES-256-GCM)** y se usa solo para leer la bandeja.
+- Presets incluidos: Yahoo, iCloud, Zoho, GoDaddy, Hostinger, y “personalizado”.
+- IMAP trae **correo** (no calendario; eso solo lo dan Outlook/Gmail por OAuth).
+
+### ⚠️ Importante sobre “solo usuario y contraseña”
+- **Yahoo, iCloud, Zoho, hosting/empresa:** funcionan con IMAP. Muchos exigen una
+  **“contraseña de aplicación”** (se genera en la config de seguridad del correo,
+  normalmente con verificación en 2 pasos activada) en lugar de la contraseña normal.
+- **Gmail y Outlook/Microsoft 365:** por seguridad **ya NO aceptan la contraseña
+  normal por IMAP**. Por eso para esos dos lo correcto es **OAuth** (secciones A y B):
+  un clic, sin generar contraseñas. (Gmail sí admite IMAP con *app password* si el
+  usuario tiene 2FA, pero OAuth es mejor experiencia.)
+
+**Resumen:** Gmail/Outlook → botón OAuth (1 clic). Todos los demás → IMAP con
+correo + contraseña (de aplicación).
+
 ## Probar
 1. Render **Live** → portal → **Integraciones → Conectar correo → Conectar (Outlook)**.
 2. Autoriza en Microsoft → te regresa al portal con “Correo conectado”.

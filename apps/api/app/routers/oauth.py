@@ -10,15 +10,23 @@ from __future__ import annotations
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlmodel import Session
 
 from ..auth import get_current_tenant, get_current_user
 from ..config import settings
 from ..db import get_session
-from ..integrations import oauth, token_store
+from ..integrations import mailbox, oauth, token_store
 from ..models import AuditEvent, Tenant, User
 
 router = APIRouter(prefix="/oauth", tags=["oauth"])
+
+
+class ImapConnect(BaseModel):
+    host: str
+    port: int = 993
+    email: str
+    password: str
 
 
 def _identity(provider: str, access_token: str) -> str:
@@ -43,14 +51,47 @@ def providers(
     session: Session = Depends(get_session),
 ) -> dict:
     connected = {c.provider: c.identifier for c in token_store.list_connections(session, tenant.id, user.id)}
-    return {
-        "providers": [
-            {**p, "configured": oauth.is_enabled(p["provider"]),
-             "connected": p["provider"] in connected,
-             "identifier": connected.get(p["provider"], "")}
-            for p in oauth.enabled_providers()
-        ]
-    }
+    out = [
+        {**p, "kind": "oauth", "configured": oauth.is_enabled(p["provider"]),
+         "connected": p["provider"] in connected,
+         "identifier": connected.get(p["provider"], "")}
+        for p in oauth.enabled_providers()
+    ]
+    # Generic IMAP catch-all — always available (user provides credentials).
+    out.append({
+        "provider": "imap", "label": "Otro correo (IMAP)", "kind": "imap",
+        "enabled": True, "configured": True,
+        "connected": "imap" in connected, "identifier": connected.get("imap", ""),
+    })
+    return {"providers": out}
+
+
+@router.post("/imap")
+def connect_imap(
+    body: ImapConnect,
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Connect any mailbox via IMAP (Yahoo, iCloud, Zoho, hosting, corporate…)."""
+    if not (body.host and body.email and body.password):
+        raise HTTPException(status_code=422, detail="Faltan servidor, correo o contraseña")
+    try:
+        mailbox.imap_test(body.host.strip(), body.port, body.email.strip(), body.password)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail=("No se pudo conectar. Verifica servidor/puerto y usa una "
+                    "contraseña de aplicación si tu proveedor la exige."))
+    token_store.save_imap(session, tenant, user.id, body.host.strip(), body.port,
+                          body.email.strip(), body.password)
+    session.add(AuditEvent(
+        tenant_id=tenant.id, user_id=user.id, event_type="connection",
+        object_type="oauth_token", object_id="imap", risk_level="med",
+        reason=f"correo conectado vía IMAP ({body.email.strip()})",
+    ))
+    session.commit()
+    return {"ok": True, "identifier": body.email.strip()}
 
 
 @router.get("/{provider}/authorize")

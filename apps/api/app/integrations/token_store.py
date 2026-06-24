@@ -1,6 +1,12 @@
-"""Persistence for mailbox OAuth tokens (encrypted at rest) + auto-refresh."""
+"""Persistence for mailbox OAuth tokens (encrypted at rest) + auto-refresh.
+
+Also stores generic IMAP credentials (provider="imap") in the same table: the
+connection blob {host, port, email, password} is encrypted into access_token_enc
+and never expires (expires_at == 0).
+"""
 from __future__ import annotations
 
+import json
 import time
 from datetime import datetime
 
@@ -13,6 +19,30 @@ from . import oauth
 
 def _kms(tenant: Tenant) -> str:
     return tenant.kms_key_id
+
+
+def save_imap(session: Session, tenant: Tenant, user_id: str,
+              host: str, port: int, email: str, password: str) -> OAuthToken:
+    """Store generic IMAP credentials (encrypted) as a non-expiring connection."""
+    row = session.exec(
+        select(OAuthToken).where(
+            OAuthToken.tenant_id == tenant.id,
+            OAuthToken.user_id == user_id,
+            OAuthToken.provider == "imap",
+        )
+    ).first() or OAuthToken(tenant_id=tenant.id, user_id=user_id, provider="imap")
+    blob = json.dumps({"host": host, "port": int(port or 993), "email": email, "password": password})
+    row.identifier = email
+    row.access_token_enc = encrypt(blob, _kms(tenant))
+    row.refresh_token_enc = ""
+    row.expires_at = 0  # IMAP credentials don't expire
+    row.scopes = "imap"
+    row.status = "active"
+    row.updated_at = datetime.utcnow()
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
 
 
 def save_token(session: Session, tenant: Tenant, user_id: str, provider: str,
@@ -54,7 +84,8 @@ def get_valid_access_token(session: Session, tenant: Tenant, user_id: str, provi
     ).first()
     if not row:
         return None
-    if row.expires_at and row.expires_at > time.time():
+    # expires_at == 0 means non-expiring (IMAP credentials blob).
+    if row.expires_at == 0 or row.expires_at > time.time():
         return decrypt(row.access_token_enc, _kms(tenant))
 
     refresh = decrypt(row.refresh_token_enc, _kms(tenant)) if row.refresh_token_enc else ""
