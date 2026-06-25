@@ -18,6 +18,7 @@ KEYS = {
     "condense_enabled": lambda: str(settings.condense_enabled).lower(),
     "condense_threshold_chars": lambda: str(settings.condense_threshold_chars),
     "max_tokens_per_request": lambda: str(settings.max_tokens_per_request),
+    "rerank_enabled": lambda: str(settings.rerank_enabled).lower(),
     "tokens_saved_total": lambda: "0",
 }
 
@@ -64,6 +65,10 @@ def max_tokens_per_request() -> int:
         return int(_raw("max_tokens_per_request"))
     except (ValueError, TypeError):
         return settings.max_tokens_per_request
+
+
+def rerank_enabled() -> bool:
+    return _raw("rerank_enabled").strip().lower() in ("1", "true", "yes", "on")
 
 
 def tokens_saved_total() -> int:

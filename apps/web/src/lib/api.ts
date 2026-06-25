@@ -392,9 +392,9 @@ export const api = {
   },
   // External model providers (admin)
   adminEfficiency: () =>
-    request<{ condense_enabled: boolean; condense_threshold_chars: number; max_tokens_per_request: number; tokens_saved_total: number }>("/admin/efficiency"),
-  updateEfficiency: (body: { condense_enabled?: boolean; condense_threshold_chars?: number; max_tokens_per_request?: number }) =>
-    request<{ condense_enabled: boolean; condense_threshold_chars: number; max_tokens_per_request: number; tokens_saved_total: number }>(
+    request<{ condense_enabled: boolean; condense_threshold_chars: number; max_tokens_per_request: number; rerank_enabled: boolean; tokens_saved_total: number }>("/admin/efficiency"),
+  updateEfficiency: (body: { condense_enabled?: boolean; condense_threshold_chars?: number; max_tokens_per_request?: number; rerank_enabled?: boolean }) =>
+    request<{ condense_enabled: boolean; condense_threshold_chars: number; max_tokens_per_request: number; rerank_enabled: boolean; tokens_saved_total: number }>(
       "/admin/efficiency", { method: "PUT", body: JSON.stringify(body) }),
   adminProviders: () =>
     request<{ route: string; enabled: boolean; base_url: string; model: string; has_key: boolean }[]>("/admin/providers"),

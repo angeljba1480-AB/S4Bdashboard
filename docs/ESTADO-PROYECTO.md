@@ -57,6 +57,8 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
 
 ### Modelos
 - ✅ **Router de privacidad** con redacción de PII y fallback.
+- ✅ **Reranking del RAG** (NaN `/rerank`): reordena los candidatos recuperados para
+  más precisión (embedding → rerank → LLM). Toggle en *Admin → Eficiencia de tokens*.
 - ✅ **Modelos externos** (GPT/Claude/Llama/DeepSeek) configurables en la UI
   (cifrados; endpoints compatibles con OpenAI).
 - ✅ **Cascada**: borrador con modelo abierto → refinar con premium (aprobación

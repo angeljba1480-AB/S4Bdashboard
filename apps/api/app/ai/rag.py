@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 from sqlmodel import Session, select
 
+from ..config import settings
 from ..models import Document, DocumentChunk, Sensitivity
 from ..security.crypto import decrypt, encrypt
 from .embeddings import cosine, embed
@@ -122,14 +123,20 @@ def retrieve(
             return []
         document_ids = ids
 
+    # How many candidates to pull before reranking down to top_k.
+    from .. import runtime_config
+    from .rerank import is_enabled as rerank_on
+    use_rerank = rerank_on()
+    fetch_k = max(top_k, settings.rerank_candidates) if use_rerank else top_k
+
     # Managed Qdrant path (when configured); in-process DB path otherwise.
     store = get_vector_store()
     if store:
         docs = {d.id: d for d in session.exec(
             select(Document).where(Document.tenant_id == tenant_id)
         ).all()}
-        hits = store.search(tenant_id, qvec, top_k, document_ids)
-        return [
+        hits = store.search(tenant_id, qvec, fetch_k, document_ids)
+        cites = [
             Citation(
                 document_id=h.document_id,
                 filename=docs[h.document_id].filename if h.document_id in docs else "?",
@@ -140,6 +147,7 @@ def retrieve(
             )
             for h in hits
         ]
+        return _maybe_rerank(query, cites, top_k, use_rerank)
 
     stmt = select(DocumentChunk).where(DocumentChunk.tenant_id == tenant_id)
     if document_ids:
@@ -170,6 +178,18 @@ def retrieve(
                 sensitivity=ch.sensitivity,
             )
         )
-    # Rerank: highest cosine first (placeholder for a cross-encoder reranker).
+    # Order by cosine first, then optionally rerank the top candidates.
     scored.sort(key=lambda c: c.score, reverse=True)
-    return scored[:top_k]
+    return _maybe_rerank(query, scored[:fetch_k], top_k, use_rerank)
+
+
+def _maybe_rerank(query: str, cites: list[Citation], top_k: int, use_rerank: bool) -> list[Citation]:
+    """Reorder candidates with the cross-encoder reranker when enabled; otherwise
+    keep the cosine order. Falls back to cosine order if the reranker fails."""
+    if not use_rerank or len(cites) <= 1:
+        return cites[:top_k]
+    from .rerank import rerank
+    order = rerank(query, [c.text for c in cites], top_n=top_k)
+    if not order:
+        return cites[:top_k]
+    return [cites[i] for i in order[:top_k]]

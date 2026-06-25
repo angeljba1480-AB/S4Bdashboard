@@ -560,6 +560,10 @@ export default function AdminPage() {
                 <input type="checkbox" checked={eff.condense_enabled} onChange={(e) => setEff({ ...eff, condense_enabled: e.target.checked })} />
                 Condensar contexto
               </label>
+              <label className="flex items-center gap-1.5 text-sm text-slate-700" title="Reordena los resultados del RAG con el reranker (NaN) para más precisión">
+                <input type="checkbox" checked={eff.rerank_enabled} onChange={(e) => setEff({ ...eff, rerank_enabled: e.target.checked })} />
+                Reranking RAG
+              </label>
               <div>
                 <div className="text-xs text-slate-400">Umbral (caracteres)</div>
                 <input type="number" value={eff.condense_threshold_chars} onChange={(e) => setEff({ ...eff, condense_threshold_chars: Number(e.target.value) })}
@@ -570,7 +574,7 @@ export default function AdminPage() {
                 <input type="number" value={eff.max_tokens_per_request} onChange={(e) => setEff({ ...eff, max_tokens_per_request: Number(e.target.value) })}
                   className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
               </div>
-              <button onClick={() => api.updateEfficiency({ condense_enabled: eff.condense_enabled, condense_threshold_chars: eff.condense_threshold_chars, max_tokens_per_request: eff.max_tokens_per_request }).then(setEff).catch(() => {})}
+              <button onClick={() => api.updateEfficiency({ condense_enabled: eff.condense_enabled, condense_threshold_chars: eff.condense_threshold_chars, max_tokens_per_request: eff.max_tokens_per_request, rerank_enabled: eff.rerank_enabled }).then(setEff).catch(() => {})}
                 className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Guardar</button>
             </div>
           </div>

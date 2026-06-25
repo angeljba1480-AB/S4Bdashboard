@@ -91,6 +91,13 @@ class Settings(BaseSettings):
     condense_threshold_chars: int = 6000   # ~1.5k tokens; above this we condense
     max_tokens_per_request: int = 0        # 0 = sin tope; >0 aplica presupuesto
 
+    # RAG reranking: after embedding retrieval, reorder candidates with a
+    # cross-encoder reranker (NaN `/rerank`, Qwen3-Reranker) for precision.
+    # Uses the open provider's base_url + api key. Disabled until enabled.
+    rerank_enabled: bool = False
+    rerank_model: str = "rerank"
+    rerank_candidates: int = 20            # cuántos candidatos (por embeddings) se reordenan
+
     # When a private route (local/VPC) has NO real provider configured, allow the
     # router to climb to the best available real provider (open/premium) instead
     # of returning the offline MOCK. Opt-in: this lets cloud models handle data
