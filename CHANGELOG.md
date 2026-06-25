@@ -3,6 +3,11 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Enrutamiento NaN-primero**: los datos no sensibles **siempre empiezan con NaN
+  (open)**; premium dejó de ser ruta base y ahora es **escalada a demanda** (toggle
+  «máxima precisión») o automática **si la respuesta es insuficiente**. El banner del
+  chat muestra la ruta real (ya no “promete” premium). Si no hay premium configurado,
+  todo corre en NaN; si tampoco hay NaN, modo demostración (mock).
 - **Ayuda en español (in-app)**: nueva sección *Ayuda* con guías paso a paso
   (conectar **n8n**, correo, documentos/RAG, acciones Google/MS, conectores, importar
   BD/CSV, modelos/cascada/rerank, imágenes, webhooks). Buscador + banner desde

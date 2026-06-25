@@ -61,8 +61,10 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
   más precisión (embedding → rerank → LLM). Toggle en *Admin → Eficiencia de tokens*.
 - ✅ **Modelos externos** (GPT/Claude/Llama/DeepSeek) configurables en la UI
   (cifrados; endpoints compatibles con OpenAI).
-- ✅ **Cascada**: borrador con modelo abierto → refinar con premium (aprobación
-  para contenido sensible).
+- ✅ **Cascada (NaN-primero)**: los datos no sensibles empiezan en NaN (open);
+  premium es **escalada a demanda** («máxima precisión») o automática si la respuesta
+  es insuficiente (aprobación para contenido sensible). Si no hay premium, se queda
+  en NaN; sin NaN, modo demostración.
 - ✅ **Eficiencia de tokens**: antes de pagar premium, el contexto grande (PDFs)
   se **condensa con el modelo barato** (NaN/open) → premium recibe un extracto
   chico. Escala a premium si la respuesta del barato **es insuficiente**.
