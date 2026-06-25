@@ -33,13 +33,35 @@ export default function IntegrationsPage() {
   const [mailMsg, setMailMsg] = useState("");
   const [imap, setImap] = useState({ preset: "Yahoo", host: "imap.mail.yahoo.com", port: 993, email: "", password: "" });
   const [imapBusy, setImapBusy] = useState(false);
+  const [sources, setSources] = useState<Awaited<ReturnType<typeof api.dataSources>>>([]);
+  const [ds, setDs] = useState({ name: "", dsn: "", query: "", category: "" });
+  const [dsMsg, setDsMsg] = useState("");
   const apiBase = api.base;
+
+  async function addSource() {
+    if (!ds.name || !ds.dsn || !ds.query) { setDsMsg("Completa nombre, DSN y consulta."); return; }
+    try {
+      await api.createDataSource(ds);
+      setDs({ name: "", dsn: "", query: "", category: "" });
+      setDsMsg("Fuente creada.");
+      api.dataSources().then(setSources).catch(() => {});
+    } catch (e) { setDsMsg(e instanceof Error ? e.message : "Error"); }
+  }
+  async function testSource(id: string) {
+    try { const r = await api.testDataSource(id); setDsMsg(`OK · columnas: ${r.columns.join(", ")} (${r.total_preview} filas)`); }
+    catch (e) { setDsMsg(e instanceof Error ? e.message : "Error al probar"); }
+  }
+  async function importSource(id: string) {
+    try { const r = await api.importDataSource(id); setDsMsg(`Importado ${r.rows} filas → ${r.filename}`); }
+    catch (e) { setDsMsg(e instanceof Error ? e.message : "Error al importar"); }
+  }
 
   function load() {
     api.apiKeys().then(setKeys).catch(() => {});
     api.connectors().then(setConnectors).catch(() => {});
     api.webhooks().then(setWebhooks).catch(() => {});
     api.oauthProviders().then((r) => { setMailProviders(r.providers); setMailConnections(r.connections); }).catch(() => {});
+    api.dataSources().then(setSources).catch(() => {});
   }
   useEffect(() => {
     load();
@@ -259,6 +281,36 @@ export default function IntegrationsPage() {
               <div key={w.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
                 <span className="text-slate-700">{w.name} <span className="font-mono text-slate-400">{w.url}</span></span>
                 <button onClick={() => api.deleteWebhook(w.id).then(load)} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Data sources — legacy DB connector (read-only) */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="mb-1 flex items-center gap-2"><Link2 className="h-5 w-5 text-indigo-600" /><h2 className="font-semibold text-slate-800">Fuentes de datos (sistemas a la medida)</h2></div>
+          <p className="mb-3 text-sm text-slate-500">
+            Conecta una base de datos de <b>solo lectura</b> (DSN tipo
+            <code> postgresql://… </code> o <code> mysql://… </code>) con una consulta <b>SELECT</b>;
+            el resultado se importa al repositorio + RAG. Para el resto de sistemas usa n8n o webhooks.
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <input value={ds.name} onChange={(e) => setDs({ ...ds, name: e.target.value })} placeholder="Nombre (ej. Clientes ERP)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <input value={ds.category} onChange={(e) => setDs({ ...ds, category: e.target.value })} placeholder="Categoría (opcional)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <input value={ds.dsn} onChange={(e) => setDs({ ...ds, dsn: e.target.value })} placeholder="DSN (postgresql://usuario:pass@host:5432/db)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2" />
+            <input value={ds.query} onChange={(e) => setDs({ ...ds, query: e.target.value })} placeholder="SELECT nombre, monto FROM clientes" className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2" />
+          </div>
+          <button onClick={addSource} className="mt-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Agregar fuente</button>
+          {dsMsg && <div className="mt-2 text-xs text-slate-500">{dsMsg}</div>}
+          <div className="mt-3 space-y-1">
+            {sources.map((s) => (
+              <div key={s.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <span className="truncate text-slate-700">{s.name} <span className="font-mono text-xs text-slate-400">{s.query.slice(0, 40)}…</span></span>
+                <div className="flex flex-shrink-0 gap-3">
+                  <button onClick={() => testSource(s.id)} className="text-xs font-semibold text-violet-700">Probar</button>
+                  <button onClick={() => importSource(s.id)} className="text-xs font-semibold text-emerald-700">Importar</button>
+                  <button onClick={() => api.deleteDataSource(s.id).then(() => api.dataSources().then(setSources))} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                </div>
               </div>
             ))}
           </div>

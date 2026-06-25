@@ -15,6 +15,11 @@ ACTIONS: dict[str, dict] = {
                           "params": ["summary", "start", "end", "location"]},
     "gsheets.append": {"provider": "google", "label": "Agregar fila a Google Sheets", "write": True,
                        "params": ["spreadsheet_id", "range", "values"]},
+    # --- Google (lectura) ---
+    "gsheets.read": {"provider": "google", "label": "Leer Google Sheets", "write": False,
+                     "params": ["spreadsheet_id", "range"]},
+    "gcal.list": {"provider": "google", "label": "Próximos eventos (Google Calendar)", "write": False,
+                  "params": ["days"]},
     # --- Microsoft 365 ---
     "outlook.send": {"provider": "microsoft", "label": "Enviar correo (Outlook)", "write": True,
                      "params": ["to", "subject", "body"]},
@@ -22,6 +27,11 @@ ACTIONS: dict[str, dict] = {
                            "params": ["summary", "start", "end", "location"]},
     "teams.post": {"provider": "microsoft", "label": "Publicar en Teams (canal)", "write": True,
                    "params": ["team_id", "channel_id", "message"]},
+    # --- Microsoft 365 (lectura) ---
+    "mscal.list": {"provider": "microsoft", "label": "Próximos eventos (Outlook Calendar)", "write": False,
+                   "params": ["days"]},
+    "onedrive.list": {"provider": "microsoft", "label": "Listar archivos (OneDrive)", "write": False,
+                      "params": ["query"]},
 }
 
 

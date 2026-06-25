@@ -212,6 +212,31 @@ class ActionGrant(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class DataSource(SQLModel, table=True):
+    """Conector a sistemas a la medida sin API: una fuente de datos (hoy base de
+    datos de SOLO LECTURA). Guarda una consulta SELECT y, al importar, vuelca el
+    resultado al repositorio + índice RAG. Credenciales cifradas."""
+    __tablename__ = "data_sources"
+    id: str = Field(default_factory=lambda: _uuid("ds"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    name: str = ""
+    kind: str = "db"              # db (SQLAlchemy DSN) · futuro: sftp/csv
+    dsn_enc: str = ""             # SQLAlchemy URL cifrada
+    query: str = ""              # SELECT … (solo lectura)
+    area: str = ""
+    category: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PlatformSetting(SQLModel, table=True):
+    """Runtime key/value config set from the admin UI (overrides env defaults).
+    Used for token-efficiency controls (condensación, tope de gasto) y contadores."""
+    __tablename__ = "platform_settings"
+    key: str = Field(primary_key=True)
+    value: str = ""
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class ProviderSetting(SQLModel, table=True):
     """Runtime config for an external model route (premium / open), set from the
     admin UI instead of env vars. API key is encrypted at rest. Global (platform)."""

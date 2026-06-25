@@ -70,7 +70,7 @@ def _execute(session: Session, tenant: Tenant, user: User, req: ActionRequest) -
     session.add(req)
     session.add(AuditEvent(
         tenant_id=tenant.id, user_id=user.id, event_type="action", object_type="action",
-        object_id=req.action, risk_level="med", reason=f"{req.action} → {req.status}: {req.result[:80]}",
+        object_id=req.action, risk_level="med", reason=f"{req.action} → {req.status}: {str(req.result or '')[:80]}",
     ))
     session.commit()
     session.refresh(req)

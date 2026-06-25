@@ -51,7 +51,7 @@ def list_files(
     token = _token(session, tenant, user)
     clauses = ["trashed = false"]
     if folder:
-        clauses.append(f"'{folder}' in parents")
+        clauses.append(f"'{folder.replace(chr(39), ' ')}' in parents")
     if query:
         safe = query.replace("'", " ")
         clauses.append(f"name contains '{safe}'")

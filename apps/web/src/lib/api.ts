@@ -337,6 +337,17 @@ export const api = {
   revokeGrant: (action: string) => request<{ ok: boolean }>(`/actions/grants/${action}`, { method: "DELETE" }),
   flowcharts: () => request<FlowchartSummary[]>("/flowcharts"),
   flowchart: (id: string) => request<Flowchart>(`/flowcharts/${id}`),
+  // Data sources (legacy connectors: read-only DB → RAG)
+  dataSources: () =>
+    request<{ id: string; name: string; kind: string; query: string; area: string; category: string }[]>("/datasources"),
+  createDataSource: (body: { name: string; dsn: string; query: string; area?: string; category?: string }) =>
+    request<{ id: string; name: string }>("/datasources", { method: "POST", body: JSON.stringify(body) }),
+  testDataSource: (id: string) =>
+    request<{ ok: boolean; columns: string[]; total_preview: number }>(`/datasources/${id}/test`, { method: "POST" }),
+  importDataSource: (id: string) =>
+    request<{ id: string; filename: string; rows: number }>(`/datasources/${id}/import`, { method: "POST" }),
+  deleteDataSource: (id: string) =>
+    request<{ ok: boolean }>(`/datasources/${id}`, { method: "DELETE" }),
   // Notebooks (NotebookLM-style over the company RAG)
   notebooks: () => request<Notebook[]>("/notebooks"),
   createNotebook: (body: { name: string; document_ids: string[] }) =>
@@ -355,6 +366,11 @@ export const api = {
     return request<NotebookAnswer>(`/notebooks/${id}/generate/${kind}${q ? `?${q}` : ""}`, { method: "POST" });
   },
   // External model providers (admin)
+  adminEfficiency: () =>
+    request<{ condense_enabled: boolean; condense_threshold_chars: number; max_tokens_per_request: number; tokens_saved_total: number }>("/admin/efficiency"),
+  updateEfficiency: (body: { condense_enabled?: boolean; condense_threshold_chars?: number; max_tokens_per_request?: number }) =>
+    request<{ condense_enabled: boolean; condense_threshold_chars: number; max_tokens_per_request: number; tokens_saved_total: number }>(
+      "/admin/efficiency", { method: "PUT", body: JSON.stringify(body) }),
   adminProviders: () =>
     request<{ route: string; enabled: boolean; base_url: string; model: string; has_key: boolean }[]>("/admin/providers"),
   updateProvider: (route: string, body: { enabled: boolean; base_url: string; model: string; api_key?: string }) =>
