@@ -167,6 +167,33 @@ class DocumentChunk(SQLModel, table=True):
     embedding: str = ""            # JSON-encoded float vector
 
 
+class ActionRequest(SQLModel, table=True):
+    """A Google/Microsoft toolkit action. Read actions run immediately; write
+    actions (send mail, create event, write a sheet…) are gated on human approval
+    before execution, per the blueprint's 'tú apruebas' principle."""
+    __tablename__ = "action_requests"
+    id: str = Field(default_factory=lambda: _uuid("act"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    provider: str = ""             # google | microsoft
+    action: str = ""              # action id from the catalog
+    params: str = "{}"            # JSON
+    status: str = "pending"        # pending | executed | failed | rejected
+    result: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ActionGrant(SQLModel, table=True):
+    """Standing authorization: a user opted to auto-approve a given action so it
+    runs without asking each time. Revocable. (Set via 'Permitir siempre'.)"""
+    __tablename__ = "action_grants"
+    id: str = Field(default_factory=lambda: _uuid("agr"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    action: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class ProviderSetting(SQLModel, table=True):
     """Runtime config for an external model route (premium / open), set from the
     admin UI instead of env vars. API key is encrypted at rest. Global (platform)."""

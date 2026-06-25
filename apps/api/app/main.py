@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import init_db
 from .routers import (
+    actions,
     admin,
     agents,
     apps,
@@ -98,6 +99,7 @@ app.include_router(export.router)
 app.include_router(flowcharts.router)
 app.include_router(drive.router)
 app.include_router(notebooks.router)
+app.include_router(actions.router)
 
 
 @app.get("/health", tags=["meta"])

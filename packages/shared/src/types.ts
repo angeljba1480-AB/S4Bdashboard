@@ -44,6 +44,17 @@ export interface DocumentItem {
   created_at: string;
 }
 
+export interface ActionRequestItem {
+  id: string;
+  action: string;
+  label: string;
+  provider: string;
+  params: Record<string, string>;
+  status: "pending" | "executed" | "failed" | "rejected";
+  result: string;
+  created_at: string;
+}
+
 export interface NotebookSource {
   id: string;
   filename: string;

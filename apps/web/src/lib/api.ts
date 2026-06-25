@@ -1,5 +1,6 @@
 // Thin typed client over the MaestroAI API.
 import type {
+  ActionRequestItem,
   Agent,
   AppProject,
   AuditEvent,
@@ -309,6 +310,18 @@ export const api = {
       `/drive/files${query ? `?query=${encodeURIComponent(query)}` : ""}`),
   driveImport: (body: { file_id: string; name: string; mime_type: string; area?: string; category?: string }) =>
     request<{ id: string; filename: string }>("/drive/import", { method: "POST", body: JSON.stringify(body) }),
+  // Google/Microsoft action toolkit
+  actions: () => request<{ id: string; provider: string; label: string; write: boolean; params: string[]; connected: boolean; granted: boolean }[]>("/actions"),
+  runAction: (action: string, params: Record<string, string>) =>
+    request<{ status: string; request: ActionRequestItem }>("/actions/run", { method: "POST", body: JSON.stringify({ action, params }) }),
+  actionRequests: (status?: string) =>
+    request<ActionRequestItem[]>(`/actions/requests${status ? `?status=${status}` : ""}`),
+  approveAction: (id: string, always = false) =>
+    request<{ request: ActionRequestItem }>(`/actions/requests/${id}/approve${always ? "?always=true" : ""}`, { method: "POST" }),
+  rejectAction: (id: string) =>
+    request<{ request: ActionRequestItem }>(`/actions/requests/${id}/reject`, { method: "POST" }),
+  actionGrants: () => request<{ action: string; label: string }[]>("/actions/grants"),
+  revokeGrant: (action: string) => request<{ ok: boolean }>(`/actions/grants/${action}`, { method: "DELETE" }),
   flowcharts: () => request<FlowchartSummary[]>("/flowcharts"),
   flowchart: (id: string) => request<Flowchart>(`/flowcharts/${id}`),
   // Notebooks (NotebookLM-style over the company RAG)
