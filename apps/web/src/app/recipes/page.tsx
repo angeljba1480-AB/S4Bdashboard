@@ -441,6 +441,18 @@ export default function RecipesPage() {
                           <Download className="h-4 w-4" /> PDF
                         </button>
                         <button
+                          onClick={() => api.downloadRun(run.id, "pptx")}
+                          className="flex items-center gap-1.5 rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-700"
+                        >
+                          <Download className="h-4 w-4" /> PowerPoint
+                        </button>
+                        <button
+                          onClick={() => api.downloadRun(run.id, "xlsx")}
+                          className="flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-800"
+                        >
+                          <Download className="h-4 w-4" /> Excel
+                        </button>
+                        <button
                           onClick={() => api.downloadRun(run.id, "md")}
                           className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600"
                         >

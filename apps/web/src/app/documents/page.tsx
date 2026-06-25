@@ -3,7 +3,7 @@
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
 import type { DocumentCategory, DocumentItem } from "@shared/types";
-import { FolderOpen, Trash2, Upload } from "lucide-react";
+import { FolderOpen, HardDrive, Trash2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const SENS_OPTIONS = [
@@ -30,6 +30,39 @@ export default function DocumentsPage() {
   // filters
   const [fArea, setFArea] = useState("");
   const [fCat, setFCat] = useState("");
+  // Google Drive
+  const [driveOpen, setDriveOpen] = useState(false);
+  const [driveQuery, setDriveQuery] = useState("");
+  const [driveFiles, setDriveFiles] = useState<{ id: string; name: string; mime_type: string; is_folder: boolean }[]>([]);
+  const [driveMsg, setDriveMsg] = useState("");
+  const [driveBusy, setDriveBusy] = useState(false);
+
+  async function loadDrive() {
+    setDriveBusy(true);
+    setDriveMsg("");
+    try {
+      const r = await api.driveFiles(driveQuery);
+      setDriveFiles(r.files);
+      if (!r.files.length) setDriveMsg("Sin resultados.");
+    } catch (e) {
+      setDriveMsg(e instanceof Error ? e.message : "No se pudo conectar con Drive");
+    } finally {
+      setDriveBusy(false);
+    }
+  }
+
+  async function importDrive(f: { id: string; name: string; mime_type: string }) {
+    setDriveBusy(true);
+    try {
+      await api.driveImport({ file_id: f.id, name: f.name, mime_type: f.mime_type, area: upArea, category: upCat });
+      setDriveMsg(`Importado: ${f.name}`);
+      load();
+    } catch (e) {
+      setDriveMsg(e instanceof Error ? e.message : "No se pudo importar");
+    } finally {
+      setDriveBusy(false);
+    }
+  }
 
   function load() {
     api.documents().then(setDocs).catch(() => {});
@@ -146,6 +179,41 @@ export default function DocumentsPage() {
               <input type="file" className="hidden" onChange={uploadFile} accept=".txt,.md,.csv,.json" />
             </label>
           </form>
+
+          {/* Google Drive as context */}
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+            <button onClick={() => { setDriveOpen((v) => !v); if (!driveOpen && !driveFiles.length) loadDrive(); }}
+              className="flex w-full items-center justify-between text-sm font-semibold text-slate-800">
+              <span className="flex items-center gap-2"><HardDrive className="h-4 w-4 text-violet-600" /> Importar de Google Drive</span>
+              <span className="text-xs text-slate-400">{driveOpen ? "▲" : "▼"}</span>
+            </button>
+            {driveOpen && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-slate-400">
+                  Se importa con el área y categoría seleccionadas arriba. Requiere reconectar Google con permiso de Drive.
+                </p>
+                <div className="flex gap-2">
+                  <input value={driveQuery} onChange={(e) => setDriveQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && loadDrive()}
+                    placeholder="Buscar por nombre…" className={`flex-1 ${inputCls}`} />
+                  <button onClick={loadDrive} disabled={driveBusy}
+                    className="rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white disabled:opacity-50">Buscar</button>
+                </div>
+                {driveMsg && <div className="text-xs text-slate-500">{driveMsg}</div>}
+                <div className="max-h-64 space-y-1 overflow-auto">
+                  {driveFiles.map((f) => (
+                    <div key={f.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-2 py-1.5 text-sm">
+                      <span className="truncate text-slate-600">{f.is_folder ? "📁" : "📄"} {f.name}</span>
+                      {!f.is_folder && (
+                        <button onClick={() => importDrive(f)} disabled={driveBusy}
+                          className="ml-2 flex-shrink-0 rounded-md bg-violet-600 px-2 py-1 text-xs font-semibold text-white disabled:opacity-50">Importar</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Containers by area */}

@@ -63,6 +63,11 @@ _REGION_DISCLAIMER = ("⚠️ Los requisitos, costos y plazos cambian por regió
                       "Esto es una guía; confirma siempre con tu autoridad local.")
 
 
+def _report_template_labels() -> list[str]:
+    from .. import report_templates
+    return report_templates.template_labels()
+
+
 def _r(**kw) -> dict:
     """Recipe with sensible defaults so the catalog stays terse and scalable."""
     kw.setdefault("icon", "sparkles")
@@ -102,6 +107,21 @@ RECIPES: list[dict] = [
         ],
         approve_label="Generar resumen",
         produces="un resumen de tu correo y agenda",
+    ),
+
+    _r(
+        id="reporte_industria", category="operaciones", handler="reporte", icon="bar-chart",
+        name="Reporte por industria",
+        description="Genero un reporte profesional con la estructura de tu industria. Exporta a PDF/Word/PPT/Excel.",
+        inputs=[
+            {"key": "plantilla", "type": "choice", "label": "Plantilla de industria", "required": True,
+             "options": _report_template_labels()},
+            {"key": "tema", "type": "text", "label": "Tema del reporte", "required": True,
+             "placeholder": "Ej. Resultados del Q2, diagnóstico de operaciones…"},
+            {"key": "periodo", "type": "text", "label": "Periodo", "placeholder": "Ej. Q2 2026"},
+            _area_input()],
+        produces="un reporte por industria", rag_category="conocimiento",
+        approve_label="Generar reporte",
     ),
 
     # ---- Crecer el negocio ------------------------------------------------
@@ -485,7 +505,33 @@ def prefill(recipe: dict, session: Session, tenant: Tenant, inputs: dict, user_i
         return _prefill_licitacion(session, tenant.id, inputs, recipe)
     if handler == "correo_agenda":
         return _prefill_correo_agenda(session, tenant, user_id, inputs)
+    if handler == "reporte":
+        return _prefill_reporte(recipe, session, tenant, inputs, user_id)
     return _prefill_generic(recipe, session, tenant, inputs, user_id)
+
+
+def _prefill_reporte(recipe: dict, session: Session, tenant: Tenant, inputs: dict,
+                     user_id: str | None = None) -> dict:
+    """Build a sectioned, industry-specific report prompt, then run it through the
+    generic pipeline (privacy routing + company RAG + fallback)."""
+    from .. import report_templates
+
+    tpl = report_templates.get_by_key_or_label(inputs.get("plantilla", "")) \
+        or report_templates.get_by_key_or_label("generico")
+    sections = "\n".join(f"{i}. {s}" for i, s in enumerate(tpl["sections"], 1))
+    tema = (inputs.get("tema") or "el tema solicitado").strip()
+    periodo = (inputs.get("periodo") or "").strip()
+    instruction = (
+        f"Redacta un reporte profesional sobre «{tema}»"
+        + (f" para el periodo {periodo}" if periodo else "")
+        + f" para la industria «{tpl['label']}». "
+        "Usa EXACTAMENTE estas secciones, en este orden, cada una con su encabezado Markdown (##):\n"
+        f"{sections}\n"
+        "Sé concreto y accionable; si faltan datos, indícalo como supuesto. "
+        "Apóyate en el contexto de la empresa y sus documentos."
+    )
+    synth = {**recipe, "prompt": instruction, "produces": "un reporte por industria"}
+    return _prefill_generic(synth, session, tenant, inputs, user_id)
 
 
 # Output-format presets shared by every use case (the "formato de salida" step).

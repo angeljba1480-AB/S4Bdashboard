@@ -250,7 +250,7 @@ export const api = {
   recipeRun: (runId: string) => request<RecipeRun>(`/recipes/runs/${runId}`),
   approveRun: (runId: string) =>
     request<RecipeRun>(`/recipes/runs/${runId}/approve`, { method: "POST" }),
-  async downloadRun(runId: string, format: "pdf" | "md" | "docx" = "pdf") {
+  async downloadRun(runId: string, format: "pdf" | "md" | "docx" | "pptx" | "xlsx" = "pdf") {
     const res = await fetch(`${API_BASE}/recipes/runs/${runId}/export?format=${format}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
@@ -302,6 +302,11 @@ export const api = {
     request<{ ok: boolean }>(`/documents/${id}`, { method: "DELETE" }),
   updateDocument: (id: string, body: { area?: string; category?: string; sensitivity?: string }) =>
     request<DocumentItem>(`/documents/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  driveFiles: (query?: string) =>
+    request<{ files: { id: string; name: string; mime_type: string; is_folder: boolean; modified: string }[] }>(
+      `/drive/files${query ? `?query=${encodeURIComponent(query)}` : ""}`),
+  driveImport: (body: { file_id: string; name: string; mime_type: string; area?: string; category?: string }) =>
+    request<{ id: string; filename: string }>("/drive/import", { method: "POST", body: JSON.stringify(body) }),
   flowcharts: () => request<FlowchartSummary[]>("/flowcharts"),
   flowchart: (id: string) => request<Flowchart>(`/flowcharts/${id}`),
   documentCategories: () => request<DocumentCategory[]>("/documents/categories"),
