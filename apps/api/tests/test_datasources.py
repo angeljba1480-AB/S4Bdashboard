@@ -81,6 +81,14 @@ def test_delete(client):
     assert client.delete(f"/datasources/{ds['id']}", headers=h).json()["ok"] is True
 
 
+def test_reveal_dsn(client):
+    h = _auth(client)
+    ds = client.post("/datasources", headers=h, json={
+        "name": "rev", "dsn": LEGACY_DSN, "query": "SELECT 1 AS uno"}).json()
+    r = client.get(f"/datasources/{ds['id']}/reveal", headers=h).json()
+    assert r["dsn"] == LEGACY_DSN
+
+
 def test_import_csv(client):
     h = _auth(client)
     csv_text = "nombre,monto\nACME,5000\nGlobex,8200\n"
