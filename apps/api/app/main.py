@@ -35,9 +35,10 @@ from .routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    from .seed import seed
+    from .seed import ensure_super_admin, seed
 
     seed()
+    ensure_super_admin()
     if settings.scheduler_enabled:
         from .scheduler import start as start_scheduler
         start_scheduler()

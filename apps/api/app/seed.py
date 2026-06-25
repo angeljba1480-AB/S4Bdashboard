@@ -57,6 +57,23 @@ def seed() -> None:
         doc_categories.ensure_defaults(session, tenant.id)
 
 
+def ensure_super_admin() -> None:
+    """Guarantee a super admin exists (idempotent). If none, promote the oldest
+    admin so the platform owner can see and govern everything across tenants."""
+    from .models import Role
+
+    with Session(engine) as session:
+        if session.exec(select(User).where(User.role == Role.SUPER_ADMIN)).first():
+            return
+        admin = session.exec(
+            select(User).where(User.role == Role.ADMIN).order_by(User.created_at)
+        ).first()
+        if admin:
+            admin.role = Role.SUPER_ADMIN
+            session.add(admin)
+            session.commit()
+
+
 if __name__ == "__main__":
     from .db import init_db
 

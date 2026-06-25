@@ -9,7 +9,8 @@ type N8n = Awaited<ReturnType<typeof api.getN8n>>;
 
 export default function AdminPage() {
   const [routes, setRoutes] = useState<{ route: string; provider: string; enabled: boolean; model: string; mode: string }[]>([]);
-  const [users, setUsers] = useState<{ id: string; email: string; name: string; role: string; mfa_enabled: boolean }[]>([]);
+  const [users, setUsers] = useState<{ id: string; email: string; name: string; role: string; area: string; license: string; mfa_enabled: boolean; status: string }[]>([]);
+  const [tenants, setTenants] = useState<Awaited<ReturnType<typeof api.adminTenants>>>([]);
   const [security, setSecurity] = useState<Security | null>(null);
   const [n8n, setN8n] = useState<N8n | null>(null);
   const [n8nUrl, setN8nUrl] = useState("");
@@ -25,7 +26,8 @@ export default function AdminPage() {
   const [brandMsg, setBrandMsg] = useState("");
   const [billing, setBilling] = useState<Awaited<ReturnType<typeof api.getBilling>> | null>(null);
   const [plans, setPlans] = useState<Awaited<ReturnType<typeof api.plans>> | null>(null);
-  const [newUser, setNewUser] = useState({ email: "", name: "", role: "user" });
+  const [newUser, setNewUser] = useState({ email: "", name: "", role: "user", area: "", license: "basic" });
+  const ROLE_LABELS: Record<string, string> = { super_admin: "Super Admin", admin: "Admin", user: "Usuario", security: "Security", devops: "DevOps" };
   const [billingMsg, setBillingMsg] = useState("");
   const [tramites, setTramites] = useState<{ id: string; title: string; authority: string; source: string; region: string }[]>([]);
   const [newTramite, setNewTramite] = useState({ title: "", authority: "", region: "", keywords: "", requisitos: "", pasos: "" });
@@ -81,7 +83,7 @@ export default function AdminPage() {
     setBillingMsg("");
     try {
       await api.createUser(newUser);
-      setNewUser({ email: "", name: "", role: "user" });
+      setNewUser({ email: "", name: "", role: "user", area: "", license: "basic" });
       setBillingMsg("✓ Usuario agregado");
       api.users().then(setUsers).catch(() => {});
       loadBilling();
@@ -119,6 +121,7 @@ export default function AdminPage() {
   useEffect(() => {
     api.routes().then(setRoutes).catch((e) => setError(e.message));
     api.users().then(setUsers).catch(() => {});
+    api.adminTenants().then(setTenants).catch(() => setTenants([]));
     api.security().then(setSecurity).catch(() => {});
     loadN8n();
     loadProposals();
@@ -209,6 +212,14 @@ export default function AdminPage() {
                   <option value="admin">Admin</option>
                   <option value="security">Security</option>
                   <option value="devops">DevOps</option>
+                </select>
+                <input value={newUser.area} onChange={(e) => setNewUser((u) => ({ ...u, area: e.target.value }))}
+                  placeholder="Área (ej. Ventas)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                <select value={newUser.license} onChange={(e) => setNewUser((u) => ({ ...u, license: e.target.value }))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                  <option value="basic">Basic</option>
+                  <option value="pro">Pro</option>
+                  <option value="enterprise">Enterprise</option>
                 </select>
                 <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Agregar usuario</button>
               </form>
@@ -503,13 +514,19 @@ export default function AdminPage() {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-4 font-semibold text-slate-800">Usuarios del tenant</h2>
+          <h2 className="mb-1 font-semibold text-slate-800">Usuarios del tenant</h2>
+          <p className="mb-4 text-xs text-slate-400">
+            Permisos jerárquicos: el rol y el área deciden qué documentos y contexto ve cada quien.
+            General/sin área es visible para todos; Admin, Security y Super Admin ven todas las áreas.
+          </p>
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 text-xs uppercase text-slate-400">
               <tr>
                 <th className="py-2 text-left">Nombre</th>
                 <th className="py-2 text-left">Correo</th>
                 <th className="py-2 text-left">Rol</th>
+                <th className="py-2 text-left">Área</th>
+                <th className="py-2 text-left">Licencia</th>
                 <th className="py-2 text-center">MFA</th>
               </tr>
             </thead>
@@ -518,13 +535,64 @@ export default function AdminPage() {
                 <tr key={u.id} className="border-b border-slate-100">
                   <td className="py-2 text-slate-700">{u.name}</td>
                   <td className="py-2 text-slate-500">{u.email}</td>
-                  <td className="py-2 text-slate-500">{u.role}</td>
+                  <td className="py-2">
+                    <select value={u.role} onChange={(e) => api.updateUser(u.id, { role: e.target.value }).then(() => api.users().then(setUsers)).catch((err) => setError(err.message))}
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs">
+                      {["user", "admin", "security", "devops", "super_admin"].map((r) => (
+                        <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="py-2">
+                    <input defaultValue={u.area} placeholder="—"
+                      onBlur={(e) => e.target.value !== u.area && api.updateUser(u.id, { area: e.target.value }).then(() => api.users().then(setUsers)).catch(() => {})}
+                      className="w-28 rounded-md border border-slate-200 px-2 py-1 text-xs" />
+                  </td>
+                  <td className="py-2">
+                    <select value={u.license} onChange={(e) => api.updateUser(u.id, { license: e.target.value }).then(() => api.users().then(setUsers)).catch(() => {})}
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs">
+                      {["basic", "pro", "enterprise"].map((l) => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                  </td>
                   <td className="py-2 text-center">{u.mfa_enabled ? "✓" : "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
+        {tenants.length > 0 && (
+          <div className="rounded-2xl border border-violet-200 bg-white p-5">
+            <h2 className="mb-1 font-semibold text-slate-800">Super Admin · Todas las organizaciones</h2>
+            <p className="mb-4 text-xs text-slate-400">Vista global entre tenants (solo super admin).</p>
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-200 text-xs uppercase text-slate-400">
+                <tr>
+                  <th className="py-2 text-left">Organización</th>
+                  <th className="py-2 text-left">Plan</th>
+                  <th className="py-2 text-left">Estado</th>
+                  <th className="py-2 text-left">País</th>
+                  <th className="py-2 text-right">Asientos</th>
+                  <th className="py-2 text-right">Usuarios</th>
+                  <th className="py-2 text-right">Documentos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenants.map((t) => (
+                  <tr key={t.id} className="border-b border-slate-100">
+                    <td className="py-2 font-medium text-slate-700">{t.name}</td>
+                    <td className="py-2 text-slate-500">{t.plan}</td>
+                    <td className="py-2 text-slate-500">{t.subscription_status}</td>
+                    <td className="py-2 text-slate-500">{t.country}</td>
+                    <td className="py-2 text-right tabular-nums text-slate-600">{t.seats_licensed}</td>
+                    <td className="py-2 text-right tabular-nums text-slate-600">{t.users}</td>
+                    <td className="py-2 text-right tabular-nums text-slate-600">{t.documents}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </Shell>
   );

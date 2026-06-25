@@ -52,16 +52,16 @@ def _tenant_matches(session: Session, tenant_id: str, country: str | None,
 
 
 def _rag_matches(session: Session, tenant_id: str, q: str | None, limit: int = 3,
-                 category: str | None = None) -> list[dict]:
+                 category: str | None = None, areas: list[str] | None = None) -> list[dict]:
     """Company MCP knowledge from the tenant's own indexed documents (RAG).
 
-    When `category` is given, grounds only in documents of that type (e.g. a
-    recipe pulling from its matching category)."""
+    When `category` is given, grounds only in documents of that type. `areas`
+    restricts to the areas the requesting user may see (None = all)."""
     if not q:
         return []
     from ..ai.rag import retrieve
     try:
-        cits = retrieve(session, tenant_id, q, None, top_k=limit, category=category)
+        cits = retrieve(session, tenant_id, q, None, top_k=limit, category=category, areas=areas)
     except Exception:
         return []
     return [{
@@ -75,12 +75,12 @@ def _rag_matches(session: Session, tenant_id: str, q: str | None, limit: int = 3
 def layered_search(session: Session, tenant: Tenant, q: str | None = None,
                    region: str | None = None, municipio: str | None = None,
                    country: str | None = None, include_rag: bool = False,
-                   rag_category: str | None = None) -> list[dict]:
+                   rag_category: str | None = None, areas: list[str] | None = None) -> list[dict]:
     """Company layer (private trámites + RAG over the company's docs) first,
     then curated state/country."""
     country = country or tenant.country
     private = _tenant_matches(session, tenant.id, country, region, municipio, q)
-    rag = _rag_matches(session, tenant.id, q, category=rag_category) if include_rag else []
+    rag = _rag_matches(session, tenant.id, q, category=rag_category, areas=areas) if include_rag else []
     curated = find_tramites(country, region, municipio, q)
     for c in curated:
         c.setdefault("source", "curado")

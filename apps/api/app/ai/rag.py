@@ -93,24 +93,34 @@ def retrieve(
     document_ids: list[str] | None = None,
     top_k: int = 4,
     category: str | None = None,
+    areas: list[str] | None = None,
 ) -> list[Citation]:
-    """Vector search scoped to a tenant (and optionally specific documents or a
-    document category — e.g. a recipe grounding only in 'propuesta_comercial')."""
+    """Vector search scoped to a tenant (and optionally specific documents, a
+    document category, or the areas a user is allowed to see).
+
+    `areas=None` means no area restriction (privileged roles); a list restricts
+    to documents in those areas plus general/unassigned ones (area == "").
+    """
     qvec = embed(query)
 
-    # Category filter: restrict to documents of that category (intersect with
-    # explicit document_ids when both are given). An active category with no
-    # matching documents yields no results (rather than falling back to all).
-    if category:
-        cat_ids = [d.id for d in session.exec(
-            select(Document).where(Document.tenant_id == tenant_id, Document.category == category)
-        ).all()]
+    # Narrow the candidate documents by category and/or area visibility. Each
+    # active filter intersects with any explicit document_ids; if the result is
+    # empty we return nothing (rather than falling back to the whole tenant).
+    if category is not None or areas is not None:
+        q = select(Document).where(Document.tenant_id == tenant_id)
+        if category:
+            q = q.where(Document.category == category)
+        candidates = session.exec(q).all()
+        if areas is not None:
+            allowed_areas = set(areas)
+            candidates = [d for d in candidates if not (d.area or "") or d.area in allowed_areas]
+        ids = [d.id for d in candidates]
         if document_ids:
-            allowed = set(document_ids)
-            cat_ids = [i for i in cat_ids if i in allowed]
-        if not cat_ids:
+            keep = set(document_ids)
+            ids = [i for i in ids if i in keep]
+        if not ids:
             return []
-        document_ids = cat_ids
+        document_ids = ids
 
     # Managed Qdrant path (when configured); in-process DB path otherwise.
     store = get_vector_store()

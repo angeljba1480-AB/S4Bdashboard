@@ -16,6 +16,7 @@ from ..ai.rag import index_document
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
 from ..models import AuditEvent, Document, DocumentCategory, DocumentChunk, Sensitivity, Tenant, User
+from ..permissions import can_view_area
 from ..schemas import DocumentCategoryCreate, DocumentCategoryOut, DocumentOut, DocumentUpdate
 from ..security.classifier import classify_data
 
@@ -94,6 +95,7 @@ def list_documents(
     area: str | None = None,
     category: str | None = None,
     tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> list[DocumentOut]:
     q = select(Document).where(Document.tenant_id == tenant.id)
@@ -102,6 +104,8 @@ def list_documents(
     if category:
         q = q.where(Document.category == category)
     docs = session.exec(q).all()
+    # Hierarchical visibility: non-privileged users only see their own area + general.
+    docs = [d for d in docs if can_view_area(user, d.area or "")]
     labels = _label_map(session, tenant.id)
     return [_out(d, labels) for d in docs]
 
@@ -175,12 +179,15 @@ def update_document(
     doc_id: str,
     body: DocumentUpdate,
     tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> DocumentOut:
     """Re-tag a document: change its area, category and/or treatment."""
     doc = session.get(Document, doc_id)
     if not doc or doc.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
+    if not can_view_area(user, doc.area or ""):
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta área")
     if body.area is not None:
         doc.area = body.area.strip()
     if body.category is not None:
@@ -202,11 +209,14 @@ def update_document(
 def delete_document(
     doc_id: str,
     tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> dict:
     doc = session.get(Document, doc_id)
     if not doc or doc.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
+    if not can_view_area(user, doc.area or ""):
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta área")
 
     from ..ai.vectorstore import get_vector_store
 

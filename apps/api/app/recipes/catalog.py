@@ -485,7 +485,7 @@ def prefill(recipe: dict, session: Session, tenant: Tenant, inputs: dict, user_i
         return _prefill_licitacion(session, tenant.id, inputs, recipe)
     if handler == "correo_agenda":
         return _prefill_correo_agenda(session, tenant, user_id, inputs)
-    return _prefill_generic(recipe, session, tenant, inputs)
+    return _prefill_generic(recipe, session, tenant, inputs, user_id)
 
 
 # Output-format presets shared by every use case (the "formato de salida" step).
@@ -522,7 +522,8 @@ def apply_intent(system: str, instruction: str, inputs: dict) -> tuple[str, str]
     return system, instruction
 
 
-def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dict) -> dict:
+def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dict,
+                     user_id: str | None = None) -> dict:
     """Generate real content through the privacy router + model fallback.
 
     The instruction is classified and routed (local/VPC for sensitive inputs,
@@ -554,10 +555,17 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
     # Ground in the layered KB: company-private + state + country curated. When the
     # recipe declares a rag_category, the company-RAG layer is restricted to that
     # document type (e.g. "Propuesta comercial" → category propuesta_comercial).
+    areas = None
+    if user_id:
+        from ..models import User
+        from ..permissions import visible_areas
+        u = session.get(User, user_id)
+        if u:
+            areas = visible_areas(u)
     matches = layered_search(session, tenant, q=f"{recipe.get('name', '')} {instruction}",
                              region=inputs.get("region"), municipio=inputs.get("municipio"),
                              country=country["code"], include_rag=True,
-                             rag_category=recipe.get("rag_category") or None)[:6]
+                             rag_category=recipe.get("rag_category") or None, areas=areas)[:6]
     ground_context = [to_context(t) for t in matches]
     fuentes = [{"title": t["title"], "authority": t.get("authority", ""),
                 "fuente": t.get("fuente", ""), "source": t.get("source", "curado")} for t in matches]

@@ -33,14 +33,19 @@ def _ensure_columns() -> None:
     from sqlalchemy import inspect, text
 
     insp = inspect(engine)
-    if "documents" not in insp.get_table_names():
-        return
-    existing = {c["name"] for c in insp.get_columns("documents")}
-    to_add = [col for col in ("area", "category") if col not in existing]
-    if to_add:
-        with engine.begin() as conn:
-            for col in to_add:
-                conn.execute(text(f"ALTER TABLE documents ADD COLUMN {col} VARCHAR DEFAULT ''"))
+    tables = set(insp.get_table_names())
+    plan: dict[str, dict[str, str]] = {
+        "documents": {"area": "''", "category": "''"},
+        "users": {"area": "''", "license": "'basic'"},
+    }
+    with engine.begin() as conn:
+        for table, cols in plan.items():
+            if table not in tables:
+                continue
+            existing = {c["name"] for c in insp.get_columns(table)}
+            for col, default in cols.items():
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} VARCHAR DEFAULT {default}"))
 
 
 def init_db() -> None:

@@ -83,8 +83,14 @@ export const api = {
     }>("/admin/billing"),
   updateBilling: (body: Partial<{ seats_licensed: number; annual_fee_mxn: number; subscription_status: string; subscription_renews_at: string; setup_fee_paid: boolean; plan: string }>) =>
     request<{ ok: boolean }>("/admin/billing", { method: "PUT", body: JSON.stringify(body) }),
-  createUser: (body: { email: string; name: string; role?: string }) =>
+  createUser: (body: { email: string; name: string; role?: string; area?: string; license?: string }) =>
     request<{ id: string; email: string }>("/admin/users", { method: "POST", body: JSON.stringify(body) }),
+  updateUser: (id: string, body: { name?: string; role?: string; area?: string; license?: string; status?: string }) =>
+    request<{ id: string; role: string; area: string; license: string }>(
+      `/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  adminTenants: () =>
+    request<{ id: string; name: string; plan: string; subscription_status: string; country: string; seats_licensed: number; users: number; documents: number }[]>(
+      "/admin/tenants"),
   // Regional catalog
   regionalEjes: () => request<Eje[]>("/regional/ejes"),
   regionalCountries: () =>
@@ -350,7 +356,7 @@ export const api = {
       "/admin/routes",
     ),
   users: () =>
-    request<{ id: string; email: string; name: string; role: string; mfa_enabled: boolean }[]>(
+    request<{ id: string; email: string; name: string; role: string; area: string; license: string; mfa_enabled: boolean; status: string }[]>(
       "/admin/users",
     ),
   security: () =>

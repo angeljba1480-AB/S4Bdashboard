@@ -16,6 +16,7 @@ from ..ai.resilience import generate_with_fallback
 from ..ai.router import route_request
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
+from ..permissions import visible_areas
 from ..models import (
     Agent,
     AuditEvent,
@@ -55,7 +56,8 @@ def preview(
     if not agent or agent.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Agente no encontrado")
 
-    citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None) if body.use_rag else []
+    citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None,
+                         areas=visible_areas(user)) if body.use_rag else []
     decision = route_request(tenant, agent, body.prompt, [c.text for c in citations], task="chat")
 
     route = decision.route.value
@@ -114,7 +116,8 @@ def chat(
     citations = []
     context_texts: list[str] = []
     if body.use_rag:
-        citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None)
+        citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None,
+                             areas=visible_areas(user))
         context_texts = [c.text for c in citations]
 
         # 2b. Curated trámites MCP grounding (empresa → estado → país) so agents

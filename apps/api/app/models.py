@@ -100,6 +100,8 @@ class User(SQLModel, table=True):
     email: str = Field(index=True)
     name: str
     role: Role = Role.USER
+    area: str = ""                 # área a la que pertenece ("" = sin área / general)
+    license: str = "basic"        # nivel de licencia (basic | pro | enterprise)
     password_hash: str = ""
     mfa_enabled: bool = False
     status: str = "active"
