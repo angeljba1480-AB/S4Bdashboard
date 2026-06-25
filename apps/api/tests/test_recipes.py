@@ -272,3 +272,56 @@ def test_reject_proposal(client):
     prop = client.post("/recipes/propose", headers=h, json={"title": "Caso a rechazar"}).json()
     r = client.post(f"/recipes/proposals/{prop['id']}/reject", headers=h).json()
     assert r["status"] == "rejected"
+
+
+def test_company_profile_exposes_required_baseline(client):
+    h = _auth(client)
+    p = client.get("/company/profile", headers=h).json()
+    assert "required_complete" in p and isinstance(p["missing_required"], list)
+
+
+def test_objetivo_notas_formato_woven_into_prompt(client):
+    """The universal intent step (objetivo/notas/formato) shapes the instruction."""
+    h = _auth(client)
+    start = client.post("/recipes/propuesta_comercial/start", headers=h, json={
+        "inputs": {"cliente": "ACME", "servicio": "CRM",
+                   "objetivo": "OBJETIVOXYZ ganar la cuenta", "formato": "tabla"},
+    }).json()
+    plan = start["draft"]["plan"]
+    assert "OBJETIVOXYZ" in plan
+    assert "tabla" in plan.lower()
+
+
+def test_multiple_accounts_per_user(client, monkeypatch):
+    """A user can connect several mailboxes; each is selectable and removable."""
+    from app.integrations import mailbox
+
+    h = _auth(client)
+    monkeypatch.setattr(mailbox, "imap_test", lambda host, port, email, password: True)
+
+    for addr in ("a@multi.test", "b@multi.test"):
+        r = client.post("/oauth/imap", headers=h, json={
+            "host": "imap.multi.test", "port": 993, "email": addr, "password": "x-pass-1234",
+        })
+        assert r.status_code == 200, r.text
+
+    conns = client.get("/oauth/providers", headers=h).json()["connections"]
+    mine = {c["identifier"]: c["id"] for c in conns
+            if c["identifier"] in ("a@multi.test", "b@multi.test")}
+    assert set(mine) == {"a@multi.test", "b@multi.test"}, "ambas cuentas deben coexistir"
+
+    # Summarize selecting account b explicitly (by connection id).
+    monkeypatch.setattr(mailbox, "fetch", lambda provider, token: {
+        "messages": [{"from": "X", "subject": "Hola", "received": "", "preview": "hi", "unread": True}],
+        "events": [],
+    })
+    start = client.post("/recipes/correo_agenda/start", headers=h, json={
+        "inputs": {"account": mine["b@multi.test"], "output": "Resumen diario"},
+    }).json()
+    assert start["draft"].get("connected") is True
+    assert "b@multi.test" in start["draft"]["summary"]
+
+    # Disconnecting one account leaves the other connected.
+    assert client.delete(f"/oauth/connection/{mine['a@multi.test']}", headers=h).json()["ok"] is True
+    idents = {c["identifier"] for c in client.get("/oauth/providers", headers=h).json()["connections"]}
+    assert "a@multi.test" not in idents and "b@multi.test" in idents

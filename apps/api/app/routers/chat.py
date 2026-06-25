@@ -12,10 +12,12 @@ from sqlmodel import Session
 
 from ..ai.cost import estimate_cost, estimate_tokens
 from ..ai.rag import retrieve
+from ..ai.cascade import maybe_refine
 from ..ai.resilience import generate_with_fallback
 from ..ai.router import route_request
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
+from ..permissions import visible_areas
 from ..models import (
     Agent,
     AuditEvent,
@@ -55,7 +57,8 @@ def preview(
     if not agent or agent.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Agente no encontrado")
 
-    citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None)
+    citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None,
+                         areas=visible_areas(user)) if body.use_rag else []
     decision = route_request(tenant, agent, body.prompt, [c.text for c in citations], task="chat")
 
     route = decision.route.value
@@ -109,16 +112,21 @@ def chat(
         session.commit()
         session.refresh(conv)
 
-    # 2. Retrieval (tenant-scoped RAG)
-    citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None)
-    context_texts = [c.text for c in citations]
+    # 2. Retrieval (tenant-scoped RAG) — skipped entirely in "sin contexto" mode
+    # so the user can hold a plain conversation with the model.
+    citations = []
+    context_texts: list[str] = []
+    if body.use_rag:
+        citations = retrieve(session, tenant.id, body.prompt, body.document_ids or None,
+                             areas=visible_areas(user))
+        context_texts = [c.text for c in citations]
 
-    # 2b. Curated trámites MCP grounding (empresa → estado → país) so agents
-    # answer with real local context, not just the company's own documents.
-    from ..regional.tramites import to_context as _tramite_context
-    from .tramites import layered_search as _tramite_search
-    tramite_matches = _tramite_search(session, tenant, q=body.prompt, country=tenant.country)[:4]
-    context_texts = context_texts + [_tramite_context(t) for t in tramite_matches]
+        # 2b. Curated trámites MCP grounding (empresa → estado → país) so agents
+        # answer with real local context, not just the company's own documents.
+        from ..regional.tramites import to_context as _tramite_context
+        from .tramites import layered_search as _tramite_search
+        tramite_matches = _tramite_search(session, tenant, q=body.prompt, country=tenant.country)[:4]
+        context_texts = context_texts + [_tramite_context(t) for t in tramite_matches]
 
     # 3. Privacy Model Router
     decision = route_request(tenant, agent, body.prompt, context_texts, task="chat")
@@ -152,6 +160,24 @@ def chat(
             tokens = estimate_tokens(body.prompt + content)
             cost = estimate_cost(gen.route, tokens)
 
+    # 5b. Cascade: optionally refine the draft with a premium model (advanced
+    # tasks / "máxima precisión"), respecting privacy (sensitive needs approval).
+    escalated = escalation_pending = False
+    if used_route != ModelRoute.BLOCKED:
+        ref = maybe_refine(
+            decision=decision, base_content=content, base_route=used_route,
+            instruction=body.prompt, want_precision=body.precision,
+            advanced=bool(agent.requires_premium_reasoning), approved=body.approve_external,
+        )
+        escalation_pending = ref["escalation_pending"]
+        if ref["escalated"]:
+            escalated = True
+            used_route = ModelRoute(ref["route"])
+            model_used = ref["model"] or model_used
+            content = ref["content"] + "\n\n_(Refinado con modelo premium · cascada.)_"
+            tokens = estimate_tokens(body.prompt + content)
+            cost = estimate_cost(used_route, tokens)
+
     # 6. Persist assistant message
     msg = Message(
         conversation_id=conv.id, role="assistant", content_redacted=content,
@@ -182,4 +208,5 @@ def chat(
         blocked=blocked, reason=audit_reason,
         token_count=tokens, cost_estimate=cost,
         citations=[CitationOut(**c.__dict__) for c in citations],
+        escalated=escalated, escalation_pending=escalation_pending,
     )

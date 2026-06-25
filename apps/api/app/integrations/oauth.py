@@ -75,6 +75,10 @@ def build_authorize_url(provider: str, state: str) -> str:
     cfg = provider_config(provider)
     if not cfg:
         raise ValueError(f"proveedor desconocido: {provider}")
+    # Force the account chooser so the user can connect a *different* account of
+    # the same provider (e.g. personal + work). Google accepts space-delimited
+    # prompt values; Microsoft takes a single one.
+    prompt = "select_account consent" if provider == "google" else "select_account"
     params = {
         "client_id": cfg["client_id"],
         "redirect_uri": cfg["redirect_uri"],
@@ -82,7 +86,7 @@ def build_authorize_url(provider: str, state: str) -> str:
         "scope": cfg["scopes"],
         "state": state,
         "access_type": "offline",      # Google: request a refresh token
-        "prompt": "consent",
+        "prompt": prompt,
     }
     return f"{cfg['authorize_url']}?{urlencode(params)}"
 

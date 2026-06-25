@@ -111,7 +111,8 @@ class Settings(BaseSettings):
     google_redirect_uri: str = ""      # e.g. https://<api>/oauth/google/callback
     google_scopes: str = (
         "openid email https://www.googleapis.com/auth/gmail.readonly "
-        "https://www.googleapis.com/auth/calendar.readonly"
+        "https://www.googleapis.com/auth/calendar.readonly "
+        "https://www.googleapis.com/auth/drive.readonly"
     )
 
     # SSO / OIDC (optional, pluggable). When disabled, password login is used.

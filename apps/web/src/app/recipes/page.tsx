@@ -3,7 +3,7 @@
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
 import type { CompanyProfile, DocumentItem, Recipe, RecipeRun } from "@shared/types";
-import { Building2, CheckCircle2, ChevronLeft, Download, Link2, Sparkles } from "lucide-react";
+import { Building2, CheckCircle2, ChevronLeft, Download, FileText, Link2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -13,6 +13,8 @@ export default function RecipesPage() {
   const [cat, setCat] = useState<string>("");
   const [q, setQ] = useState("");
   const [docs, setDocs] = useState<DocumentItem[]>([]);
+  const [docCats, setDocCats] = useState<{ key: string; label: string }[]>([]);
+  const [mailboxes, setMailboxes] = useState<{ id: string; provider: string; label: string; identifier: string }[]>([]);
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [active, setActive] = useState<Recipe | null>(null);
   const [inputs, setInputs] = useState<Record<string, string>>({});
@@ -25,7 +27,11 @@ export default function RecipesPage() {
   useEffect(() => {
     api.recipeCategories().then(setCategories).catch(() => {});
     api.documents().then(setDocs).catch(() => {});
+    api.documentCategories().then((cs) => setDocCats(cs.map((c) => ({ key: c.key, label: c.label })))).catch(() => {});
     api.companyProfile().then(setProfile).catch(() => {});
+    api.oauthProviders()
+      .then((r) => setMailboxes(r.connections))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -34,6 +40,14 @@ export default function RecipesPage() {
       .catch((e) => setError(e.message));
   }, [cat, q]);
 
+  // Default the mailbox field to the first connected account so there's always a
+  // visible, explicit selection the user can change (instead of a silent fallback).
+  useEffect(() => {
+    if (!active || mailboxes.length === 0) return;
+    const mf = active.inputs.find((f) => f.type === "mailbox");
+    if (mf && !inputs[mf.key]) setInputs((s) => ({ ...s, [mf.key]: mailboxes[0].id }));
+  }, [active, mailboxes]);
+
   async function propose() {
     if (!propTitle.trim()) return;
     await api.proposeRecipe({ title: propTitle, category: cat || "dia_a_dia" });
@@ -41,19 +55,22 @@ export default function RecipesPage() {
     setPropMsg("¡Gracias! Tu caso fue enviado y entrará a revisión para el catálogo.");
   }
 
+  const locked = profile?.required_complete === false;
+
   function open(r: Recipe) {
+    if (locked) return; // onboarding baseline required first
     setActive(r);
     setRun(null);
     setError("");
     setInputs({});
   }
 
-  async function start() {
+  async function start(extra?: Record<string, string>) {
     if (!active) return;
     setBusy(true);
     setError("");
     try {
-      setRun(await api.startRecipe(active.id, inputs));
+      setRun(await api.startRecipe(active.id, { ...inputs, ...(extra || {}) }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -89,7 +106,28 @@ export default function RecipesPage() {
       <div className="p-8">
         {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
 
-        {!active && profile && profile.completion < 100 && (
+        {/* Mandatory onboarding gate: block the use cases until the baseline is set. */}
+        {!active && locked && (
+          <Link
+            href="/company"
+            className="mb-5 flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 transition hover:border-amber-400"
+          >
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white">
+              <Building2 className="h-5 w-5 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-amber-900">
+                Completa la información base de tu empresa para habilitar los casos de uso
+              </div>
+              <p className="text-xs text-amber-700">
+                Es obligatoria para obtener resultados confiables. Falta:{" "}
+                <b>{(profile?.missing_required || []).join(", ")}</b>. Toca aquí para completarla →
+              </p>
+            </div>
+          </Link>
+        )}
+
+        {!active && !locked && profile && profile.completion < 100 && (
           <Link
             href="/company"
             className="mb-5 flex items-center gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4 transition hover:border-violet-400"
@@ -140,7 +178,9 @@ export default function RecipesPage() {
                 <button
                   key={r.id}
                   onClick={() => open(r)}
-                  className="rounded-2xl border border-slate-200 bg-white p-5 text-left transition hover:border-violet-400 hover:shadow-sm"
+                  disabled={locked}
+                  title={locked ? "Completa la información base de tu empresa para habilitar este caso" : undefined}
+                  className={`rounded-2xl border border-slate-200 bg-white p-5 text-left transition hover:border-violet-400 hover:shadow-sm ${locked ? "cursor-not-allowed opacity-50 hover:border-slate-200 hover:shadow-none" : ""}`}
                 >
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50">
                     <Sparkles className="h-5 w-5 text-violet-600" />
@@ -189,9 +229,59 @@ export default function RecipesPage() {
               <h2 className="font-semibold text-slate-800">{active.name}</h2>
               <p className="mt-1 text-sm text-slate-500">{active.description}</p>
 
+              {active.rag_category && (
+                <div className="mt-3 flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800">
+                  <FileText className="h-4 w-4 flex-shrink-0" />
+                  <span>
+                    Se apoya en tus documentos de categoría{" "}
+                    <b>{docCats.find((c) => c.key === active.rag_category)?.label || active.rag_category}</b>.{" "}
+                    <Link href="/documents" className="font-semibold underline">Súbelos en Documentos</Link> para mejores resultados.
+                  </span>
+                </div>
+              )}
+
               {/* Step 1: minimal inputs */}
               {!run && (
                 <div className="mt-5 space-y-4">
+                  {/* Universal intent step: goal + notes + output format (shapes every case). */}
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">¿Qué quieres lograr? (objetivo)</label>
+                      <textarea rows={2} value={inputs.objetivo || ""} placeholder="Ej. Cerrar al cliente con una propuesta clara y persuasiva…"
+                        onChange={(e) => setInputs((s) => ({ ...s, objetivo: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">Notas / lo que te interesa incluir</label>
+                      <textarea rows={2} value={inputs.notas || ""} placeholder="Datos, tono, puntos a destacar, lo que NO quieres…"
+                        onChange={(e) => setInputs((s) => ({ ...s, notas: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">Formato de salida</label>
+                      <select value={inputs.formato || ""} onChange={(e) => setInputs((s) => ({ ...s, formato: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        <option value="">Predeterminado</option>
+                        <option value="documento_formal">Documento formal</option>
+                        <option value="resumen_ejecutivo">Resumen ejecutivo (bullets)</option>
+                        <option value="tabla">Tabla</option>
+                        <option value="presentacion">Presentación (esquema)</option>
+                        <option value="carta">Carta / comunicado</option>
+                        <option value="personalizado">Diseñar con AI (describe abajo)</option>
+                      </select>
+                      {inputs.formato === "personalizado" && (
+                        <textarea rows={2} value={inputs.formato_notas || ""} placeholder="Describe el formato que quieres y lo armo…"
+                          onChange={(e) => setInputs((s) => ({ ...s, formato_notas: e.target.value }))}
+                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                      )}
+                    </div>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                      <input type="checkbox" checked={inputs.precision === "1"}
+                        onChange={(e) => setInputs((s) => ({ ...s, precision: e.target.checked ? "1" : "" }))} />
+                      <FileText className="h-4 w-4 text-violet-600" /> Máxima precisión (refina con modelo premium)
+                      {active.rag_category && active.advanced && <span className="text-xs text-violet-500">· este caso ya usa premium</span>}
+                    </label>
+                  </div>
                   {active.inputs.map((f) => {
                     const cls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm";
                     const val = inputs[f.key] || "";
@@ -203,7 +293,26 @@ export default function RecipesPage() {
                           {f.label}
                           {f.required && <span className="text-red-500"> *</span>}
                         </label>
-                        {f.type === "document" ? (
+                        {f.type === "mailbox" ? (
+                          mailboxes.length > 0 ? (
+                            <select value={val} onChange={(e) => onChange(e.target.value)} className={cls}>
+                              <option value="">Elige una cuenta…</option>
+                              {mailboxes.map((m) => (
+                                <option key={m.id} value={m.id}>
+                                  {m.identifier} — {m.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                              No tienes cuentas conectadas.{" "}
+                              <Link href="/integrations" className="font-semibold underline">
+                                Conecta tu correo
+                              </Link>{" "}
+                              (Outlook, Gmail o IMAP) para usar este caso.
+                            </div>
+                          )
+                        ) : f.type === "document" ? (
                           <select value={val} onChange={(e) => onChange(e.target.value)} className={cls}>
                             <option value="">Selecciona un documento…</option>
                             {docs.map((d) => <option key={d.id} value={d.id}>{d.filename}</option>)}
@@ -239,7 +348,7 @@ export default function RecipesPage() {
                     );
                   })}
                   <button
-                    onClick={start}
+                    onClick={() => start()}
                     disabled={busy}
                     className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                   >
@@ -254,6 +363,16 @@ export default function RecipesPage() {
                   {run.draft?.summary && (
                     <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800">
                       {run.draft.summary as string}
+                    </div>
+                  )}
+
+                  {run.draft?.escalation_pending === true && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                      Para máxima precisión puedo refinarlo con un modelo premium, pero el contenido es sensible.
+                      <button onClick={() => start({ precision: "1", approve_external: "1" })} disabled={busy}
+                        className="ml-2 rounded-md bg-amber-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">
+                        Aprobar y refinar
+                      </button>
                     </div>
                   )}
 
@@ -336,6 +455,18 @@ export default function RecipesPage() {
                           className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
                         >
                           <Download className="h-4 w-4" /> PDF
+                        </button>
+                        <button
+                          onClick={() => api.downloadRun(run.id, "pptx")}
+                          className="flex items-center gap-1.5 rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-700"
+                        >
+                          <Download className="h-4 w-4" /> PowerPoint
+                        </button>
+                        <button
+                          onClick={() => api.downloadRun(run.id, "xlsx")}
+                          className="flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-800"
+                        >
+                          <Download className="h-4 w-4" /> Excel
                         </button>
                         <button
                           onClick={() => api.downloadRun(run.id, "md")}

@@ -27,6 +27,8 @@ DEFAULT_BRAND = "MaestroAI"
 _MUTED = (0x6B, 0x72, 0x80)
 _INK = (0x11, 0x18, 0x27)
 DOCX_MEDIA = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+PPTX_MEDIA = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+XLSX_MEDIA = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 class ReportRequest(BaseModel):
@@ -246,6 +248,92 @@ def _render_pdf(title: str, blocks: list[tuple[str, str]], brand: str = DEFAULT_
     return buf.getvalue()
 
 
+def _render_pptx(
+    title: str, blocks: list[tuple[str, str]], *,
+    brand: str = DEFAULT_BRAND, brand_color: str = "#7C3AED", tagline: str = "",
+) -> bytes:
+    """One title slide + one content slide per block (heading → bullets)."""
+    from pptx import Presentation
+    from pptx.dml.color import RGBColor
+    from pptx.util import Inches, Pt
+
+    accent = RGBColor(*_hex_to_rgb(brand_color))
+    prs = Presentation()
+    prs.slide_width = Inches(13.333)
+    prs.slide_height = Inches(7.5)
+
+    # Cover slide
+    cover = prs.slides.add_slide(prs.slide_layouts[6])
+    tb = cover.shapes.add_textbox(Inches(0.8), Inches(2.4), Inches(11.7), Inches(2.5)).text_frame
+    tb.word_wrap = True
+    run = tb.paragraphs[0].add_run(); run.text = brand.upper()
+    run.font.size = Pt(16); run.font.bold = True; run.font.color.rgb = accent
+    p = tb.add_paragraph(); r = p.add_run(); r.text = title
+    r.font.size = Pt(40); r.font.bold = True
+    sub = tb.add_paragraph(); sr = sub.add_run()
+    sr.text = (tagline + "  ·  " if tagline else "") + f"Generado {datetime.utcnow():%d/%m/%Y} UTC"
+    sr.font.size = Pt(12); sr.font.color.rgb = RGBColor(*_MUTED)
+
+    for heading, body in blocks:
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        head = slide.shapes.add_textbox(Inches(0.7), Inches(0.4), Inches(12), Inches(1)).text_frame
+        hr = head.paragraphs[0].add_run(); hr.text = _strip_md(heading or title)
+        hr.font.size = Pt(26); hr.font.bold = True; hr.font.color.rgb = accent
+        box = slide.shapes.add_textbox(Inches(0.7), Inches(1.5), Inches(12), Inches(5.4)).text_frame
+        box.word_wrap = True
+        first = True
+        for raw in (body or "").split("\n"):
+            line = _strip_md(raw).strip().lstrip("-*").strip()
+            if not line:
+                continue
+            para = box.paragraphs[0] if first else box.add_paragraph()
+            first = False
+            run = para.add_run(); run.text = line; run.font.size = Pt(16)
+            para.level = 0
+    buf = io.BytesIO()
+    prs.save(buf)
+    return buf.getvalue()
+
+
+def _render_xlsx(title: str, blocks: list[tuple[str, str]], brand: str = DEFAULT_BRAND) -> bytes:
+    """A single sheet: section headers + body lines; key:value rows become 2 columns."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Reporte"
+    ws.column_dimensions["A"].width = 32
+    ws.column_dimensions["B"].width = 80
+
+    head_fill = PatternFill("solid", fgColor="0A1F44")
+    ws.append([title]); ws["A1"].font = Font(bold=True, size=14)
+    ws.append([f"Generado {datetime.utcnow():%Y-%m-%d %H:%M} UTC · {brand}"])
+    ws["A2"].font = Font(italic=True, size=9, color="6B7280")
+    ws.append([])
+
+    for heading, body in blocks:
+        if heading:
+            r = ws.max_row + 1
+            ws.append([_strip_md(heading)])
+            c = ws.cell(row=r, column=1)
+            c.font = Font(bold=True, color="FFFFFF"); c.fill = head_fill
+        for raw in (body or "").split("\n"):
+            line = raw.rstrip()
+            if not line.strip():
+                continue
+            if ":" in line and len(line.split(":", 1)[0]) < 40:
+                k, v = line.split(":", 1)
+                ws.append([_strip_md(k).strip(), _strip_md(v).strip()])
+            else:
+                ws.append(["", _strip_md(line).strip()])
+                ws.cell(row=ws.max_row, column=2).alignment = Alignment(wrap_text=True)
+        ws.append([])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def _render_md(title: str, blocks: list[tuple[str, str]], brand: str = DEFAULT_BRAND) -> str:
     out = [f"# {title}", f"_Generado {datetime.utcnow():%Y-%m-%d %H:%M} UTC · {brand}_", ""]
     for heading, body in blocks:
@@ -270,6 +358,14 @@ def deliver(title: str, blocks: list[tuple[str, str]], fmt: str, fname: str,
                             tagline=b["tagline"], meta=meta)
         return StreamingResponse(io.BytesIO(data), media_type=DOCX_MEDIA,
                                  headers={"Content-Disposition": f'attachment; filename="{fname}.docx"'})
+    if fmt == "pptx":
+        data = _render_pptx(title, blocks, brand=b["name"], brand_color=b["color"], tagline=b["tagline"])
+        return StreamingResponse(io.BytesIO(data), media_type=PPTX_MEDIA,
+                                 headers={"Content-Disposition": f'attachment; filename="{fname}.pptx"'})
+    if fmt == "xlsx":
+        data = _render_xlsx(title, blocks, brand=b["name"])
+        return StreamingResponse(io.BytesIO(data), media_type=XLSX_MEDIA,
+                                 headers={"Content-Disposition": f'attachment; filename="{fname}.xlsx"'})
     pdf = _render_pdf(title, blocks, brand=b["name"])
     return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf",
                              headers={"Content-Disposition": f'attachment; filename="{fname}.pdf"'})

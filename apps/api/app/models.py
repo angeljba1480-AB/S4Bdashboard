@@ -100,6 +100,8 @@ class User(SQLModel, table=True):
     email: str = Field(index=True)
     name: str
     role: Role = Role.USER
+    area: str = ""                 # área a la que pertenece ("" = sin área / general)
+    license: str = "basic"        # nivel de licencia (basic | pro | enterprise)
     password_hash: str = ""
     mfa_enabled: bool = False
     status: str = "active"
@@ -128,6 +130,8 @@ class Document(SQLModel, table=True):
     owner_id: str = Field(foreign_key="users.id")
     filename: str
     mime_type: str = "text/plain"
+    area: str = ""                 # organizational area (Legal, Ventas, RH, …)
+    category: str = ""            # document type key (catalog) — e.g. propuesta_comercial
     sensitivity: Sensitivity = Sensitivity.INTERNAL
     pii_score: float = 0.0
     pii_types: str = ""            # comma separated
@@ -135,6 +139,19 @@ class Document(SQLModel, table=True):
     hash: str = ""
     text: str = ""                 # extracted text (MVP keeps it inline)
     indexed: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DocumentCategory(SQLModel, table=True):
+    """Per-tenant catalog of document types (extensible). Built-in defaults are
+    marked `system` and can't be deleted; users/recipes can add new ones."""
+    __tablename__ = "document_categories"
+    id: str = Field(default_factory=lambda: _uuid("dcat"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    key: str = ""                  # slug, unique per tenant
+    label: str = ""
+    description: str = ""
+    system: bool = False           # built-in default (protected from deletion)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -148,6 +165,60 @@ class DocumentChunk(SQLModel, table=True):
     text_hash: str = ""
     sensitivity: Sensitivity = Sensitivity.INTERNAL
     embedding: str = ""            # JSON-encoded float vector
+
+
+class ActionRequest(SQLModel, table=True):
+    """A Google/Microsoft toolkit action. Read actions run immediately; write
+    actions (send mail, create event, write a sheet…) are gated on human approval
+    before execution, per the blueprint's 'tú apruebas' principle."""
+    __tablename__ = "action_requests"
+    id: str = Field(default_factory=lambda: _uuid("act"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    provider: str = ""             # google | microsoft
+    action: str = ""              # action id from the catalog
+    params: str = "{}"            # JSON
+    status: str = "pending"        # pending | executed | failed | rejected
+    result: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ActionGrant(SQLModel, table=True):
+    """Standing authorization: a user opted to auto-approve a given action so it
+    runs without asking each time. Revocable. (Set via 'Permitir siempre'.)"""
+    __tablename__ = "action_grants"
+    id: str = Field(default_factory=lambda: _uuid("agr"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    action: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ProviderSetting(SQLModel, table=True):
+    """Runtime config for an external model route (premium / open), set from the
+    admin UI instead of env vars. API key is encrypted at rest. Global (platform)."""
+    __tablename__ = "provider_settings"
+    id: str = Field(default_factory=lambda: _uuid("prov"), primary_key=True)
+    route: str = Field(index=True)   # "premium" | "open"
+    enabled: bool = False
+    base_url: str = ""
+    model: str = ""
+    api_key_enc: str = ""
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Notebook(SQLModel, table=True):
+    """A NotebookLM-style workspace: a named set of source documents the user can
+    query and turn into artifacts (summary, FAQ, study guide…), grounded ONLY in
+    those sources via the existing RAG index."""
+    __tablename__ = "notebooks"
+    id: str = Field(default_factory=lambda: _uuid("nb"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    name: str = "Nuevo notebook"
+    document_ids: str = "[]"       # JSON list of Document ids (the sources)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class Conversation(SQLModel, table=True):

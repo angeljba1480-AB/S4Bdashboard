@@ -63,6 +63,11 @@ _REGION_DISCLAIMER = ("⚠️ Los requisitos, costos y plazos cambian por regió
                       "Esto es una guía; confirma siempre con tu autoridad local.")
 
 
+def _report_template_labels() -> list[str]:
+    from .. import report_templates
+    return report_templates.template_labels()
+
+
 def _r(**kw) -> dict:
     """Recipe with sensible defaults so the catalog stays terse and scalable."""
     kw.setdefault("icon", "sparkles")
@@ -72,6 +77,8 @@ def _r(**kw) -> dict:
     kw.setdefault("handler", "generic")
     kw.setdefault("produces", "el resultado")
     kw.setdefault("prompt", "")
+    kw.setdefault("rag_category", "")   # document category this recipe grounds in
+    kw.setdefault("advanced", False)    # auto-escalate to premium (cascade) when set
     return kw
 
 
@@ -87,20 +94,35 @@ RECIPES: list[dict] = [
             {"key": "empresa", "type": "text", "label": "Nombre de tu empresa", "required": True},
         ],
         approval="draft", approve_label="Aprobar respuesta pre-llenada",
-        produces="una respuesta de licitación pre-llenada",
+        produces="una respuesta de licitación pre-llenada", rag_category="licitacion_madre",
     ),
     _r(
         id="correo_agenda", category="dia_a_dia", handler="correo_agenda", icon="mail",
         name="Resumen de correo y agenda",
         description="Conecta tu correo (Outlook/Gmail) y genero el resumen del día. Tú apruebas.",
         inputs=[
-            {"key": "email", "type": "email", "label": "Tu correo", "required": True,
-             "help": "Conéctalo primero en Integraciones → «Conectar correo»."},
+            {"key": "account", "type": "mailbox", "label": "Cuenta a resumir",
+             "help": "Elige una de tus cuentas conectadas. ¿No aparece? Conéctala en Integraciones → «Conectar correo»."},
             {"key": "output", "type": "choice", "label": "Tipo de salida",
              "options": ["Resumen diario", "Horario del día", "Pendientes por responder"], "required": True},
         ],
         approve_label="Generar resumen",
         produces="un resumen de tu correo y agenda",
+    ),
+
+    _r(
+        id="reporte_industria", category="operaciones", handler="reporte", icon="bar-chart",
+        name="Reporte por industria",
+        description="Genero un reporte profesional con la estructura de tu industria. Exporta a PDF/Word/PPT/Excel.",
+        inputs=[
+            {"key": "plantilla", "type": "choice", "label": "Plantilla de industria", "required": True,
+             "options": _report_template_labels()},
+            {"key": "tema", "type": "text", "label": "Tema del reporte", "required": True,
+             "placeholder": "Ej. Resultados del Q2, diagnóstico de operaciones…"},
+            {"key": "periodo", "type": "text", "label": "Periodo", "placeholder": "Ej. Q2 2026"},
+            _area_input()],
+        produces="un reporte por industria", rag_category="conocimiento", advanced=True,
+        approve_label="Generar reporte",
     ),
 
     # ---- Crecer el negocio ------------------------------------------------
@@ -122,7 +144,7 @@ RECIPES: list[dict] = [
                 "placeholder": "Ventajas, casos de éxito, garantías…"},
                {"key": "vigencia", "type": "text", "label": "Vigencia de la oferta", "placeholder": "Ej. 30 días"},
                _tono_input(), _area_input()],
-       produces="una propuesta comercial",
+       produces="una propuesta comercial", rag_category="propuesta_comercial", advanced=True,
        prompt=("Propuesta comercial para {cliente} (contacto: {contacto}) sobre {servicio}. "
                "Necesidad del cliente: {necesidad}. Alcance/entregables: {alcance}. "
                "Precio: {precio}. Plazo: {plazo}. Diferenciadores: {diferenciadores}. "
@@ -197,7 +219,7 @@ RECIPES: list[dict] = [
                 "placeholder": "Ej. $30,000 MXN, 50% anticipo"},
                {"key": "plazo", "type": "text", "label": "Plazo / vigencia", "placeholder": "Ej. 3 meses"},
                {"key": "lugar", "type": "text", "label": "Ciudad de firma"}],
-       produces="un contrato sencillo",
+       produces="un contrato sencillo", rag_category="contrato_cliente",
        prompt=("Contrato de prestación de servicios entre {parte_a} (prestador) y {parte_b} (cliente) "
                "por {objeto}. Monto y pago: {monto}. Plazo: {plazo}. Lugar: {lugar}. Incluye cláusulas "
                "de objeto, contraprestación, obligaciones, confidencialidad, vigencia y terminación.")),
@@ -456,7 +478,7 @@ def db_recipe_to_dict(row) -> dict:
 
 def public_recipe(r: dict) -> dict:
     keys = ("id", "category", "name", "icon", "description", "inputs",
-            "connections", "approval", "approve_label")
+            "connections", "approval", "approve_label", "rag_category", "advanced")
     return {k: r[k] for k in keys}
 
 
@@ -481,13 +503,74 @@ _REQ_KEYWORDS = (
 def prefill(recipe: dict, session: Session, tenant: Tenant, inputs: dict, user_id: str | None = None) -> dict:
     handler = recipe.get("handler", "generic")
     if handler == "licitacion":
-        return _prefill_licitacion(session, tenant.id, inputs)
+        return _prefill_licitacion(session, tenant.id, inputs, recipe)
     if handler == "correo_agenda":
         return _prefill_correo_agenda(session, tenant, user_id, inputs)
-    return _prefill_generic(recipe, session, tenant, inputs)
+    if handler == "reporte":
+        return _prefill_reporte(recipe, session, tenant, inputs, user_id)
+    return _prefill_generic(recipe, session, tenant, inputs, user_id)
 
 
-def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dict) -> dict:
+def _prefill_reporte(recipe: dict, session: Session, tenant: Tenant, inputs: dict,
+                     user_id: str | None = None) -> dict:
+    """Build a sectioned, industry-specific report prompt, then run it through the
+    generic pipeline (privacy routing + company RAG + fallback)."""
+    from .. import report_templates
+
+    tpl = report_templates.get_by_key_or_label(inputs.get("plantilla", "")) \
+        or report_templates.get_by_key_or_label("generico")
+    sections = "\n".join(f"{i}. {s}" for i, s in enumerate(tpl["sections"], 1))
+    tema = (inputs.get("tema") or "el tema solicitado").strip()
+    periodo = (inputs.get("periodo") or "").strip()
+    instruction = (
+        f"Redacta un reporte profesional sobre «{tema}»"
+        + (f" para el periodo {periodo}" if periodo else "")
+        + f" para la industria «{tpl['label']}». "
+        "Usa EXACTAMENTE estas secciones, en este orden, cada una con su encabezado Markdown (##):\n"
+        f"{sections}\n"
+        "Sé concreto y accionable; si faltan datos, indícalo como supuesto. "
+        "Apóyate en el contexto de la empresa y sus documentos."
+    )
+    synth = {**recipe, "prompt": instruction, "produces": "un reporte por industria"}
+    return _prefill_generic(synth, session, tenant, inputs, user_id)
+
+
+# Output-format presets shared by every use case (the "formato de salida" step).
+# An empty/unknown value means "predeterminado" (no extra shaping).
+FORMAT_GUIDE = {
+    "documento_formal": "Formato: documento formal y bien estructurado, con secciones y encabezados.",
+    "resumen_ejecutivo": "Formato: resumen ejecutivo breve, con viñetas y los puntos clave primero.",
+    "tabla": "Formato: presenta la información en tablas cuando sea posible.",
+    "presentacion": "Formato: esquema de presentación (diapositivas con título y viñetas).",
+    "carta": "Formato: carta/comunicado profesional listo para enviar.",
+}
+
+
+def apply_intent(system: str, instruction: str, inputs: dict) -> tuple[str, str]:
+    """Weave the universal 'objetivo + notas + formato' step into any prompt so
+    every use case can be steered toward the user's goal and desired output."""
+    objetivo = str(inputs.get("objetivo", "")).strip()
+    notas = str(inputs.get("notas", "")).strip()
+    formato = str(inputs.get("formato", "")).strip()
+    formato_notas = str(inputs.get("formato_notas", "")).strip()
+
+    extra: list[str] = []
+    if objetivo:
+        extra.append(f"Objetivo que busca el usuario: {objetivo}.")
+    if notas:
+        extra.append(f"Notas y preferencias a considerar: {notas}.")
+    guide = FORMAT_GUIDE.get(formato)
+    if guide:
+        extra.append(guide)
+    if formato == "personalizado" and formato_notas:
+        extra.append(f"Formato solicitado por el usuario: {formato_notas}.")
+    if extra:
+        instruction = instruction + "\n\n" + " ".join(extra)
+    return system, instruction
+
+
+def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dict,
+                     user_id: str | None = None) -> dict:
     """Generate real content through the privacy router + model fallback.
 
     The instruction is classified and routed (local/VPC for sensitive inputs,
@@ -505,6 +588,9 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
               f"Responde en español, claro y listo para usar. Usa el contexto de trámites "
               f"(empresa → estado → país) cuando aplique y cita la autoridad/fuente.")
 
+    # Universal "objetivo + notas + formato" step: steer toward the user's goal.
+    system, instruction = apply_intent(system, instruction, inputs)
+
     # Pre-configured company context (onboarding profile) personalizes the output.
     company_ctx = context_block(get_or_create(session, tenant.id),
                                 getattr(tenant, "brand_name", "") or tenant.name)
@@ -513,10 +599,20 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
     if str(inputs.get("area", "")).strip():
         system += f"\n\nEsta solicitud proviene del área «{inputs['area']}»; adáptala a esa área."
 
-    # Ground in the layered KB: company-private + state + country curated.
+    # Ground in the layered KB: company-private + state + country curated. When the
+    # recipe declares a rag_category, the company-RAG layer is restricted to that
+    # document type (e.g. "Propuesta comercial" → category propuesta_comercial).
+    areas = None
+    if user_id:
+        from ..models import User
+        from ..permissions import visible_areas
+        u = session.get(User, user_id)
+        if u:
+            areas = visible_areas(u)
     matches = layered_search(session, tenant, q=f"{recipe.get('name', '')} {instruction}",
                              region=inputs.get("region"), municipio=inputs.get("municipio"),
-                             country=country["code"], include_rag=True)[:6]
+                             country=country["code"], include_rag=True,
+                             rag_category=recipe.get("rag_category") or None, areas=areas)[:6]
     ground_context = [to_context(t) for t in matches]
     fuentes = [{"title": t["title"], "authority": t.get("authority", ""),
                 "fuente": t.get("fuente", ""), "source": t.get("source", "curado")} for t in matches]
@@ -535,10 +631,32 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
 
     gen = generate_with_fallback(decision.route, system, instruction, decision.context or ground_context)
     contenido = gen.response.content if gen.route != ModelRoute.BLOCKED else ""
+    route = gen.route.value
+
+    # Cascade: refine advanced/"máxima precisión" drafts with a premium model,
+    # respecting privacy (sensitive content needs explicit approval to escalate).
+    from ..ai.cascade import maybe_refine
+    escalated = escalation_pending = False
+    if gen.route != ModelRoute.BLOCKED and contenido:
+        ref = maybe_refine(
+            decision=decision, base_content=contenido, base_route=gen.route, instruction=instruction,
+            want_precision=bool(inputs.get("precision")), advanced=bool(recipe.get("advanced")),
+            approved=bool(inputs.get("approve_external")),
+        )
+        escalation_pending = ref["escalation_pending"]
+        if ref["escalated"]:
+            escalated = True
+            contenido = ref["content"]
+            route = ref["route"]
+
     tokens = estimate_tokens(instruction + contenido)
-    cost = estimate_cost(gen.route, tokens)
-    summary = (f"Generé {produces} con tus datos por la ruta «{gen.route.value}». "
-               f"Revisa y aprueba; el dato se procesó de forma privada y queda auditado.")
+    cost = estimate_cost(ModelRoute(route), tokens)
+    summary = (f"Generé {produces} con tus datos por la ruta «{route}»"
+               + (" (refinado con modelo premium)" if escalated else "")
+               + ". Revisa y aprueba; el dato se procesó de forma privada y queda auditado.")
+    if escalation_pending:
+        summary += ("\n\n⚠️ Para máxima precisión puedo refinarlo con un modelo premium, pero el "
+                    "contenido es sensible. Aprueba el envío externo para escalarlo.")
     if region_aware:
         summary += "\n\n" + _REGION_DISCLAIMER
     return {
@@ -546,22 +664,28 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
         "plan": instruction,            # what I understood (transparency)
         "contenido": contenido,         # AI-generated draft to review
         "produces": produces,
-        "route": gen.route.value,
+        "route": route,
         "region_aware": region_aware,
         "tokens": tokens,
         "cost": cost,
         "fuentes": fuentes,
         "summary": summary,
+        "escalated": escalated,
+        "escalation_pending": escalation_pending,
     }
 
 
-def _prefill_licitacion(session: Session, tenant_id: str, inputs: dict) -> dict:
+def _prefill_licitacion(session: Session, tenant_id: str, inputs: dict, recipe: dict | None = None) -> dict:
     doc_id = inputs.get("document_id") or None
     empresa = (inputs.get("empresa") or "Nuestra empresa").strip()
+    # Use the uploaded tender when given; otherwise ground in the company's
+    # "documento madre de licitación" category so reusable boilerplate is found.
+    rag_category = (recipe or {}).get("rag_category") or None
     citations = retrieve(
         session, tenant_id,
         "requisitos, requerimientos, criterios de evaluación, documentos a presentar, plazos",
         [doc_id] if doc_id else None, top_k=6,
+        category=None if doc_id else rag_category,
     )
 
     requisitos: list[str] = []
@@ -596,18 +720,18 @@ def _prefill_correo_agenda(session: Session, tenant: Tenant, user_id: str | None
         "Pendientes por responder": "Identificaré correos que esperan tu respuesta y los priorizaré.",
     }.get(output, "Generaré el resumen solicitado.")
 
-    provider = token_store.active_provider(session, tenant.id, user_id, inputs.get("email", "")) if user_id else None
-    if provider:
-        conns = {c.provider: c.identifier for c in token_store.list_connections(session, tenant.id, user_id)}
-        ident = conns.get(provider, "")
+    prefer = inputs.get("account") or inputs.get("email", "")
+    conn = token_store.resolve_connection(session, tenant.id, user_id, prefer) if user_id else None
+    if conn:
         return {
-            "tipo": "correo_agenda", "email": inputs.get("email", ""), "output": output,
-            "connected": True, "provider": provider,
-            "summary": f"{plan} Conectado como {ident} ({provider}). Aprueba para generarlo ahora con tu correo real.",
+            "tipo": "correo_agenda", "account": conn.id, "output": output,
+            "connected": True, "provider": conn.provider,
+            "summary": f"{plan} Conectado como {conn.identifier} ({conn.provider}). "
+                       f"Aprueba para generarlo ahora con tu correo real.",
             "route": "open",
         }
     return {
-        "tipo": "correo_agenda", "email": inputs.get("email", ""), "output": output,
+        "tipo": "correo_agenda", "account": prefer, "output": output,
         "connected": False, "needs_oauth": True,
         "summary": (f"{plan} Primero conecta tu correo en Integraciones → «Conectar correo». "
                     f"Aún no hay una cuenta conectada."),
@@ -635,22 +759,24 @@ def execute(recipe: dict, session: Session, tenant_id: str, inputs: dict, draft:
 def _execute_correo_agenda(session: Session, tenant_id: str, user_id: str | None, inputs: dict) -> dict:
     from ..integrations import mailbox, token_store
     output = inputs.get("output") or "Resumen diario"
-    base = {"tipo": "correo_agenda", "output": output, "email": inputs.get("email"), "items": []}
+    prefer = inputs.get("account") or inputs.get("email", "")
+    base = {"tipo": "correo_agenda", "output": output, "account": prefer, "items": []}
 
-    provider = token_store.active_provider(session, tenant_id, user_id, inputs.get("email", "")) if user_id else None
-    if not provider:
+    conn = token_store.resolve_connection(session, tenant_id, user_id, prefer) if user_id else None
+    if not conn:
         return {**base, "message": ("Conecta tu correo en Integraciones → «Conectar correo» y "
                                     "vuelve a ejecutar este caso.")}
     tenant = session.get(Tenant, tenant_id)
-    access = token_store.get_valid_access_token(session, tenant, user_id, provider)
+    access = token_store.access_token_for(session, tenant, conn)
     if not access:
         return {**base, "message": "La conexión expiró o fue revocada. Reconéctala en Integraciones."}
 
-    data = mailbox.fetch(provider, access)
-    summary = mailbox.summarize(session, tenant, data, output)
+    data = mailbox.fetch(conn.provider, access)
+    _, extra = apply_intent("", "", inputs)  # objetivo/notas/formato → afina el resumen
+    summary = mailbox.summarize(session, tenant, data, output, extra_instruction=extra.strip())
     if summary.get("empty"):
         return {**base, "message": "No se encontraron correos ni eventos recientes para resumir."}
     counts = summary.get("counts", {})
     return {**base, "documento": summary["content"], "route": summary.get("route", ""),
-            "message": (f"{output} generado desde {provider}: "
+            "message": (f"{output} generado desde {conn.identifier or conn.provider}: "
                         f"{counts.get('messages', 0)} correos, {counts.get('events', 0)} eventos.")}

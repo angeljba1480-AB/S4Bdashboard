@@ -14,6 +14,25 @@ from .models import CompanyProfile
 # Fields that count toward the onboarding completion score (weight = 1 each).
 _SCORED = ("industry", "company_size", "description", "audience", "value_prop", "tone")
 
+# Mandatory baseline: without these the use cases can't produce reliable output,
+# so onboarding is gated on them (UX blocks cases until they're filled).
+_REQUIRED_LABELS = {
+    "industry": "Giro / sector",
+    "company_size": "Tamaño de la empresa",
+    "description": "A qué se dedica",
+    "value_prop": "Propuesta de valor",
+    "goals": "Objetivos",
+}
+
+
+def missing_required(profile: CompanyProfile) -> list[str]:
+    """Human-readable labels of mandatory fields still empty (incl. ≥1 área)."""
+    missing = [label for field, label in _REQUIRED_LABELS.items()
+               if not str(getattr(profile, field, "")).strip()]
+    if not areas_list(profile):
+        missing.append("Al menos un área")
+    return missing
+
 
 def get_or_create(session: Session, tenant_id: str) -> CompanyProfile:
     profile = session.exec(
@@ -76,6 +95,8 @@ def to_dict(profile: CompanyProfile) -> dict:
         "tech_stack": tech_list(profile),
         "completed": profile.completed,
         "completion": completion(profile),
+        "missing_required": missing_required(profile),
+        "required_complete": not missing_required(profile),
     }
 
 

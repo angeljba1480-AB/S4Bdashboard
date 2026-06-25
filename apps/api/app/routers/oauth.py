@@ -50,20 +50,21 @@ def providers(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> dict:
-    connected = {c.provider: c.identifier for c in token_store.list_connections(session, tenant.id, user.id)}
-    out = [
-        {**p, "kind": "oauth", "configured": oauth.is_enabled(p["provider"]),
-         "connected": p["provider"] in connected,
-         "identifier": connected.get(p["provider"], "")}
-        for p in oauth.enabled_providers()
-    ]
+    labels = {p["provider"]: p["label"] for p in oauth.enabled_providers()}
+    labels["imap"] = "IMAP"
+    # Connectable provider types (a user may connect several accounts of each).
+    out = [{**p, "kind": "oauth", "configured": oauth.is_enabled(p["provider"])}
+           for p in oauth.enabled_providers()]
     # Generic IMAP catch-all — always available (user provides credentials).
-    out.append({
-        "provider": "imap", "label": "Otro correo (IMAP)", "kind": "imap",
-        "enabled": True, "configured": True,
-        "connected": "imap" in connected, "identifier": connected.get("imap", ""),
-    })
-    return {"providers": out}
+    out.append({"provider": "imap", "label": "Otro correo (IMAP)", "kind": "imap",
+                "enabled": True, "configured": True})
+    # Every connected account (one row per account, multiple per provider allowed).
+    connections = [
+        {"id": c.id, "provider": c.provider,
+         "label": labels.get(c.provider, c.provider), "identifier": c.identifier}
+        for c in token_store.list_connections(session, tenant.id, user.id)
+    ]
+    return {"providers": out, "connections": connections}
 
 
 @router.post("/imap")
@@ -141,6 +142,25 @@ def callback(
     ))
     session.commit()
     return RedirectResponse(f"{base}/integrations?connected={provider}")
+
+
+@router.delete("/connection/{conn_id}")
+def disconnect_connection(
+    conn_id: str,
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Disconnect a single connected account by its id."""
+    ok = token_store.revoke_connection(session, tenant.id, user.id, conn_id)
+    if ok:
+        session.add(AuditEvent(
+            tenant_id=tenant.id, user_id=user.id, event_type="connection",
+            object_type="oauth_token", object_id=conn_id, risk_level="low",
+            reason=f"cuenta de correo desconectada: {conn_id}",
+        ))
+        session.commit()
+    return {"ok": ok}
 
 
 @router.delete("/{provider}")

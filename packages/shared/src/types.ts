@@ -34,11 +34,80 @@ export interface DocumentItem {
   id: string;
   filename: string;
   mime_type: string;
+  area: string;
+  category: string;
+  category_label: string;
   sensitivity: Sensitivity;
   pii_score: number;
   pii_types: string[];
   indexed: boolean;
   created_at: string;
+}
+
+export interface ActionRequestItem {
+  id: string;
+  action: string;
+  label: string;
+  provider: string;
+  params: Record<string, string>;
+  status: "pending" | "executed" | "failed" | "rejected";
+  result: string;
+  created_at: string;
+}
+
+export interface NotebookSource {
+  id: string;
+  filename: string;
+  area: string;
+  sensitivity: Sensitivity;
+}
+
+export interface Notebook {
+  id: string;
+  name: string;
+  document_ids: string[];
+  sources: NotebookSource[];
+  created_at: string;
+}
+
+export interface NotebookAnswer {
+  content: string;
+  route: string;
+  citations: { filename: string; text: string; score: number; sensitivity: string }[];
+  empty?: boolean;
+  message?: string;
+  blocked?: boolean;
+  escalated?: boolean;
+  escalation_pending?: boolean;
+}
+
+export interface FlowNode {
+  id: string;
+  type: "start" | "step" | "decision" | "end" | "danger";
+  title: string;
+  detail?: string;
+  next?: string;
+  branches?: { label: string; to: string }[];
+}
+
+export interface FlowchartSummary {
+  id: string;
+  title: string;
+  description: string;
+}
+
+export interface Flowchart extends FlowchartSummary {
+  note?: string;
+  start: string;
+  nodes: FlowNode[];
+}
+
+export interface DocumentCategory {
+  id: string;
+  key: string;
+  label: string;
+  description: string;
+  system: boolean;
 }
 
 export interface Citation {
@@ -65,6 +134,8 @@ export interface ChatResponse {
   token_count: number;
   cost_estimate: number;
   citations: Citation[];
+  escalated?: boolean;
+  escalation_pending?: boolean;
 }
 
 export interface AuditEvent {
@@ -81,11 +152,13 @@ export interface AuditEvent {
   reason: string;
   user_id: string | null;
   created_at: string;
+  request_id?: string;
+  event_metadata?: string;
 }
 
 export interface RecipeInput {
   key: string;
-  type: "document" | "text" | "email" | "choice" | "textarea" | "number" | "date" | "area" | "region";
+  type: "document" | "text" | "email" | "mailbox" | "choice" | "textarea" | "number" | "date" | "area" | "region";
   label: string;
   required?: boolean;
   options?: string[];
@@ -112,6 +185,8 @@ export interface CompanyProfile {
   tech_stack: string[];
   completed: boolean;
   completion: number;
+  missing_required?: string[];
+  required_complete?: boolean;
   company_name?: string;
 }
 
@@ -125,6 +200,8 @@ export interface Recipe {
   connections: { provider: string; label: string }[];
   approval: "draft" | "connection";
   approve_label: string;
+  rag_category?: string;
+  advanced?: boolean;
 }
 
 export interface RecipeConnection {

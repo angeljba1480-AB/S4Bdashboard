@@ -5,7 +5,8 @@ import { api } from "@/lib/api";
 import { CheckCircle2, KeyRound, Link2, Mail, Trash2, Webhook } from "lucide-react";
 import { useEffect, useState } from "react";
 
-type MailProvider = { provider: string; label: string; kind: string; enabled: boolean; configured: boolean; connected: boolean; identifier: string };
+type MailProvider = { provider: string; label: string; kind: string; enabled?: boolean; configured: boolean };
+type MailConnection = { id: string; provider: string; label: string; identifier: string };
 
 const IMAP_PRESETS: Record<string, { host: string; port: number }> = {
   "Yahoo": { host: "imap.mail.yahoo.com", port: 993 },
@@ -28,6 +29,7 @@ export default function IntegrationsPage() {
   const [whName, setWhName] = useState("");
   const [whSecret, setWhSecret] = useState<{ url: string; secret: string } | null>(null);
   const [mailProviders, setMailProviders] = useState<MailProvider[]>([]);
+  const [mailConnections, setMailConnections] = useState<MailConnection[]>([]);
   const [mailMsg, setMailMsg] = useState("");
   const [imap, setImap] = useState({ preset: "Yahoo", host: "imap.mail.yahoo.com", port: 993, email: "", password: "" });
   const [imapBusy, setImapBusy] = useState(false);
@@ -37,7 +39,7 @@ export default function IntegrationsPage() {
     api.apiKeys().then(setKeys).catch(() => {});
     api.connectors().then(setConnectors).catch(() => {});
     api.webhooks().then(setWebhooks).catch(() => {});
-    api.oauthProviders().then((r) => setMailProviders(r.providers)).catch(() => {});
+    api.oauthProviders().then((r) => { setMailProviders(r.providers); setMailConnections(r.connections); }).catch(() => {});
   }
   useEffect(() => {
     load();
@@ -55,8 +57,8 @@ export default function IntegrationsPage() {
       setMailMsg(e instanceof Error ? e.message : "No se pudo iniciar la conexión");
     }
   }
-  async function disconnectMail(provider: string) {
-    await api.oauthDisconnect(provider);
+  async function disconnectConnection(id: string) {
+    await api.oauthDisconnectConnection(id);
     load();
   }
   function pickPreset(name: string) {
@@ -119,40 +121,44 @@ export default function IntegrationsPage() {
           </p>
           {mailMsg && <div className="mb-3 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800">{mailMsg}</div>}
           <div className="space-y-2">
-            {mailProviders.filter((p) => p.kind === "oauth").map((p) => (
-              <div key={p.provider} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                <span className="flex items-center gap-2 text-slate-700">
-                  <Mail className="h-4 w-4 text-slate-400" /> {p.label} <span className="text-xs text-slate-400">(1 clic)</span>
-                  {p.connected && <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-4 w-4" /> {p.identifier || "conectado"}</span>}
-                  {!p.configured && <span className="text-xs text-amber-600">· no configurado por el admin</span>}
-                </span>
-                {p.connected ? (
-                  <button onClick={() => disconnectMail(p.provider)} className="text-xs font-semibold text-red-600">Desconectar</button>
-                ) : (
-                  <button onClick={() => connectMail(p.provider)} disabled={!p.configured}
-                    className="rounded-md bg-violet-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-40">
-                    Conectar
-                  </button>
-                )}
-              </div>
-            ))}
+            {mailProviders.filter((p) => p.kind === "oauth").map((p) => {
+              const accounts = mailConnections.filter((c) => c.provider === p.provider);
+              return (
+                <div key={p.provider} className="rounded-lg border border-slate-200 px-3 py-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-slate-700">
+                      <Mail className="h-4 w-4 text-slate-400" /> {p.label} <span className="text-xs text-slate-400">(1 clic)</span>
+                      {!p.configured && <span className="text-xs text-amber-600">· no configurado por el admin</span>}
+                    </span>
+                    <button onClick={() => connectMail(p.provider)} disabled={!p.configured}
+                      className="rounded-md bg-violet-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-40">
+                      {accounts.length > 0 ? "Conectar otra cuenta" : "Conectar"}
+                    </button>
+                  </div>
+                  {accounts.map((c) => (
+                    <div key={c.id} className="mt-2 flex items-center justify-between rounded-md bg-slate-50 px-3 py-1.5 text-sm">
+                      <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-4 w-4" /> {c.identifier || "conectado"}</span>
+                      <button onClick={() => disconnectConnection(c.id)} className="text-xs font-semibold text-red-600">Desconectar</button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
             {mailProviders.length === 0 && <div className="text-xs text-slate-400">Cargando proveedores…</div>}
           </div>
 
           {/* Generic IMAP — covers Yahoo, iCloud, Zoho, hosting/corporate, etc. */}
           {(() => {
-            const imapConn = mailProviders.find((p) => p.provider === "imap");
+            const imapAccounts = mailConnections.filter((c) => c.provider === "imap");
             return (
               <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-700">Otro correo (IMAP) — Yahoo, iCloud, Zoho, hosting/empresa…</span>
-                  {imapConn?.connected && (
-                    <span className="flex items-center gap-2 text-xs text-emerald-600">
-                      <CheckCircle2 className="h-4 w-4" /> {imapConn.identifier}
-                      <button onClick={() => disconnectMail("imap")} className="font-semibold text-red-600">Desconectar</button>
-                    </span>
-                  )}
-                </div>
+                <div className="mb-1 text-sm font-medium text-slate-700">Otro correo (IMAP) — Yahoo, iCloud, Zoho, hosting/empresa…</div>
+                {imapAccounts.map((c) => (
+                  <div key={c.id} className="mb-1 flex items-center justify-between rounded-md bg-white px-3 py-1.5 text-sm">
+                    <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-4 w-4" /> {c.identifier}</span>
+                    <button onClick={() => disconnectConnection(c.id)} className="text-xs font-semibold text-red-600">Desconectar</button>
+                  </div>
+                ))}
                 <p className="mb-2 text-xs text-slate-500">
                   Solo tu correo y contraseña (usa <b>contraseña de aplicación</b> si tu proveedor la pide). Se guarda cifrada.
                 </p>
@@ -166,7 +172,7 @@ export default function IntegrationsPage() {
                 </div>
                 <button onClick={connectImap} disabled={imapBusy}
                   className="mt-2 rounded-md bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
-                  {imapBusy ? "Conectando…" : imapConn?.connected ? "Reconectar" : "Conectar IMAP"}
+                  {imapBusy ? "Conectando…" : imapAccounts.length > 0 ? "Conectar otra cuenta IMAP" : "Conectar IMAP"}
                 </button>
               </div>
             );

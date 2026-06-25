@@ -27,11 +27,33 @@ engine = create_engine(
 )
 
 
+def _ensure_columns() -> None:
+    """Additive, idempotent migration for columns added after a table's first
+    create (create_all never ALTERs existing tables). Safe on SQLite + Postgres."""
+    from sqlalchemy import inspect, text
+
+    insp = inspect(engine)
+    tables = set(insp.get_table_names())
+    plan: dict[str, dict[str, str]] = {
+        "documents": {"area": "''", "category": "''"},
+        "users": {"area": "''", "license": "'basic'"},
+    }
+    with engine.begin() as conn:
+        for table, cols in plan.items():
+            if table not in tables:
+                continue
+            existing = {c["name"] for c in insp.get_columns(table)}
+            for col, default in cols.items():
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} VARCHAR DEFAULT {default}"))
+
+
 def init_db() -> None:
     # Import models so SQLModel registers the tables before create_all.
     from . import models  # noqa: F401
 
     SQLModel.metadata.create_all(engine)
+    _ensure_columns()
 
 
 def get_session() -> Iterator[Session]:

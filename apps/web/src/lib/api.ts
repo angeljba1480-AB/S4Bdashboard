@@ -1,12 +1,18 @@
 // Thin typed client over the MaestroAI API.
 import type {
+  ActionRequestItem,
   Agent,
   AppProject,
   AuditEvent,
   ChatResponse,
   CompanyProfile,
+  DocumentCategory,
   DocumentItem,
   Eje,
+  Flowchart,
+  FlowchartSummary,
+  Notebook,
+  NotebookAnswer,
   Me,
   Procedure,
   Recipe,
@@ -82,8 +88,14 @@ export const api = {
     }>("/admin/billing"),
   updateBilling: (body: Partial<{ seats_licensed: number; annual_fee_mxn: number; subscription_status: string; subscription_renews_at: string; setup_fee_paid: boolean; plan: string }>) =>
     request<{ ok: boolean }>("/admin/billing", { method: "PUT", body: JSON.stringify(body) }),
-  createUser: (body: { email: string; name: string; role?: string }) =>
+  createUser: (body: { email: string; name: string; role?: string; area?: string; license?: string }) =>
     request<{ id: string; email: string }>("/admin/users", { method: "POST", body: JSON.stringify(body) }),
+  updateUser: (id: string, body: { name?: string; role?: string; area?: string; license?: string; status?: string }) =>
+    request<{ id: string; role: string; area: string; license: string }>(
+      `/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  adminTenants: () =>
+    request<{ id: string; name: string; plan: string; subscription_status: string; country: string; seats_licensed: number; users: number; documents: number }[]>(
+      "/admin/tenants"),
   // Regional catalog
   regionalEjes: () => request<Eje[]>("/regional/ejes"),
   regionalCountries: () =>
@@ -192,13 +204,16 @@ export const api = {
     }),
   // Mailbox OAuth (Outlook / Gmail)
   oauthProviders: () =>
-    request<{ providers: { provider: string; label: string; kind: string; enabled: boolean; configured: boolean; connected: boolean; identifier: string }[] }>(
-      "/oauth/providers",
-    ),
+    request<{
+      providers: { provider: string; label: string; kind: string; enabled: boolean; configured: boolean }[];
+      connections: { id: string; provider: string; label: string; identifier: string }[];
+    }>("/oauth/providers"),
   oauthAuthorize: (provider: string) =>
     request<{ authorize_url: string }>(`/oauth/${provider}/authorize`),
   oauthDisconnect: (provider: string) =>
     request<{ ok: boolean }>(`/oauth/${provider}`, { method: "DELETE" }),
+  oauthDisconnectConnection: (connId: string) =>
+    request<{ ok: boolean }>(`/oauth/connection/${connId}`, { method: "DELETE" }),
   connectImap: (body: { host: string; port: number; email: string; password: string }) =>
     request<{ ok: boolean; identifier: string }>("/oauth/imap", { method: "POST", body: JSON.stringify(body) }),
   // Company configuration (onboarding workflow)
@@ -238,7 +253,7 @@ export const api = {
   recipeRun: (runId: string) => request<RecipeRun>(`/recipes/runs/${runId}`),
   approveRun: (runId: string) =>
     request<RecipeRun>(`/recipes/runs/${runId}/approve`, { method: "POST" }),
-  async downloadRun(runId: string, format: "pdf" | "md" | "docx" = "pdf") {
+  async downloadRun(runId: string, format: "pdf" | "md" | "docx" | "pptx" | "xlsx" = "pdf") {
     const res = await fetch(`${API_BASE}/recipes/runs/${runId}/export?format=${format}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
@@ -262,25 +277,86 @@ export const api = {
   agent: (id: string) => request<Agent>(`/agents/${id}`),
   createAgent: (body: Partial<Agent>) =>
     request<Agent>("/agents", { method: "POST", body: JSON.stringify(body) }),
-  documents: () => request<DocumentItem[]>("/documents"),
-  uploadText: (filename: string, text: string) => {
+  documents: (params?: { area?: string; category?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.area) qs.set("area", params.area);
+    if (params?.category) qs.set("category", params.category);
+    const q = qs.toString();
+    return request<DocumentItem[]>(`/documents${q ? `?${q}` : ""}`);
+  },
+  uploadText: (filename: string, text: string, meta?: { area?: string; category?: string; sensitivity?: string }) => {
     const fd = new FormData();
     fd.append("filename", filename);
     fd.append("text", text);
+    if (meta?.area) fd.append("area", meta.area);
+    if (meta?.category) fd.append("category", meta.category);
+    if (meta?.sensitivity) fd.append("sensitivity", meta.sensitivity);
     return request<DocumentItem>("/documents/upload", { method: "POST", body: fd });
   },
-  uploadFile: (file: File) => {
+  uploadFile: (file: File, meta?: { area?: string; category?: string; sensitivity?: string }) => {
     const fd = new FormData();
     fd.append("file", file);
+    if (meta?.area) fd.append("area", meta.area);
+    if (meta?.category) fd.append("category", meta.category);
+    if (meta?.sensitivity) fd.append("sensitivity", meta.sensitivity);
     return request<DocumentItem>("/documents/upload", { method: "POST", body: fd });
   },
+  deleteDocument: (id: string) =>
+    request<{ ok: boolean }>(`/documents/${id}`, { method: "DELETE" }),
+  updateDocument: (id: string, body: { area?: string; category?: string; sensitivity?: string }) =>
+    request<DocumentItem>(`/documents/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  driveFiles: (query?: string) =>
+    request<{ files: { id: string; name: string; mime_type: string; is_folder: boolean; modified: string }[] }>(
+      `/drive/files${query ? `?query=${encodeURIComponent(query)}` : ""}`),
+  driveImport: (body: { file_id: string; name: string; mime_type: string; area?: string; category?: string }) =>
+    request<{ id: string; filename: string }>("/drive/import", { method: "POST", body: JSON.stringify(body) }),
+  // Google/Microsoft action toolkit
+  actions: () => request<{ id: string; provider: string; label: string; write: boolean; params: string[]; connected: boolean; granted: boolean }[]>("/actions"),
+  runAction: (action: string, params: Record<string, string>) =>
+    request<{ status: string; request: ActionRequestItem }>("/actions/run", { method: "POST", body: JSON.stringify({ action, params }) }),
+  actionRequests: (status?: string) =>
+    request<ActionRequestItem[]>(`/actions/requests${status ? `?status=${status}` : ""}`),
+  approveAction: (id: string, always = false) =>
+    request<{ request: ActionRequestItem }>(`/actions/requests/${id}/approve${always ? "?always=true" : ""}`, { method: "POST" }),
+  rejectAction: (id: string) =>
+    request<{ request: ActionRequestItem }>(`/actions/requests/${id}/reject`, { method: "POST" }),
+  actionGrants: () => request<{ action: string; label: string }[]>("/actions/grants"),
+  revokeGrant: (action: string) => request<{ ok: boolean }>(`/actions/grants/${action}`, { method: "DELETE" }),
+  flowcharts: () => request<FlowchartSummary[]>("/flowcharts"),
+  flowchart: (id: string) => request<Flowchart>(`/flowcharts/${id}`),
+  // Notebooks (NotebookLM-style over the company RAG)
+  notebooks: () => request<Notebook[]>("/notebooks"),
+  createNotebook: (body: { name: string; document_ids: string[] }) =>
+    request<Notebook>("/notebooks", { method: "POST", body: JSON.stringify(body) }),
+  updateNotebook: (id: string, body: { name: string; document_ids: string[] }) =>
+    request<Notebook>(`/notebooks/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteNotebook: (id: string) =>
+    request<{ ok: boolean }>(`/notebooks/${id}`, { method: "DELETE" }),
+  notebookAsk: (id: string, question: string, opts?: { precision?: boolean; approve_external?: boolean }) =>
+    request<NotebookAnswer>(`/notebooks/${id}/ask`, { method: "POST", body: JSON.stringify({ question, ...opts }) }),
+  notebookGenerate: (id: string, kind: string, opts?: { precision?: boolean; approve_external?: boolean }) => {
+    const qs = new URLSearchParams();
+    if (opts?.precision) qs.set("precision", "true");
+    if (opts?.approve_external) qs.set("approve_external", "true");
+    const q = qs.toString();
+    return request<NotebookAnswer>(`/notebooks/${id}/generate/${kind}${q ? `?${q}` : ""}`, { method: "POST" });
+  },
+  // External model providers (admin)
+  adminProviders: () =>
+    request<{ route: string; enabled: boolean; base_url: string; model: string; has_key: boolean }[]>("/admin/providers"),
+  updateProvider: (route: string, body: { enabled: boolean; base_url: string; model: string; api_key?: string }) =>
+    request<{ route: string; enabled: boolean; has_key: boolean }>(`/admin/providers/${route}`, { method: "PUT", body: JSON.stringify(body) }),
+  documentCategories: () => request<DocumentCategory[]>("/documents/categories"),
+  createDocumentCategory: (body: { label: string; description?: string }) =>
+    request<DocumentCategory>("/documents/categories", { method: "POST", body: JSON.stringify(body) }),
   chat: (body: {
     agent_id: string;
     prompt: string;
     conversation_id?: string;
     document_ids?: string[];
+    use_rag?: boolean;
   }) => request<ChatResponse>("/chat", { method: "POST", body: JSON.stringify(body) }),
-  previewRoute: (body: { agent_id: string; prompt: string; document_ids?: string[] }) =>
+  previewRoute: (body: { agent_id: string; prompt: string; document_ids?: string[]; use_rag?: boolean }) =>
     request<{
       classification: string;
       route: string;
@@ -292,10 +368,16 @@ export const api = {
       requires_approval: boolean;
       sources_found: number;
     }>("/chat/preview", { method: "POST", body: JSON.stringify(body) }),
-  audit: (params?: { event_type?: string; risk_level?: string }) => {
-    const q = new URLSearchParams(params as Record<string, string>).toString();
+  audit: (params?: { event_type?: string; risk_level?: string; classification?: string; route?: string; user_id?: string; q?: string; limit?: number; offset?: number }) => {
+    const clean = Object.fromEntries(Object.entries(params || {}).filter(([, v]) => v !== "" && v != null).map(([k, v]) => [k, String(v)]));
+    const q = new URLSearchParams(clean).toString();
     return request<AuditEvent[]>(`/audit${q ? `?${q}` : ""}`);
   },
+  auditStats: () => request<{
+    total: number; high_risk: number; blocked: number; total_cost: number; total_tokens: number;
+    by_event: Record<string, number>; by_risk: Record<string, number>; by_route: Record<string, number>;
+    by_classification: Record<string, number>; event_types: string[]; users: string[];
+  }>("/audit/stats"),
   usage: () => request<UsageSummary>("/usage"),
   operations: () =>
     request<{
@@ -326,7 +408,7 @@ export const api = {
       "/admin/routes",
     ),
   users: () =>
-    request<{ id: string; email: string; name: string; role: string; mfa_enabled: boolean }[]>(
+    request<{ id: string; email: string; name: string; role: string; area: string; license: string; mfa_enabled: boolean; status: string }[]>(
       "/admin/users",
     ),
   security: () =>

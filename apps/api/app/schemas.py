@@ -61,11 +61,33 @@ class DocumentOut(BaseModel):
     id: str
     filename: str
     mime_type: str
+    area: str = ""
+    category: str = ""
+    category_label: str = ""
     sensitivity: Sensitivity
     pii_score: float
     pii_types: list[str]
     indexed: bool
     created_at: datetime
+
+
+class DocumentUpdate(BaseModel):
+    area: str | None = None
+    category: str | None = None
+    sensitivity: Sensitivity | None = None
+
+
+class DocumentCategoryOut(BaseModel):
+    id: str
+    key: str
+    label: str
+    description: str = ""
+    system: bool = False
+
+
+class DocumentCategoryCreate(BaseModel):
+    label: str
+    description: str = ""
 
 
 # --- Chat -------------------------------------------------------------------
@@ -75,6 +97,9 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = None
     prompt: str
     document_ids: list[str] = []
+    use_rag: bool = True          # False = "sin contexto" (pure model, no retrieval)
+    precision: bool = False       # "máxima precisión": refinar con modelo premium
+    approve_external: bool = False  # aprueba escalar contenido sensible a premium
     privacy_mode: str = "auto"
     response_format: str = "markdown"
     human_approval_required: bool = False
@@ -104,6 +129,8 @@ class ChatResponse(BaseModel):
     token_count: int
     cost_estimate: float
     citations: list[CitationOut]
+    escalated: bool = False           # refinado con modelo premium (cascada)
+    escalation_pending: bool = False  # sensible: requiere aprobación para escalar
 
 
 class RoutePreview(BaseModel):
@@ -134,6 +161,8 @@ class AuditOut(BaseModel):
     reason: str
     user_id: str | None
     created_at: datetime
+    request_id: str = ""
+    event_metadata: str = ""
 
 
 class UsageSummary(BaseModel):

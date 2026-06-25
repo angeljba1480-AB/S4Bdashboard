@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import init_db
 from .routers import (
+    actions,
     admin,
     agents,
     apps,
@@ -19,7 +20,10 @@ from .routers import (
     company,
     dashboards,
     documents,
+    drive,
     export,
+    flowcharts,
+    notebooks,
     integrations,
     oauth,
     recipes,
@@ -35,9 +39,18 @@ from .routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    from .seed import seed
+    from .seed import ensure_super_admin, seed
 
     seed()
+    ensure_super_admin()
+    # Load admin-configured external providers into the adapter runtime cache.
+    from .ai.adapters import load_overrides
+    from .db import get_session as _gs
+    _s = next(_gs())
+    try:
+        load_overrides(_s)
+    finally:
+        _s.close()
     if settings.scheduler_enabled:
         from .scheduler import start as start_scheduler
         start_scheduler()
@@ -83,6 +96,10 @@ app.include_router(usage.router)
 app.include_router(admin.router)
 app.include_router(company.router)
 app.include_router(export.router)
+app.include_router(flowcharts.router)
+app.include_router(drive.router)
+app.include_router(notebooks.router)
+app.include_router(actions.router)
 
 
 @app.get("/health", tags=["meta"])

@@ -72,6 +72,12 @@ def update_branding(
             "brand_color": tenant.brand_color, "brand_tagline": tenant.brand_tagline}
 
 
+def _user_out(u: User) -> dict:
+    return {"id": u.id, "email": u.email, "name": u.name, "role": u.role.value,
+            "area": u.area or "", "license": u.license or "basic",
+            "mfa_enabled": u.mfa_enabled, "status": u.status}
+
+
 @router.get("/users")
 def list_users(
     _: User = Depends(require_roles(Role.ADMIN, Role.SECURITY)),
@@ -79,15 +85,24 @@ def list_users(
     session: Session = Depends(get_session),
 ) -> list[dict]:
     users = session.exec(select(User).where(User.tenant_id == tenant.id)).all()
-    return [{"id": u.id, "email": u.email, "name": u.name, "role": u.role.value,
-             "mfa_enabled": u.mfa_enabled, "status": u.status} for u in users]
+    return [_user_out(u) for u in users]
 
 
 class NewUser(BaseModel):
     email: str
     name: str
     role: str = "user"
+    area: str = ""
+    license: str = "basic"
     password: str = "demo1234"
+
+
+class UpdateUser(BaseModel):
+    name: str | None = None
+    role: str | None = None
+    area: str | None = None
+    license: str | None = None
+    status: str | None = None
 
 
 def _seats_used(session: Session, tenant_id: str) -> int:
@@ -118,12 +133,71 @@ def create_user(
         role = Role(body.role)
     except ValueError:
         raise HTTPException(status_code=422, detail="Rol inválido")
+    if role == Role.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="El super admin no se crea desde aquí")
     u = User(tenant_id=tenant.id, email=body.email.strip(), name=body.name.strip(),
-             role=role, password_hash=hash_password(body.password))
+             role=role, area=body.area.strip(), license=(body.license or "basic").strip(),
+             password_hash=hash_password(body.password))
     session.add(u)
     session.commit()
     session.refresh(u)
-    return {"id": u.id, "email": u.email, "name": u.name, "role": u.role.value}
+    return _user_out(u)
+
+
+@router.patch("/users/{user_id}")
+def update_user(
+    user_id: str,
+    body: UpdateUser,
+    actor: User = Depends(require_roles(Role.ADMIN)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Edit a user's role, area, license or status (hierarchical permissions)."""
+    u = session.get(User, user_id)
+    if not u or u.tenant_id != tenant.id:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if body.role is not None:
+        try:
+            new_role = Role(body.role)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Rol inválido")
+        # Only a super admin can grant or revoke the super admin role.
+        if (new_role == Role.SUPER_ADMIN or u.role == Role.SUPER_ADMIN) and actor.role != Role.SUPER_ADMIN:
+            raise HTTPException(status_code=403, detail="Solo un super admin puede gestionar el rol super admin")
+        u.role = new_role
+    if body.name is not None:
+        u.name = body.name.strip()
+    if body.area is not None:
+        u.area = body.area.strip()
+    if body.license is not None:
+        u.license = body.license.strip() or "basic"
+    if body.status is not None:
+        u.status = body.status.strip()
+    session.add(u)
+    session.commit()
+    session.refresh(u)
+    return _user_out(u)
+
+
+@router.get("/tenants")
+def list_tenants(
+    _: User = Depends(require_roles(Role.SUPER_ADMIN)),
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """Cross-tenant overview — only the super admin sees every organization."""
+    from ..models import Document
+
+    out = []
+    for t in session.exec(select(Tenant)).all():
+        users = session.exec(select(User).where(User.tenant_id == t.id)).all()
+        docs = len(session.exec(select(Document).where(Document.tenant_id == t.id)).all())
+        out.append({
+            "id": t.id, "name": t.name, "plan": t.plan,
+            "subscription_status": t.subscription_status,
+            "country": t.country, "seats_licensed": t.seats_licensed,
+            "users": len(users), "documents": docs,
+        })
+    return out
 
 
 @router.get("/plans")
@@ -255,6 +329,68 @@ def update_billing(
     session.add(tenant)
     session.commit()
     return {"ok": True}
+
+
+class ProviderIn(BaseModel):
+    enabled: bool = False
+    base_url: str = ""
+    model: str = ""
+    api_key: str = ""          # write-only; stored encrypted, never returned
+
+
+_EXTERNAL_ROUTES = ("premium", "open")
+
+
+@router.get("/providers")
+def list_providers(
+    _: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN)),
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """External model providers (GPT/Claude/Llama…) configurable from the UI."""
+    from ..models import ProviderSetting
+
+    rows = {r.route: r for r in session.exec(select(ProviderSetting)).all()}
+    out = []
+    for route in _EXTERNAL_ROUTES:
+        r = rows.get(route)
+        out.append({
+            "route": route,
+            "enabled": bool(r and r.enabled),
+            "base_url": (r.base_url if r else ""),
+            "model": (r.model if r else ""),
+            "has_key": bool(r and r.api_key_enc),
+        })
+    return out
+
+
+@router.put("/providers/{route}")
+def update_provider(
+    route: str,
+    body: ProviderIn,
+    _: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN)),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Set an external provider's endpoint/model/key. PII is redacted before any
+    external call (privacy router), so keys here only enable that egress."""
+    from ..ai.adapters import load_overrides
+    from ..models import ProviderSetting
+
+    if route not in _EXTERNAL_ROUTES:
+        raise HTTPException(status_code=400, detail="Ruta externa inválida (usa premium u open)")
+    row = session.exec(select(ProviderSetting).where(ProviderSetting.route == route)).first()
+    if not row:
+        row = ProviderSetting(route=route)
+    row.enabled = body.enabled
+    row.base_url = body.base_url.strip()
+    row.model = body.model.strip()
+    if body.api_key:
+        row.api_key_enc = encrypt(body.api_key, settings.secret_key)
+    elif not body.enabled and not body.base_url:
+        row.api_key_enc = ""
+    session.add(row)
+    session.commit()
+    load_overrides(session)   # refresh runtime cache immediately
+    return {"route": route, "enabled": row.enabled, "has_key": bool(row.api_key_enc)}
 
 
 @router.get("/routes")
