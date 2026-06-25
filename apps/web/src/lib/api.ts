@@ -337,6 +337,17 @@ export const api = {
   revokeGrant: (action: string) => request<{ ok: boolean }>(`/actions/grants/${action}`, { method: "DELETE" }),
   flowcharts: () => request<FlowchartSummary[]>("/flowcharts"),
   flowchart: (id: string) => request<Flowchart>(`/flowcharts/${id}`),
+  // Data sources (legacy connectors: read-only DB → RAG)
+  dataSources: () =>
+    request<{ id: string; name: string; kind: string; query: string; area: string; category: string }[]>("/datasources"),
+  createDataSource: (body: { name: string; dsn: string; query: string; area?: string; category?: string }) =>
+    request<{ id: string; name: string }>("/datasources", { method: "POST", body: JSON.stringify(body) }),
+  testDataSource: (id: string) =>
+    request<{ ok: boolean; columns: string[]; total_preview: number }>(`/datasources/${id}/test`, { method: "POST" }),
+  importDataSource: (id: string) =>
+    request<{ id: string; filename: string; rows: number }>(`/datasources/${id}/import`, { method: "POST" }),
+  deleteDataSource: (id: string) =>
+    request<{ ok: boolean }>(`/datasources/${id}`, { method: "DELETE" }),
   // Notebooks (NotebookLM-style over the company RAG)
   notebooks: () => request<Notebook[]>("/notebooks"),
   createNotebook: (body: { name: string; document_ids: string[] }) =>

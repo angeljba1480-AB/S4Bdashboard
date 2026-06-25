@@ -5,6 +5,14 @@ Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa �
 ## [No liberado]
 - CI: primera corrida en `dev`/`qa` para registrar los checks (`API · pytest`,
   `Web · build`) y validar la compuerta antes de producción.
+- **Eficiencia de tokens en la UI**: controles de condensación y tope de gasto por
+  consulta configurables (Admin), con ahorro acumulado.
+- **Toolkit · lecturas**: Google Sheets, Google/Outlook Calendar y OneDrive.
+- **Conector de base de datos** (solo lectura) → importa al RAG (`/datasources`).
+- **Frontend** de fuentes de datos en Integraciones.
+- **Seguridad**: revisión del código nuevo + fixes — config global restringida a
+  super admin, sanitización de consultas Drive/OneDrive, denylist DML/CTE y
+  esquemas de DSN permitidos, escapado de segmentos de URL en acciones.
 
 ## 2026-06-25
 

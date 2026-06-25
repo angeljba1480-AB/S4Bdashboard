@@ -59,6 +59,21 @@ def test_create_test_and_import(client):
     assert any(d["filename"] == "Clientes legado.txt" for d in docs)
 
 
+def test_blocks_dml_in_cte(client):
+    h = _auth(client)
+    r = client.post("/datasources", headers=h, json={
+        "name": "evil", "dsn": LEGACY_DSN,
+        "query": "WITH x AS (DELETE FROM clientes RETURNING *) SELECT * FROM x"})
+    assert r.status_code == 422
+
+
+def test_blocks_disallowed_dsn_scheme(client):
+    h = _auth(client)
+    r = client.post("/datasources", headers=h, json={
+        "name": "bad", "dsn": "ftp://host/file", "query": "SELECT 1"})
+    assert r.status_code == 422
+
+
 def test_delete(client):
     h = _auth(client)
     ds = client.post("/datasources", headers=h, json={

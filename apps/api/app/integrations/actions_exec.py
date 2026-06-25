@@ -7,6 +7,7 @@ from __future__ import annotations
 import base64
 from datetime import datetime, timedelta
 from email.message import EmailMessage
+from urllib.parse import quote
 
 import httpx
 
@@ -69,7 +70,7 @@ def execute(action_id: str, token: str, params: dict) -> str:
                          for e in evs) or "Sin eventos próximos."
 
     if action_id == "onedrive.list":
-        q = p.get("query", "").strip()
+        q = p.get("query", "").strip().replace("'", "''")  # escape OData single quotes
         if q:
             url = f"{GRAPH}/me/drive/root/search(q='{q}')?$top=25&$select=name,webUrl"
         else:
@@ -102,8 +103,8 @@ def execute(action_id: str, token: str, params: dict) -> str:
         return f"Evento creado: {p.get('summary','')}"
 
     if action_id == "gsheets.append":
-        sid = p.get("spreadsheet_id", "")
-        rng = p.get("range", "A1")
+        sid = quote(str(p.get("spreadsheet_id", "")), safe="")
+        rng = quote(str(p.get("range", "A1")), safe="")
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{sid}/values/{rng}:append"
         r = httpx.post(url, headers=_auth(token), params={"valueInputOption": "USER_ENTERED"},
                        json={"values": _rows(p.get("values"))}, timeout=TIMEOUT)
@@ -132,7 +133,7 @@ def execute(action_id: str, token: str, params: dict) -> str:
         return f"Evento creado: {p.get('summary','')}"
 
     if action_id == "teams.post":
-        team, channel = p.get("team_id", ""), p.get("channel_id", "")
+        team, channel = quote(str(p.get("team_id", "")), safe=""), quote(str(p.get("channel_id", "")), safe="")
         r = httpx.post(f"{GRAPH}/teams/{team}/channels/{channel}/messages",
                        headers=_auth(token), json={"body": {"content": p.get("message", "")}}, timeout=TIMEOUT)
         r.raise_for_status()

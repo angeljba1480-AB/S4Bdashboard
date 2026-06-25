@@ -343,7 +343,7 @@ _EXTERNAL_ROUTES = ("premium", "open")
 
 @router.get("/providers")
 def list_providers(
-    _: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN)),
+    _: User = Depends(require_roles(Role.SUPER_ADMIN)),
     session: Session = Depends(get_session),
 ) -> list[dict]:
     """External model providers (GPT/Claude/Llama…) configurable from the UI."""
@@ -367,7 +367,7 @@ def list_providers(
 def update_provider(
     route: str,
     body: ProviderIn,
-    _: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN)),
+    _: User = Depends(require_roles(Role.SUPER_ADMIN)),
     session: Session = Depends(get_session),
 ) -> dict:
     """Set an external provider's endpoint/model/key. PII is redacted before any
@@ -400,7 +400,7 @@ class EfficiencyIn(BaseModel):
 
 
 @router.get("/efficiency")
-def get_efficiency(_: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN, Role.DEVOPS))) -> dict:
+def get_efficiency(_: User = Depends(require_roles(Role.SUPER_ADMIN))) -> dict:
     """Token-efficiency controls (condensación + tope de gasto) y ahorro acumulado."""
     from .. import runtime_config
     return {
@@ -414,7 +414,7 @@ def get_efficiency(_: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN,
 @router.put("/efficiency")
 def update_efficiency(
     body: EfficiencyIn,
-    _: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN)),
+    _: User = Depends(require_roles(Role.SUPER_ADMIN)),
     session: Session = Depends(get_session),
 ) -> dict:
     from .. import runtime_config

@@ -8,6 +8,7 @@ n8n / conectores REST / webhooks cubran el resto (ver docs/INTEGRATIONS.md).
 from __future__ import annotations
 
 import hashlib
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -24,6 +25,11 @@ from ..security.crypto import decrypt, encrypt
 router = APIRouter(prefix="/datasources", tags=["datasources"])
 
 MAX_ROWS = 1000
+# Esquemas de BD permitidos (evita lectura de archivos / drivers raros vía DSN).
+ALLOWED_SCHEMES = ("postgresql", "postgres", "mysql", "mariadb", "mssql", "sqlite", "oracle")
+# Palabras que indican modificación de datos/estructura (también dentro de un CTE).
+_DML = re.compile(r"\b(insert|update|delete|merge|drop|alter|create|truncate|grant|revoke|call|copy|"
+                  r"pg_read_file|pg_sleep|lo_import|lo_export|into\s+outfile)\b", re.IGNORECASE)
 
 
 def _out(d: DataSource) -> dict:
@@ -37,13 +43,27 @@ def _check_select(query: str) -> str:
         raise HTTPException(status_code=422, detail="Solo se permiten consultas de lectura (SELECT).")
     if ";" in q:
         raise HTTPException(status_code=422, detail="Una sola sentencia, sin ';'.")
+    if _DML.search(q):
+        raise HTTPException(status_code=422, detail="La consulta contiene operaciones no permitidas (solo lectura).")
     return q
+
+
+def _check_dsn(dsn: str) -> str:
+    scheme = (dsn.split("://", 1)[0].split("+", 1)[0]).strip().lower()
+    if scheme not in ALLOWED_SCHEMES:
+        raise HTTPException(status_code=422, detail=f"Esquema de BD no permitido. Usa: {', '.join(ALLOWED_SCHEMES)}.")
+    return dsn
 
 
 def _run_query(dsn: str, query: str) -> tuple[list[str], list[tuple]]:
     engine = create_engine(dsn)
     try:
+        # Transacción de solo lectura cuando el motor lo soporta (la BD lo refuerza).
         with engine.connect() as conn:
+            try:
+                conn = conn.execution_options(postgresql_readonly=True)
+            except Exception:
+                pass
             res = conn.execute(text(query))
             cols = list(res.keys())
             rows = res.fetchmany(MAX_ROWS)
@@ -88,6 +108,7 @@ def create_source(
 ) -> dict:
     if not body.dsn.strip():
         raise HTTPException(status_code=422, detail="Falta el DSN de conexión")
+    _check_dsn(body.dsn.strip())
     q = _check_select(body.query)
     d = DataSource(tenant_id=tenant.id, name=body.name.strip() or "Fuente", kind="db",
                    dsn_enc=encrypt(body.dsn.strip(), tenant.kms_key_id), query=q,
