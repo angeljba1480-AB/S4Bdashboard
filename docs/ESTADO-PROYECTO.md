@@ -57,6 +57,8 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
 
 ### Modelos
 - ✅ **Router de privacidad** con redacción de PII y fallback.
+- ✅ **Reranking del RAG** (NaN `/rerank`): reordena los candidatos recuperados para
+  más precisión (embedding → rerank → LLM). Toggle en *Admin → Eficiencia de tokens*.
 - ✅ **Modelos externos** (GPT/Claude/Llama/DeepSeek) configurables en la UI
   (cifrados; endpoints compatibles con OpenAI).
 - ✅ **Cascada**: borrador con modelo abierto → refinar con premium (aprobación
@@ -72,6 +74,10 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
 - ✅ **Lecturas**: Google Sheets, Google/Outlook Calendar, OneDrive,
   **leer rango de Excel**, **buscar en SharePoint**.
 - ✅ **Aprobación humana** para escrituras + **“Permitir siempre”** (revocable).
+
+### Ayuda
+- ✅ **Ayuda in-app en español**: guías paso a paso (n8n, correo, RAG, acciones,
+  conectores, BD/CSV, modelos/rerank, imágenes, webhooks) con buscador.
 
 ### Gobernanza y visibilidad
 - ✅ **Super admin** (ve todos los tenants) + **permisos por área y licencia**.

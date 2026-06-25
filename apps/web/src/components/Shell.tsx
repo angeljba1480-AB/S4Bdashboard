@@ -9,6 +9,7 @@ import {
   Building2,
   FileText,
   GitBranch,
+  HelpCircle,
   IdCard,
   ImagePlus,
   LayoutDashboard,
@@ -66,6 +67,7 @@ const NAV = [
       { href: "/account", label: "Mi cuenta", icon: IdCard },
       { href: "/audit", label: "Auditoría", icon: ShieldCheck },
       { href: "/admin", label: "Admin", icon: Settings },
+      { href: "/help", label: "Ayuda", icon: HelpCircle },
     ],
   },
 ];
