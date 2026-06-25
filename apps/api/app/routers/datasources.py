@@ -7,7 +7,9 @@ n8n / conectores REST / webhooks cubran el resto (ver docs/INTEGRATIONS.md).
 """
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import re
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -78,6 +80,49 @@ def _as_text(cols: list[str], rows: list[tuple]) -> str:
     for r in rows:
         lines.append(" | ".join("" if v is None else str(v) for v in r))
     return "\n".join(lines)
+
+
+def _parse_csv(raw: str, delimiter: str = ",") -> tuple[list[str], list[tuple]]:
+    """Parse CSV text into (columns, rows). First row is the header. Capped at MAX_ROWS."""
+    delim = (delimiter or ",")[:1] or ","
+    reader = csv.reader(io.StringIO(raw), delimiter=delim)
+    try:
+        cols = next(reader)
+    except StopIteration:
+        raise HTTPException(status_code=422, detail="El CSV está vacío.")
+    rows: list[tuple] = []
+    for row in reader:
+        rows.append(tuple(row))
+        if len(rows) >= MAX_ROWS:
+            break
+    return [c.strip() for c in cols], rows
+
+
+def _import_as_document(session: Session, tenant: Tenant, user: User, *, name: str,
+                        content: str, area: str, category: str, storage_uri: str,
+                        rows: int, source_label: str) -> dict:
+    """Classify text content, store it as a Document and index it into the RAG."""
+    from ..security.classifier import classify_data
+    cls = classify_data(content)
+    cat = doc_categories.get_or_create(session, tenant.id, category or "")
+    doc = Document(
+        tenant_id=tenant.id, owner_id=user.id, filename=f"{name}.txt", mime_type="text/plain",
+        area=area or "", category=cat.key if cat else "", sensitivity=cls.sensitivity,
+        pii_score=cls.pii.score, pii_types=",".join(cls.pii.types),
+        storage_uri=storage_uri, hash=hashlib.sha256(content.encode()).hexdigest(),
+        text=content,
+    )
+    session.add(doc)
+    session.commit()
+    session.refresh(doc)
+    chunks = index_document(session, doc)
+    session.add(AuditEvent(
+        tenant_id=tenant.id, user_id=user.id, event_type="upload", object_type="document",
+        object_id=doc.id, risk_level="low",
+        reason=f"importado de {source_label} ({rows} filas, {chunks} chunks)",
+    ))
+    session.commit()
+    return {"id": doc.id, "filename": doc.filename, "rows": rows}
 
 
 class DataSourceIn(BaseModel):
@@ -153,28 +198,36 @@ def import_source(
         cols, rows = _run_query(decrypt(d.dsn_enc, tenant.kms_key_id), d.query)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"No se pudo consultar: {exc}")
-    content = _as_text(cols, rows)
-    from ..security.classifier import classify_data
-    cls = classify_data(content)
-    cat = doc_categories.get_or_create(session, tenant.id, d.category or "")
-    doc = Document(
-        tenant_id=tenant.id, owner_id=user.id, filename=f"{d.name}.txt", mime_type="text/plain",
-        area=d.area or "", category=cat.key if cat else "", sensitivity=cls.sensitivity,
-        pii_score=cls.pii.score, pii_types=",".join(cls.pii.types),
-        storage_uri=f"datasource://{d.id}", hash=hashlib.sha256(content.encode()).hexdigest(),
-        text=content,
-    )
-    session.add(doc)
-    session.commit()
-    session.refresh(doc)
-    chunks = index_document(session, doc)
-    session.add(AuditEvent(
-        tenant_id=tenant.id, user_id=user.id, event_type="upload", object_type="document",
-        object_id=doc.id, risk_level="low",
-        reason=f"importado de fuente de datos '{d.name}' ({len(rows)} filas, {chunks} chunks)",
-    ))
-    session.commit()
-    return {"id": doc.id, "filename": doc.filename, "rows": len(rows)}
+    return _import_as_document(
+        session, tenant, user, name=d.name, content=_as_text(cols, rows),
+        area=d.area or "", category=d.category or "", storage_uri=f"datasource://{d.id}",
+        rows=len(rows), source_label=f"fuente de datos '{d.name}'")
+
+
+class CsvImportIn(BaseModel):
+    name: str
+    csv_text: str
+    delimiter: str = ","
+    area: str = ""
+    category: str = ""
+
+
+@router.post("/import-csv", status_code=201)
+def import_csv(
+    body: CsvImportIn,
+    user: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Importa un CSV (exportado por un sistema legado sin API) al repositorio + RAG."""
+    if not (body.csv_text or "").strip():
+        raise HTTPException(status_code=422, detail="Pega el contenido del CSV.")
+    cols, rows = _parse_csv(body.csv_text, body.delimiter)
+    name = body.name.strip() or "CSV importado"
+    return _import_as_document(
+        session, tenant, user, name=name, content=_as_text(cols, rows),
+        area=body.area.strip(), category=body.category.strip(), storage_uri="csv://import",
+        rows=len(rows), source_label=f"CSV '{name}'")
 
 
 @router.delete("/{ds_id}")

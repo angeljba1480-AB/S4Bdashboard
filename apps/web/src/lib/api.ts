@@ -346,6 +346,8 @@ export const api = {
     request<{ ok: boolean; columns: string[]; total_preview: number }>(`/datasources/${id}/test`, { method: "POST" }),
   importDataSource: (id: string) =>
     request<{ id: string; filename: string; rows: number }>(`/datasources/${id}/import`, { method: "POST" }),
+  importCsv: (body: { name: string; csv_text: string; delimiter?: string; area?: string; category?: string }) =>
+    request<{ id: string; filename: string; rows: number }>("/datasources/import-csv", { method: "POST", body: JSON.stringify(body) }),
   deleteDataSource: (id: string) =>
     request<{ ok: boolean }>(`/datasources/${id}`, { method: "DELETE" }),
   // Notebooks (NotebookLM-style over the company RAG)

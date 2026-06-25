@@ -42,12 +42,25 @@ scope `drive.readonly` (reconectar Google). Endpoints: `GET /drive/files`,
 cualquier salida. Soporta **cascada** (borrador con modelo abierto → refinar con
 premium, con aprobación para contenido sensible).
 
-## 6) Sistemas a la medida sin API — recomendación
+## 6) Fuentes de datos legadas → RAG (`/datasources`)
+*Integraciones → Fuentes de datos*. Dos vías para sistemas sin API:
+- **Base de datos de solo lectura**: DSN (`postgresql://…`, `mysql://…`) + una
+  consulta **SELECT**. Validado contra DML/CTE y esquemas no permitidos; corre en
+  transacción de solo lectura. Endpoints: `POST /datasources`, `/{id}/test`,
+  `/{id}/import`, `DELETE /{id}`.
+- **Importar CSV**: pega el CSV exportado por el sistema (primera fila = encabezados,
+  delimitador configurable). Endpoint: `POST /datasources/import-csv`.
+
+Ambas clasifican el contenido (público/…/restringido + PII), lo cifran y lo indexan
+en el RAG. Solo **ADMIN/DEVOPS**.
+
+## 7) Sistemas a la medida sin API — recomendación
 1. **n8n** (ya integrado): puente universal (REST/SOAP/DB/FTP/correo + 400 apps).
 2. **Conector REST de salida** (sección 2) si exponen cualquier endpoint HTTP.
 3. **Webhooks entrantes** firmados si el sistema empuja eventos.
-4. Sin API: **BD de solo lectura**, **SFTP/CSV**, **adaptador delgado** (wrapper REST),
-   o **correo-a-acción**. Regla: webhooks para *eventos*, REST para *comandos*, n8n para el resto.
+4. Sin API: **BD de solo lectura** o **CSV** (sección 6), **adaptador delgado**
+   (wrapper REST), o **correo-a-acción**. Regla: webhooks para *eventos*, REST para
+   *comandos*, n8n para el resto.
 
 ## Automatizaciones (disparador → acción)
 - Disparadores: **manual**, **programada** (daily/weekly/monthly), **por evento**

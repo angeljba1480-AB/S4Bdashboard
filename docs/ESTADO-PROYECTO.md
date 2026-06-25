@@ -112,9 +112,11 @@ Para poder decir *"¿recuerdas el trabajo C?"* y que el sistema recupere lo hech
   escapado de URLs en acciones).
 - ✅ **Excel (Graph workbook)** lectura de rango + agregar fila a tabla; **SharePoint
   search** (scopes `Files.ReadWrite.All` + `Sites.Read.All`).
+- ✅ **Importar CSV** de sistemas legados → repositorio + RAG (`/datasources/import-csv`),
+  con panel en Integraciones.
 
 ### Otras ideas (candidatas)
-- **SFTP/CSV** para sistemas legados (requiere `paramiko`).
+- **SFTP** para sistemas legados (requiere `paramiko`).
 - Centrar integraciones a medida en **n8n** (catálogo de recetas: DB, SOAP, apps propias).
 - Verificación del primer **modelo premium real** en producción.
 
