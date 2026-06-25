@@ -113,6 +113,8 @@ export interface AuditEvent {
   reason: string;
   user_id: string | null;
   created_at: string;
+  request_id?: string;
+  event_metadata?: string;
 }
 
 export interface RecipeInput {

@@ -157,6 +157,8 @@ class AuditOut(BaseModel):
     reason: str
     user_id: str | None
     created_at: datetime
+    request_id: str = ""
+    event_metadata: str = ""
 
 
 class UsageSummary(BaseModel):

@@ -331,10 +331,16 @@ export const api = {
       requires_approval: boolean;
       sources_found: number;
     }>("/chat/preview", { method: "POST", body: JSON.stringify(body) }),
-  audit: (params?: { event_type?: string; risk_level?: string }) => {
-    const q = new URLSearchParams(params as Record<string, string>).toString();
+  audit: (params?: { event_type?: string; risk_level?: string; classification?: string; route?: string; user_id?: string; q?: string; limit?: number; offset?: number }) => {
+    const clean = Object.fromEntries(Object.entries(params || {}).filter(([, v]) => v !== "" && v != null).map(([k, v]) => [k, String(v)]));
+    const q = new URLSearchParams(clean).toString();
     return request<AuditEvent[]>(`/audit${q ? `?${q}` : ""}`);
   },
+  auditStats: () => request<{
+    total: number; high_risk: number; blocked: number; total_cost: number; total_tokens: number;
+    by_event: Record<string, number>; by_risk: Record<string, number>; by_route: Record<string, number>;
+    by_classification: Record<string, number>; event_types: string[]; users: string[];
+  }>("/audit/stats"),
   usage: () => request<UsageSummary>("/usage"),
   operations: () =>
     request<{
