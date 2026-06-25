@@ -40,7 +40,8 @@ scope `drive.readonly` (reconectar Google). Endpoints: `GET /drive/files`,
 *Admin → Modelos externos*: configura proveedores **premium** y **abierto**
 (Base URL + modelo + API key cifrada). La **redacción de PII** se aplica antes de
 cualquier salida. Soporta **cascada** (borrador con modelo abierto → refinar con
-premium, con aprobación para contenido sensible).
+premium, con aprobación para contenido sensible). Usa **Probar conexión** para
+verificar que el proveedor responde (llamada real mínima → latencia + muestra, o error).
 
 ## 6) Fuentes de datos legadas → RAG (`/datasources`)
 *Integraciones → Fuentes de datos*. Dos vías para sistemas sin API:

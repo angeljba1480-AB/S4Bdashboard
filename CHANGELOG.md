@@ -8,6 +8,9 @@ Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa �
   y `Sites.Read.All` (la escritura sigue con aprobación humana).
 - **Conector CSV** para sistemas legados sin API: importa un CSV pegado al
   repositorio + RAG (`/datasources/import-csv`), con panel en Integraciones.
+- **Verificar modelo premium**: botón *Probar conexión* (Admin → Modelos externos)
+  y endpoint `POST /admin/providers/{route}/test` que hace una llamada real mínima
+  al proveedor y reporta ok + latencia + muestra (o el error), auditado.
 
 ## 2026-06-25 — promovido a prod (PR #12)
 - CI: primera corrida en `dev`/`qa` para registrar los checks (`API · pytest`,

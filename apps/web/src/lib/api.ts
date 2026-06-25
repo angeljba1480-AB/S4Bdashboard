@@ -377,6 +377,8 @@ export const api = {
     request<{ route: string; enabled: boolean; base_url: string; model: string; has_key: boolean }[]>("/admin/providers"),
   updateProvider: (route: string, body: { enabled: boolean; base_url: string; model: string; api_key?: string }) =>
     request<{ route: string; enabled: boolean; has_key: boolean }>(`/admin/providers/${route}`, { method: "PUT", body: JSON.stringify(body) }),
+  testProvider: (route: string) =>
+    request<{ ok: boolean; mode: string; model?: string; provider?: string; latency_ms?: number; sample?: string; detail?: string }>(`/admin/providers/${route}/test`, { method: "POST" }),
   documentCategories: () => request<DocumentCategory[]>("/documents/categories"),
   createDocumentCategory: (body: { label: string; description?: string }) =>
     request<DocumentCategory>("/documents/categories", { method: "POST", body: JSON.stringify(body) }),

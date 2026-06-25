@@ -12,7 +12,7 @@ from ..config import settings
 from ..db import get_session
 from ..integrations.n8n import resolve_n8n
 from ..integrations.n8n_provision import ensure_tenant_workflows, is_available as is_provision_available
-from ..models import ModelRoute, Role, Tenant, User
+from ..models import AuditEvent, ModelRoute, Role, Tenant, User
 from ..security.crypto import encrypt
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -391,6 +391,44 @@ def update_provider(
     session.commit()
     load_overrides(session)   # refresh runtime cache immediately
     return {"route": route, "enabled": row.enabled, "has_key": bool(row.api_key_enc)}
+
+
+@router.post("/providers/{route}/test")
+def test_provider(
+    route: str,
+    user: User = Depends(require_roles(Role.SUPER_ADMIN)),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Verifica un proveedor externo (premium/open) haciendo una llamada real
+    mínima al modelo configurado. Devuelve ok + latencia + muestra, o el error."""
+    import time
+
+    from ..ai.adapters import MockAdapter, get_adapter
+
+    if route not in _EXTERNAL_ROUTES:
+        raise HTTPException(status_code=400, detail="Ruta externa inválida (usa premium u open)")
+    adapter = get_adapter(ModelRoute(route))
+    if isinstance(adapter, MockAdapter):
+        return {"ok": False, "mode": "mock", "model": adapter.model_name,
+                "detail": "No hay proveedor real configurado para esta ruta (cae a MOCK). "
+                          "Configura Base URL + modelo + API key y habilítalo."}
+    t0 = time.perf_counter()
+    try:
+        resp = adapter.generate("Eres un verificador de conexión.", "Responde únicamente: OK", [])
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+        result = {"ok": True, "mode": "real", "model": resp.model, "provider": resp.provider,
+                  "latency_ms": latency_ms, "sample": (resp.content or "")[:200]}
+        reason = f"prueba de proveedor '{route}' OK ({resp.model}, {latency_ms} ms)"
+    except Exception as exc:
+        result = {"ok": False, "mode": "real", "model": adapter.model_name,
+                  "detail": str(exc)[:300]}
+        reason = f"prueba de proveedor '{route}' falló: {str(exc)[:120]}"
+    session.add(AuditEvent(
+        tenant_id=user.tenant_id, user_id=user.id, event_type="config", object_type="provider",
+        object_id=route, risk_level="low", reason=reason,
+    ))
+    session.commit()
+    return result
 
 
 class EfficiencyIn(BaseModel):

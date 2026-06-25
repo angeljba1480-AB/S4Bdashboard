@@ -14,6 +14,7 @@ export default function AdminPage() {
   const [providers, setProviders] = useState<Awaited<ReturnType<typeof api.adminProviders>>>([]);
   const [eff, setEff] = useState<Awaited<ReturnType<typeof api.adminEfficiency>> | null>(null);
   const [provDraft, setProvDraft] = useState<Record<string, { enabled: boolean; base_url: string; model: string; api_key: string }>>({});
+  const [provTest, setProvTest] = useState<Record<string, string>>({});
   const PROVIDER_LABELS: Record<string, string> = { premium: "Premium (GPT / Claude / Gemini)", open: "Abierto (Llama / OpenRouter / vLLM)" };
   const [security, setSecurity] = useState<Security | null>(null);
   const [n8n, setN8n] = useState<N8n | null>(null);
@@ -104,6 +105,20 @@ export default function AdminPage() {
       setProviders(p);
       setProvDraft(Object.fromEntries(p.map((x) => [x.route, { enabled: x.enabled, base_url: x.base_url, model: x.model, api_key: "" }])));
     }).catch(() => {});
+  }
+  async function testProvider(route: string) {
+    setProvTest((s) => ({ ...s, [route]: "Probando…" }));
+    try {
+      const r = await api.testProvider(route);
+      setProvTest((s) => ({
+        ...s,
+        [route]: r.ok
+          ? `✅ OK · ${r.model} · ${r.latency_ms} ms`
+          : `⚠️ ${r.mode === "mock" ? "Sin proveedor real (MOCK)" : "Error"}: ${r.detail ?? ""}`,
+      }));
+    } catch (e) {
+      setProvTest((s) => ({ ...s, [route]: `⚠️ ${e instanceof Error ? e.message : "Error"}` }));
+    }
   }
 
   function loadProposals() {
@@ -587,7 +602,11 @@ export default function AdminPage() {
                     <input value={d.api_key} onChange={(e) => upd({ api_key: e.target.value })} type="password"
                       placeholder={p.has_key ? "•••••• (guardada — escribe para reemplazar)" : "API key"}
                       className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-                    <button onClick={() => saveProvider(p.route)} className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">Guardar</button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => saveProvider(p.route)} className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">Guardar</button>
+                      <button onClick={() => testProvider(p.route)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Probar conexión</button>
+                    </div>
+                    {provTest[p.route] && <div className="mt-2 text-xs text-slate-500">{provTest[p.route]}</div>}
                   </div>
                 );
               })}

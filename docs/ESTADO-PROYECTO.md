@@ -79,6 +79,7 @@ Para activar lo que depende de credenciales/permisos:
 1. **Scopes de escritura** (toolkit de acciones): agregar permisos en Azure/Google
    y **reconectar** — ver [`ACCIONES-ESCRITURA-SETUP.md`](./ACCIONES-ESCRITURA-SETUP.md).
 2. **Modelo Premium** para la cascada: *Admin → Modelos externos* (Base URL + modelo + API key).
+   Luego pulsa **Probar conexión** para verificar que responde (latencia + muestra).
 3. **Google Drive**: reconectar Google para otorgar `drive.readonly`.
 4. Verificar que **Render** despliega desde `main` (Branch = `main`).
 
@@ -114,10 +115,12 @@ Para poder decir *"¿recuerdas el trabajo C?"* y que el sistema recupere lo hech
   search** (scopes `Files.ReadWrite.All` + `Sites.Read.All`).
 - ✅ **Importar CSV** de sistemas legados → repositorio + RAG (`/datasources/import-csv`),
   con panel en Integraciones.
+- ✅ **Verificación del modelo premium**: botón *Probar conexión* (Admin → Modelos
+  externos) → `POST /admin/providers/{route}/test` hace una llamada real mínima y
+  reporta ok + latencia + muestra, o el error (auditado). Distingue MOCK de proveedor real.
 
 ### Otras ideas (candidatas)
 - **SFTP** para sistemas legados (requiere `paramiko`).
 - Centrar integraciones a medida en **n8n** (catálogo de recetas: DB, SOAP, apps propias).
-- Verificación del primer **modelo premium real** en producción.
 
 _MaestroAI · Estado del proyecto._
