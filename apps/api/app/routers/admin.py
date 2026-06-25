@@ -343,7 +343,7 @@ _EXTERNAL_ROUTES = ("premium", "open")
 
 @router.get("/providers")
 def list_providers(
-    _: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN)),
+    _: User = Depends(require_roles(Role.SUPER_ADMIN)),
     session: Session = Depends(get_session),
 ) -> list[dict]:
     """External model providers (GPT/Claude/Llama…) configurable from the UI."""
@@ -367,7 +367,7 @@ def list_providers(
 def update_provider(
     route: str,
     body: ProviderIn,
-    _: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN)),
+    _: User = Depends(require_roles(Role.SUPER_ADMIN)),
     session: Session = Depends(get_session),
 ) -> dict:
     """Set an external provider's endpoint/model/key. PII is redacted before any
@@ -391,6 +391,45 @@ def update_provider(
     session.commit()
     load_overrides(session)   # refresh runtime cache immediately
     return {"route": route, "enabled": row.enabled, "has_key": bool(row.api_key_enc)}
+
+
+class EfficiencyIn(BaseModel):
+    condense_enabled: bool | None = None
+    condense_threshold_chars: int | None = None
+    max_tokens_per_request: int | None = None
+
+
+@router.get("/efficiency")
+def get_efficiency(_: User = Depends(require_roles(Role.SUPER_ADMIN))) -> dict:
+    """Token-efficiency controls (condensación + tope de gasto) y ahorro acumulado."""
+    from .. import runtime_config
+    return {
+        "condense_enabled": runtime_config.condense_enabled(),
+        "condense_threshold_chars": runtime_config.condense_threshold_chars(),
+        "max_tokens_per_request": runtime_config.max_tokens_per_request(),
+        "tokens_saved_total": runtime_config.tokens_saved_total(),
+    }
+
+
+@router.put("/efficiency")
+def update_efficiency(
+    body: EfficiencyIn,
+    _: User = Depends(require_roles(Role.SUPER_ADMIN)),
+    session: Session = Depends(get_session),
+) -> dict:
+    from .. import runtime_config
+    if body.condense_enabled is not None:
+        runtime_config.set_value(session, "condense_enabled", str(body.condense_enabled).lower())
+    if body.condense_threshold_chars is not None:
+        runtime_config.set_value(session, "condense_threshold_chars", str(max(0, body.condense_threshold_chars)))
+    if body.max_tokens_per_request is not None:
+        runtime_config.set_value(session, "max_tokens_per_request", str(max(0, body.max_tokens_per_request)))
+    return {
+        "condense_enabled": runtime_config.condense_enabled(),
+        "condense_threshold_chars": runtime_config.condense_threshold_chars(),
+        "max_tokens_per_request": runtime_config.max_tokens_per_request(),
+        "tokens_saved_total": runtime_config.tokens_saved_total(),
+    }
 
 
 @router.get("/routes")

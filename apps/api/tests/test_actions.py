@@ -75,6 +75,19 @@ def test_reject(client):
     assert rej["request"]["status"] == "rejected"
 
 
+def test_read_action_runs_without_approval(client):
+    h = _auth(client)
+    run = client.post("/actions/run", headers=h, json={
+        "action": "gcal.list", "params": {"days": "7"}}).json()
+    assert run["status"] == "done" and run["request"]["status"] == "executed"
+
+
+def test_read_actions_in_catalog(client):
+    acts = {a["id"]: a for a in client.get("/actions", headers=_auth(client)).json()}
+    for rid in ("gsheets.read", "gcal.list", "mscal.list", "onedrive.list"):
+        assert rid in acts and acts[rid]["write"] is False
+
+
 def test_unknown_action_404(client):
     h = _auth(client)
     assert client.post("/actions/run", headers=h, json={"action": "nope.x", "params": {}}).status_code == 404

@@ -12,6 +12,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<{ id: string; email: string; name: string; role: string; area: string; license: string; mfa_enabled: boolean; status: string }[]>([]);
   const [tenants, setTenants] = useState<Awaited<ReturnType<typeof api.adminTenants>>>([]);
   const [providers, setProviders] = useState<Awaited<ReturnType<typeof api.adminProviders>>>([]);
+  const [eff, setEff] = useState<Awaited<ReturnType<typeof api.adminEfficiency>> | null>(null);
   const [provDraft, setProvDraft] = useState<Record<string, { enabled: boolean; base_url: string; model: string; api_key: string }>>({});
   const PROVIDER_LABELS: Record<string, string> = { premium: "Premium (GPT / Claude / Gemini)", open: "Abierto (Llama / OpenRouter / vLLM)" };
   const [security, setSecurity] = useState<Security | null>(null);
@@ -139,6 +140,7 @@ export default function AdminPage() {
       setProviders(p);
       setProvDraft(Object.fromEntries(p.map((x) => [x.route, { enabled: x.enabled, base_url: x.base_url, model: x.model, api_key: "" }])));
     }).catch(() => {});
+    api.adminEfficiency().then(setEff).catch(() => {});
     api.security().then(setSecurity).catch(() => {});
     loadN8n();
     loadProposals();
@@ -529,6 +531,35 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+
+        {eff && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="mb-1 font-semibold text-slate-800">Eficiencia de tokens (gasto)</h2>
+            <p className="mb-4 text-xs text-slate-400">
+              El modelo barato condensa contexto grande antes de ir a premium. Define el umbral y un
+              tope de tokens por consulta (0 = sin tope). Ahorro acumulado estimado:
+              <b> {eff.tokens_saved_total.toLocaleString()} tokens</b>.
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex items-center gap-1.5 text-sm text-slate-700">
+                <input type="checkbox" checked={eff.condense_enabled} onChange={(e) => setEff({ ...eff, condense_enabled: e.target.checked })} />
+                Condensar contexto
+              </label>
+              <div>
+                <div className="text-xs text-slate-400">Umbral (caracteres)</div>
+                <input type="number" value={eff.condense_threshold_chars} onChange={(e) => setEff({ ...eff, condense_threshold_chars: Number(e.target.value) })}
+                  className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <div className="text-xs text-slate-400">Tope tokens / consulta</div>
+                <input type="number" value={eff.max_tokens_per_request} onChange={(e) => setEff({ ...eff, max_tokens_per_request: Number(e.target.value) })}
+                  className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <button onClick={() => api.updateEfficiency({ condense_enabled: eff.condense_enabled, condense_threshold_chars: eff.condense_threshold_chars, max_tokens_per_request: eff.max_tokens_per_request }).then(setEff).catch(() => {})}
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Guardar</button>
+            </div>
+          </div>
+        )}
 
         {providers.length > 0 && (
           <div className="rounded-2xl border border-slate-200 bg-white p-5">

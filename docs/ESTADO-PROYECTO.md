@@ -100,11 +100,18 @@ Para poder decir *"¿recuerdas el trabajo C?"* y que el sistema recupere lo hech
   en trabajos previos), respetando permisos por área.
 - [ ] UI: "Mis trabajos / Memoria" con búsqueda por tag y "continuar este trabajo".
 
+### Hecho recientemente (trabajo autónomo en `dev`)
+- ✅ **Tope de gasto + eficiencia en la UI** (Admin → Eficiencia de tokens) + ahorro acumulado.
+- ✅ **Lecturas del toolkit**: Google Sheets, Google/Outlook Calendar, OneDrive.
+- ✅ **Conector de base de datos** (solo lectura) → importa al RAG (`/datasources`).
+- ✅ **Revisión de seguridad** del código nuevo + fixes (authz global solo super
+  admin, sanitización de queries Drive/OneDrive, denylist DML/CTE + esquemas DSN,
+  escapado de URLs en acciones).
+
 ### Otras ideas (candidatas)
-- Más acciones/lecturas del toolkit (Sheets/Excel read, SharePoint, OneDrive).
-- Conector de **base de datos** (solo lectura) y **SFTP/CSV** para sistemas legados.
+- **SFTP/CSV** para sistemas legados (requiere `paramiko`).
+- Excel (Graph workbook) lectura/escritura; SharePoint search.
 - Centrar integraciones a medida en **n8n** (catálogo de recetas: DB, SOAP, apps propias).
-- **Tope de gasto en la UI** (hoy por variable de entorno) + reporte de ahorro por condensación.
 - Verificación del primer **modelo premium real** en producción.
 
 _MaestroAI · Estado del proyecto._

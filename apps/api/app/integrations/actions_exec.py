@@ -5,7 +5,9 @@ string; raises on failure so the caller can mark the request failed.
 from __future__ import annotations
 
 import base64
+from datetime import datetime, timedelta
 from email.message import EmailMessage
+from urllib.parse import quote
 
 import httpx
 
@@ -24,8 +26,58 @@ def _rows(values) -> list[list[str]]:
     return [[c.strip() for c in str(values or "").split(",")]]
 
 
+def _days(p: dict, default: int = 7) -> int:
+    try:
+        return max(1, int(p.get("days", default)))
+    except (ValueError, TypeError):
+        return default
+
+
 def execute(action_id: str, token: str, params: dict) -> str:
     p = params or {}
+
+    # --- Google (lectura) ---
+    if action_id == "gsheets.read":
+        sid, rng = p.get("spreadsheet_id", ""), p.get("range", "A1:Z50")
+        r = httpx.get(f"https://sheets.googleapis.com/v4/spreadsheets/{sid}/values/{rng}",
+                      headers=_auth(token), timeout=TIMEOUT)
+        r.raise_for_status()
+        rows = r.json().get("values", [])
+        return "\n".join(" | ".join(map(str, row)) for row in rows[:50]) or "(rango vacío)"
+
+    if action_id == "gcal.list":
+        now = datetime.utcnow()
+        params_q = {"timeMin": now.isoformat() + "Z",
+                    "timeMax": (now + timedelta(days=_days(p))).isoformat() + "Z",
+                    "singleEvents": "true", "orderBy": "startTime", "maxResults": "20"}
+        r = httpx.get("https://www.googleapis.com/calendar/v3/calendars/primary/events",
+                      headers=_auth(token), params=params_q, timeout=TIMEOUT)
+        r.raise_for_status()
+        evs = r.json().get("items", [])
+        return "\n".join(
+            f"- {(e.get('start', {}) or {}).get('dateTime', (e.get('start', {}) or {}).get('date', ''))} · {e.get('summary', '(sin título)')}"
+            for e in evs) or "Sin eventos próximos."
+
+    if action_id == "mscal.list":
+        now = datetime.utcnow()
+        url = (f"{GRAPH}/me/calendarview?startDateTime={now.isoformat()}Z"
+               f"&endDateTime={(now + timedelta(days=_days(p))).isoformat()}Z"
+               "&$orderby=start/dateTime&$top=20&$select=subject,start")
+        r = httpx.get(url, headers={**_auth(token), "Prefer": 'outlook.timezone="UTC"'}, timeout=TIMEOUT)
+        r.raise_for_status()
+        evs = r.json().get("value", [])
+        return "\n".join(f"- {(e.get('start', {}) or {}).get('dateTime', '')} · {e.get('subject', '(sin título)')}"
+                         for e in evs) or "Sin eventos próximos."
+
+    if action_id == "onedrive.list":
+        q = p.get("query", "").strip().replace("'", "''")  # escape OData single quotes
+        if q:
+            url = f"{GRAPH}/me/drive/root/search(q='{q}')?$top=25&$select=name,webUrl"
+        else:
+            url = f"{GRAPH}/me/drive/root/children?$top=25&$select=name,webUrl"
+        r = httpx.get(url, headers=_auth(token), timeout=TIMEOUT)
+        r.raise_for_status()
+        return "\n".join(f"- {f.get('name', '')}" for f in r.json().get("value", [])) or "Sin archivos."
 
     # --- Google ---
     if action_id == "gmail.send":
@@ -51,8 +103,8 @@ def execute(action_id: str, token: str, params: dict) -> str:
         return f"Evento creado: {p.get('summary','')}"
 
     if action_id == "gsheets.append":
-        sid = p.get("spreadsheet_id", "")
-        rng = p.get("range", "A1")
+        sid = quote(str(p.get("spreadsheet_id", "")), safe="")
+        rng = quote(str(p.get("range", "A1")), safe="")
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{sid}/values/{rng}:append"
         r = httpx.post(url, headers=_auth(token), params={"valueInputOption": "USER_ENTERED"},
                        json={"values": _rows(p.get("values"))}, timeout=TIMEOUT)
@@ -81,7 +133,7 @@ def execute(action_id: str, token: str, params: dict) -> str:
         return f"Evento creado: {p.get('summary','')}"
 
     if action_id == "teams.post":
-        team, channel = p.get("team_id", ""), p.get("channel_id", "")
+        team, channel = quote(str(p.get("team_id", "")), safe=""), quote(str(p.get("channel_id", "")), safe="")
         r = httpx.post(f"{GRAPH}/teams/{team}/channels/{channel}/messages",
                        headers=_auth(token), json={"body": {"content": p.get("message", "")}}, timeout=TIMEOUT)
         r.raise_for_status()
