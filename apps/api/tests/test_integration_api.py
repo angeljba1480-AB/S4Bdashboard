@@ -79,9 +79,10 @@ def test_event_triggers_automation_via_v1(client):
 def test_document_upload_fires_event(client):
     h = _auth(client)
     client.post("/automations/from-template", headers=h, json={"template_id": "alerta_doc_sensible"})
-    before = len(client.get("/audit", headers=h).json())
+    # limit alto: el endpoint topa en 100 por defecto y la BD de pruebas es compartida.
+    before = len(client.get("/audit?limit=500", headers=h).json())
     client.post("/documents/upload", headers=h, data={"filename": "evt.txt", "text": "Documento con RFC BBM930101XYZ"})
-    after = client.get("/audit", headers=h).json()
+    after = client.get("/audit?limit=500", headers=h).json()
     assert len(after) > before
     assert any(e["event_type"] == "automation" for e in after)
 

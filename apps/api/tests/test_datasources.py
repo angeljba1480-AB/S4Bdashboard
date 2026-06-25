@@ -79,3 +79,26 @@ def test_delete(client):
     ds = client.post("/datasources", headers=h, json={
         "name": "tmp", "dsn": LEGACY_DSN, "query": "SELECT 1 AS uno"}).json()
     assert client.delete(f"/datasources/{ds['id']}", headers=h).json()["ok"] is True
+
+
+def test_import_csv(client):
+    h = _auth(client)
+    csv_text = "nombre,monto\nACME,5000\nGlobex,8200\n"
+    r = client.post("/datasources/import-csv", headers=h, json={
+        "name": "Cartera CSV", "csv_text": csv_text, "category": "conocimiento"}).json()
+    assert r["rows"] == 2 and r["filename"] == "Cartera CSV.txt"
+    docs = client.get("/documents", headers=h).json()
+    assert any(d["filename"] == "Cartera CSV.txt" for d in docs)
+
+
+def test_import_csv_custom_delimiter(client):
+    h = _auth(client)
+    r = client.post("/datasources/import-csv", headers=h, json={
+        "name": "PuntoYComa", "csv_text": "a;b\n1;2", "delimiter": ";"}).json()
+    assert r["rows"] == 1
+
+
+def test_import_csv_empty_rejected(client):
+    h = _auth(client)
+    r = client.post("/datasources/import-csv", headers=h, json={"name": "x", "csv_text": "   "})
+    assert r.status_code == 422

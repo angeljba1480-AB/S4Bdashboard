@@ -27,11 +27,17 @@ ACTIONS: dict[str, dict] = {
                            "params": ["summary", "start", "end", "location"]},
     "teams.post": {"provider": "microsoft", "label": "Publicar en Teams (canal)", "write": True,
                    "params": ["team_id", "channel_id", "message"]},
+    "excel.append": {"provider": "microsoft", "label": "Agregar fila a tabla de Excel", "write": True,
+                     "params": ["item_id", "table", "values"]},
     # --- Microsoft 365 (lectura) ---
     "mscal.list": {"provider": "microsoft", "label": "Próximos eventos (Outlook Calendar)", "write": False,
                    "params": ["days"]},
     "onedrive.list": {"provider": "microsoft", "label": "Listar archivos (OneDrive)", "write": False,
                       "params": ["query"]},
+    "excel.read": {"provider": "microsoft", "label": "Leer rango de Excel", "write": False,
+                   "params": ["item_id", "worksheet", "range"]},
+    "sharepoint.search": {"provider": "microsoft", "label": "Buscar en SharePoint", "write": False,
+                          "params": ["query"]},
 }
 
 
