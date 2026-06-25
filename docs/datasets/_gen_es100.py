@@ -423,57 +423,58 @@ DATA = [
    [("genial / bien", ["VE","CO","PE","EC","CU","DO","PA"])]),
 ]
 
-# Generar CSV (formato largo: una fila por palabra+país)
-csv_rows = []
-for palabra, emoji, cat, general, variantes in DATA:
-    # mapa codigo->significado
-    asignado = {}
-    for sig, codes in variantes:
-        for c in codes:
-            if c in PAISES:
-                asignado[c] = sig
-    for c in ALL:
-        sig = asignado.get(c, general)
-        bandera, nombre = PAISES[c]
-        csv_rows.append([palabra, c, nombre, bandera, sig, emoji, cat])
+if __name__ == '__main__':
+    # Generar CSV (formato largo: una fila por palabra+país)
+    csv_rows = []
+    for palabra, emoji, cat, general, variantes in DATA:
+        # mapa codigo->significado
+        asignado = {}
+        for sig, codes in variantes:
+            for c in codes:
+                if c in PAISES:
+                    asignado[c] = sig
+        for c in ALL:
+            sig = asignado.get(c, general)
+            bandera, nombre = PAISES[c]
+            csv_rows.append([palabra, c, nombre, bandera, sig, emoji, cat])
 
-with open(os.path.join(OUT,"es-100-todos-paises.csv"),"w",encoding="utf-8",newline="") as f:
-    w = csv.writer(f)
-    w.writerow(["palabra","codigo_pais","pais","bandera","significado","emoji","categoria"])
-    w.writerows(csv_rows)
+    with open(os.path.join(OUT,"es-100-todos-paises.csv"),"w",encoding="utf-8",newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["palabra","codigo_pais","pais","bandera","significado","emoji","categoria"])
+        w.writerows(csv_rows)
 
-# Generar Markdown (por palabra, agrupando países que comparten significado)
-lines = []
-lines.append("# 🌎 100 palabras del español — significado en TODOS los países hispanohablantes\n")
-lines.append("> Para cada palabra se indica su **significado por país** (los 20 países "
-             "hispanohablantes + 🇬🇶 Guinea Ecuatorial) y el **emoji** que usan los "
-             "jóvenes/teens. Datos en [`es-100-todos-paises.csv`](./es-100-todos-paises.csv).\n")
-lines.append("> ⚠️ = sentido vulgar/sexual en algún país.\n")
-lines.append("\n---\n")
-for i,(palabra, emoji, cat, general, variantes) in enumerate(DATA,1):
-    lines.append(f"\n### {i}. {palabra.capitalize()} {emoji}")
-    lines.append(f"_Categoría: {cat}_\n")
-    # agrupar: significado -> lista de banderas
-    grupos = {}
-    asignado = {}
-    for sig, codes in variantes:
-        for c in codes:
-            if c in PAISES: asignado[c]=sig
-    # general primero
-    gen_codes = [c for c in ALL if c not in asignado]
-    if gen_codes:
-        grupos[general] = gen_codes
-    for sig, codes in variantes:
-        grupos.setdefault(sig, [])
-        for c in codes:
-            if c in PAISES and c not in grupos[sig]:
-                grupos[sig].append(c)
-    for sig, codes in grupos.items():
-        banderas = " ".join(PAISES[c][0] for c in codes if c in PAISES)
-        lines.append(f"- {banderas} → **{sig}**")
-md = "\n".join(lines) + "\n"
-with open(os.path.join(OUT,"es-100-todos-paises.md"),"w",encoding="utf-8") as f:
-    f.write(md)
+    # Generar Markdown (por palabra, agrupando países que comparten significado)
+    lines = []
+    lines.append("# 🌎 100 palabras del español — significado en TODOS los países hispanohablantes\n")
+    lines.append("> Para cada palabra se indica su **significado por país** (los 20 países "
+                 "hispanohablantes + 🇬🇶 Guinea Ecuatorial) y el **emoji** que usan los "
+                 "jóvenes/teens. Datos en [`es-100-todos-paises.csv`](./es-100-todos-paises.csv).\n")
+    lines.append("> ⚠️ = sentido vulgar/sexual en algún país.\n")
+    lines.append("\n---\n")
+    for i,(palabra, emoji, cat, general, variantes) in enumerate(DATA,1):
+        lines.append(f"\n### {i}. {palabra.capitalize()} {emoji}")
+        lines.append(f"_Categoría: {cat}_\n")
+        # agrupar: significado -> lista de banderas
+        grupos = {}
+        asignado = {}
+        for sig, codes in variantes:
+            for c in codes:
+                if c in PAISES: asignado[c]=sig
+        # general primero
+        gen_codes = [c for c in ALL if c not in asignado]
+        if gen_codes:
+            grupos[general] = gen_codes
+        for sig, codes in variantes:
+            grupos.setdefault(sig, [])
+            for c in codes:
+                if c in PAISES and c not in grupos[sig]:
+                    grupos[sig].append(c)
+        for sig, codes in grupos.items():
+            banderas = " ".join(PAISES[c][0] for c in codes if c in PAISES)
+            lines.append(f"- {banderas} → **{sig}**")
+    md = "\n".join(lines) + "\n"
+    with open(os.path.join(OUT,"es-100-todos-paises.md"),"w",encoding="utf-8") as f:
+        f.write(md)
 
-print("Palabras:", len(DATA))
-print("Filas CSV (palabra×país):", len(csv_rows))
+    print("Palabras:", len(DATA))
+    print("Filas CSV (palabra×país):", len(csv_rows))

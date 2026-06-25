@@ -1,0 +1,113 @@
+word,region_code,region,flag,meaning,note,emoji,category
+Mate,LDN,London / Cockney & MLE,🎩,friend / pal,,🤝,Person
+Mate,YOR,Yorkshire,🐑,friend / pal,,🤝,Person
+Mate,WC,Gen-Z UK (nationwide),🤳,friend / pal,also general UK,🤝,Person
+Innit,LDN,London / Cockney & MLE,🎩,'isn't it' (agreement tag),MLE/Cockney,💬,Tag
+Innit,WC,Gen-Z UK (nationwide),🤳,'isn't it' (agreement tag),,💬,Tag
+Bruv,LDN,London / Cockney & MLE,🎩,brother / friend,,🤝,Person
+Bruv,WC,Gen-Z UK (nationwide),🤳,brother / friend,,🤝,Person
+Bredren / Fam,LDN,London / Cockney & MLE,🎩,close friend (MLE),,👨‍👩‍👦,Person
+Bredren / Fam,WC,Gen-Z UK (nationwide),🤳,close friend (MLE),,👨‍👩‍👦,Person
+Peng,LDN,London / Cockney & MLE,🎩,very attractive / great (MLE),,🔥,Adjective
+Peng,WC,Gen-Z UK (nationwide),🤳,very attractive / great (MLE),,🔥,Adjective
+Bait,LDN,London / Cockney & MLE,🎩,obvious / well-known (MLE),,👀,Adjective
+Bait,WC,Gen-Z UK (nationwide),🤳,obvious / well-known (MLE),,👀,Adjective
+Peak,LDN,London / Cockney & MLE,🎩,unfortunate / harsh (MLE),,😩,Adjective
+Peak,WC,Gen-Z UK (nationwide),🤳,unfortunate / harsh (MLE),,😩,Adjective
+Long,LDN,London / Cockney & MLE,🎩,tedious / too much effort,,🥱,Adjective
+Long,WC,Gen-Z UK (nationwide),🤳,tedious / too much effort,,🥱,Adjective
+Wagwan,LDN,London / Cockney & MLE,🎩,'what's going on?' (MLE),,👋,Greeting
+Safe,LDN,London / Cockney & MLE,🎩,'cool / thanks / ok',,👌,Interjection
+Safe,WC,Gen-Z UK (nationwide),🤳,'cool / thanks / ok',,👌,Interjection
+Bloke,LDN,London / Cockney & MLE,🎩,man / guy,,🧑,Person
+Bloke,YOR,Yorkshire,🐑,man / guy,,🧑,Person
+Bloke,MAN,Manchester (Mancunian),🐝,man / guy,,🧑,Person
+Knackered,LDN,London / Cockney & MLE,🎩,exhausted,,😴,Adjective
+Knackered,YOR,Yorkshire,🐑,exhausted,,😴,Adjective
+Knackered,MAN,Manchester (Mancunian),🐝,exhausted,,😴,Adjective
+Gutted,LDN,London / Cockney & MLE,🎩,very disappointed,,😞,Adjective
+Gutted,LIV,Liverpool (Scouse),⚓,very disappointed,,😞,Adjective
+Gutted,YOR,Yorkshire,🐑,very disappointed,,😞,Adjective
+Chuffed,YOR,Yorkshire,🐑,very pleased,,😄,Adjective
+Chuffed,MAN,Manchester (Mancunian),🐝,very pleased,,😄,Adjective
+Chuffed,LDN,London / Cockney & MLE,🎩,very pleased,,😄,Adjective
+Cheeky,LDN,London / Cockney & MLE,🎩,playfully rude / a little ('cheeky pint'),,😏,Adjective
+Cheeky,WC,Gen-Z UK (nationwide),🤳,playfully rude / a little ('cheeky pint'),,😏,Adjective
+Minging,SCO,Scotland,🏴󠁧󠁢󠁳󠁣󠁴󠁿,disgusting / ugly,,🤮,Adjective
+Minging,NCL,Newcastle (Geordie),🌉,disgusting / ugly,,🤮,Adjective
+Minging,LIV,Liverpool (Scouse),⚓,disgusting / ugly,,🤮,Adjective
+Wee,SCO,Scotland,🏴󠁧󠁢󠁳󠁣󠁴󠁿,small / little,,🤏,Adjective
+Wee,NI,Northern Ireland,☘️,small / little,,🤏,Adjective
+Aye,SCO,Scotland,🏴󠁧󠁢󠁳󠁣󠁴󠁿,yes,,👍,Interjection
+Aye,NCL,Newcastle (Geordie),🌉,yes,,👍,Interjection
+Aye,YOR,Yorkshire,🐑,yes,,👍,Interjection
+Bonnie,SCO,Scotland,🏴󠁧󠁢󠁳󠁣󠁴󠁿,pretty / beautiful,,😍,Adjective
+Ken,SCO,Scotland,🏴󠁧󠁢󠁳󠁣󠁴󠁿,know ('d'ye ken?'),,🧠,Verb
+Bairn,SCO,Scotland,🏴󠁧󠁢󠁳󠁣󠁴󠁿,child / baby,,👶,Noun
+Bairn,NCL,Newcastle (Geordie),🌉,child / baby,,👶,Noun
+Dinnae,SCO,Scotland,🏴󠁧󠁢󠁳󠁣󠁴󠁿,'don't',,🚫,Verb
+Bampot,SCO,Scotland,🏴󠁧󠁢󠁳󠁣󠁴󠁿,idiot / fool,,🤪,Noun
+Canny,NCL,Newcastle (Geordie),🌉,nice/good (Geordie) / careful (Scots),= nice/very,😌,Adjective
+Canny,SCO,Scotland,🏴󠁧󠁢󠁳󠁣󠁴󠁿,nice/good (Geordie) / careful (Scots),= careful,😌,Adjective
+Howay,NCL,Newcastle (Geordie),🌉,'come on!',,🗣️,Interjection
+Pet,NCL,Newcastle (Geordie),🌉,'love / dear' (affectionate),,💚,Term of address
+Toon,NCL,Newcastle (Geordie),🌉,the town / Newcastle Utd,,🏟️,Noun
+Geordie,NCL,Newcastle (Geordie),🌉,person from Newcastle,,🌉,Noun
+Scran,NCL,Newcastle (Geordie),🌉,food,,🍽️,Noun
+Scran,LIV,Liverpool (Scouse),⚓,food,,🍽️,Noun
+Scran,SCO,Scotland,🏴󠁧󠁢󠁳󠁣󠁴󠁿,food,,🍽️,Noun
+La / Lad,LIV,Liverpool (Scouse),⚓,mate (Scouse),,🧑,Person
+Boss,LIV,Liverpool (Scouse),⚓,great / excellent,,👌,Adjective
+Made up,LIV,Liverpool (Scouse),⚓,very happy / delighted,,😁,Phrase
+Made up,MAN,Manchester (Mancunian),🐝,very happy / delighted,,😁,Phrase
+Sound,LIV,Liverpool (Scouse),⚓,good / reliable / 'no problem',,👍,Adjective
+Sound,MAN,Manchester (Mancunian),🐝,good / reliable / 'no problem',,👍,Adjective
+Devo'd,LIV,Liverpool (Scouse),⚓,devastated,,😢,Adjective
+Devo'd,WC,Gen-Z UK (nationwide),🤳,devastated,,😢,Adjective
+Our kid,MAN,Manchester (Mancunian),🐝,sibling / close family,,👦,Phrase
+Our kid,LIV,Liverpool (Scouse),⚓,sibling / close family,,👦,Phrase
+Mint,MAN,Manchester (Mancunian),🐝,excellent / great,,✨,Adjective
+Mint,NCL,Newcastle (Geordie),🌉,excellent / great,,✨,Adjective
+Mint,YOR,Yorkshire,🐑,excellent / great,,✨,Adjective
+Buzzin',MAN,Manchester (Mancunian),🐝,very excited / happy,,🤩,Adjective
+Buzzin',LIV,Liverpool (Scouse),⚓,very excited / happy,,🤩,Adjective
+Bostin',BIR,Birmingham (Brummie),🔧,excellent / great,,👍,Adjective
+Bab,BIR,Birmingham (Brummie),🔧,'love / dear',,💛,Term of address
+Yampy,BIR,Birmingham (Brummie),🔧,crazy / daft,,🤪,Adjective
+Ta-ra / Tara,BIR,Birmingham (Brummie),🔧,goodbye,,👋,Interjection
+Ta-ra / Tara,LIV,Liverpool (Scouse),⚓,goodbye,,👋,Interjection
+Ta-ra / Tara,YOR,Yorkshire,🐑,goodbye,,👋,Interjection
+Owt / Nowt,YOR,Yorkshire,🐑,'anything' / 'nothing',,🔁,Noun
+Owt / Nowt,NCL,Newcastle (Geordie),🌉,'anything' / 'nothing',,🔁,Noun
+Ey up,YOR,Yorkshire,🐑,'hello / watch out',,👋,Greeting
+Ey up,MAN,Manchester (Mancunian),🐝,'hello / watch out',,👋,Greeting
+Summat,YOR,Yorkshire,🐑,'something',,❓,Noun
+Nesh,YOR,Yorkshire,🐑,feeling the cold easily,,🥶,Adjective
+Nesh,BIR,Birmingham (Brummie),🔧,feeling the cold easily,,🥶,Adjective
+Craic,NI,Northern Ireland,☘️,fun / good time / gossip,,🎉,Noun
+Craic,SCO,Scotland,🏴󠁧󠁢󠁳󠁣󠁴󠁿,fun / good time / gossip,,🎉,Noun
+Wee buns,NI,Northern Ireland,☘️,very easy,,🧁,Phrase
+Boyo,WAL,Wales,🏴󠁧󠁢󠁷󠁬󠁳󠁿,boy / mate,,🧑,Person
+Cwtch,WAL,Wales,🏴󠁧󠁢󠁷󠁬󠁳󠁿,a cuddle / cosy hug,,🤗,Noun
+Tidy,WAL,Wales,🏴󠁧󠁢󠁷󠁬󠁳󠁿,good / great / fine,,👌,Adjective
+Lush,WAL,Wales,🏴󠁧󠁢󠁷󠁬󠁳󠁿,lovely / delicious,,😍,Adjective
+Lush,WC,Gen-Z UK (nationwide),🤳,lovely / delicious,,😍,Adjective
+Now in a minute,WAL,Wales,🏴󠁧󠁢󠁷󠁬󠁳󠁿,soon / shortly (paradoxical),,⏳,Phrase
+Butty,LIV,Liverpool (Scouse),⚓,sandwich,,🥪,Noun
+Butty,MAN,Manchester (Mancunian),🐝,sandwich,,🥪,Noun
+Butty,WAL,Wales,🏴󠁧󠁢󠁷󠁬󠁳󠁿,sandwich,,🥪,Noun
+Skint,LDN,London / Cockney & MLE,🎩,broke / no money,,💸,Adjective
+Skint,YOR,Yorkshire,🐑,broke / no money,,💸,Adjective
+Skint,WC,Gen-Z UK (nationwide),🤳,broke / no money,,💸,Adjective
+Quid,LDN,London / Cockney & MLE,🎩,pound (£),,💷,Noun
+Quid,WC,Gen-Z UK (nationwide),🤳,pound (£),,💷,Noun
+Tenner / Fiver,LDN,London / Cockney & MLE,🎩,£10 / £5 note,,💷,Noun
+Tenner / Fiver,WC,Gen-Z UK (nationwide),🤳,£10 / £5 note,,💷,Noun
+Dodgy,LDN,London / Cockney & MLE,🎩,suspicious / unreliable,,👀,Adjective
+Dodgy,WC,Gen-Z UK (nationwide),🤳,suspicious / unreliable,,👀,Adjective
+Gaff,LDN,London / Cockney & MLE,🎩,house / home,,🏠,Noun
+Gaff,MAN,Manchester (Mancunian),🐝,house / home,,🏠,Noun
+Naff,LDN,London / Cockney & MLE,🎩,tacky / uncool,,👎,Adjective
+Naff,YOR,Yorkshire,🐑,tacky / uncool,,👎,Adjective
+Rinsed,WC,Gen-Z UK (nationwide),🤳,mocked / used up,,💀,Verb
+Rinsed,LDN,London / Cockney & MLE,🎩,mocked / used up,,💀,Verb
