@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from ..models import ModelRoute, Sensitivity
 from .adapters import MockAdapter, get_adapter
+from .condense import condense, looks_insufficient, within_budget
 from .resilience import generate_with_fallback
 
 REFINE_SYSTEM = (
@@ -35,12 +36,19 @@ def is_sensitive(decision) -> bool:
 def maybe_refine(
     *, decision, base_content: str, base_route: ModelRoute, instruction: str,
     want_precision: bool = False, advanced: bool = False, approved: bool = False,
+    escalate_if_insufficient: bool = False,
 ) -> dict:
-    """Return {content, route, model, escalated, escalation_pending}."""
-    base = {"content": base_content, "route": base_route.value, "model": None,
-            "escalated": False, "escalation_pending": False}
+    """Return {content, route, model, escalated, escalation_pending, tokens_saved, over_budget}.
 
-    if not (want_precision or advanced):
+    Escalates to premium when requested, when the task is advanced, or when the
+    cheap answer looks insufficient. Before paying premium, the (already redacted)
+    context is condensed with the cheap model to cut token cost.
+    """
+    base = {"content": base_content, "route": base_route.value, "model": None,
+            "escalated": False, "escalation_pending": False, "tokens_saved": 0, "over_budget": False}
+
+    insufficient = escalate_if_insufficient and looks_insufficient(base_content)
+    if not (want_precision or advanced or insufficient):
         return base
     if base_route in (ModelRoute.BLOCKED, ModelRoute.PREMIUM):
         return base  # already premium or blocked — nothing to escalate
@@ -50,13 +58,20 @@ def maybe_refine(
         base["escalation_pending"] = True
         return base
 
+    # Condense the context with the cheap model so premium pays for a small input.
+    ctx, saved = condense(list(decision.context or []))
     refine_prompt = (
         f"Instrucción original: {instruction}\n\n"
         f"Borrador a mejorar:\n{base_content}\n\n"
         "Entrega una versión mejorada: más precisa, completa y bien estructurada."
     )
-    gen = generate_with_fallback(ModelRoute.PREMIUM, REFINE_SYSTEM, refine_prompt, decision.context)
+    if not within_budget(refine_prompt, *ctx):
+        base["over_budget"] = True
+        base["tokens_saved"] = saved
+        return base  # over the per-request token cap even after condensing → stay cheap
+
+    gen = generate_with_fallback(ModelRoute.PREMIUM, REFINE_SYSTEM, refine_prompt, ctx)
     if gen.route == ModelRoute.BLOCKED or not gen.response.content:
-        return base
-    return {"content": gen.response.content, "route": gen.route.value,
-            "model": gen.response.model, "escalated": True, "escalation_pending": False}
+        return {**base, "tokens_saved": saved}
+    return {"content": gen.response.content, "route": gen.route.value, "model": gen.response.model,
+            "escalated": True, "escalation_pending": False, "tokens_saved": saved, "over_budget": False}

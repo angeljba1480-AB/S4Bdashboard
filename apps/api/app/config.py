@@ -84,6 +84,13 @@ class Settings(BaseSettings):
     # Provider resilience: fallback order tried when a route's adapter fails.
     fallback_order: str = "vpc,open,local"
 
+    # Token efficiency (cost control). Before sending large context to an external
+    # premium model, condense it with the cheap/open route so premium pays for a
+    # small input. `max_tokens_per_request` caps total tokens per call (0 = no cap).
+    condense_enabled: bool = True
+    condense_threshold_chars: int = 6000   # ~1.5k tokens; above this we condense
+    max_tokens_per_request: int = 0        # 0 = sin tope; >0 aplica presupuesto
+
     # When a private route (local/VPC) has NO real provider configured, allow the
     # router to climb to the best available real provider (open/premium) instead
     # of returning the offline MOCK. Opt-in: this lets cloud models handle data

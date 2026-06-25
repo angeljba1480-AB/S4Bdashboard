@@ -149,7 +149,8 @@ def _generate(session: Session, tenant: Tenant, user: User, nb: Notebook,
     content, route, escalated, escalation_pending = gen.response.content, gen.route.value, False, False
     if gen.route != ModelRoute.BLOCKED:
         ref = maybe_refine(decision=decision, base_content=content, base_route=gen.route,
-                           instruction=instruction, want_precision=precision, advanced=False, approved=approved)
+                           instruction=instruction, want_precision=precision, advanced=False,
+                           approved=approved, escalate_if_insufficient=True)
         escalation_pending = ref["escalation_pending"]
         if ref["escalated"]:
             escalated = True

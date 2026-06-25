@@ -168,6 +168,7 @@ def chat(
             decision=decision, base_content=content, base_route=used_route,
             instruction=body.prompt, want_precision=body.precision,
             advanced=bool(agent.requires_premium_reasoning), approved=body.approve_external,
+            escalate_if_insufficient=True,
         )
         escalation_pending = ref["escalation_pending"]
         if ref["escalated"]:
