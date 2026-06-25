@@ -10,6 +10,8 @@ import type {
   Eje,
   Flowchart,
   FlowchartSummary,
+  Notebook,
+  NotebookAnswer,
   Me,
   Procedure,
   Recipe,
@@ -309,6 +311,23 @@ export const api = {
     request<{ id: string; filename: string }>("/drive/import", { method: "POST", body: JSON.stringify(body) }),
   flowcharts: () => request<FlowchartSummary[]>("/flowcharts"),
   flowchart: (id: string) => request<Flowchart>(`/flowcharts/${id}`),
+  // Notebooks (NotebookLM-style over the company RAG)
+  notebooks: () => request<Notebook[]>("/notebooks"),
+  createNotebook: (body: { name: string; document_ids: string[] }) =>
+    request<Notebook>("/notebooks", { method: "POST", body: JSON.stringify(body) }),
+  updateNotebook: (id: string, body: { name: string; document_ids: string[] }) =>
+    request<Notebook>(`/notebooks/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteNotebook: (id: string) =>
+    request<{ ok: boolean }>(`/notebooks/${id}`, { method: "DELETE" }),
+  notebookAsk: (id: string, question: string) =>
+    request<NotebookAnswer>(`/notebooks/${id}/ask`, { method: "POST", body: JSON.stringify({ question }) }),
+  notebookGenerate: (id: string, kind: string) =>
+    request<NotebookAnswer>(`/notebooks/${id}/generate/${kind}`, { method: "POST" }),
+  // External model providers (admin)
+  adminProviders: () =>
+    request<{ route: string; enabled: boolean; base_url: string; model: string; has_key: boolean }[]>("/admin/providers"),
+  updateProvider: (route: string, body: { enabled: boolean; base_url: string; model: string; api_key?: string }) =>
+    request<{ route: string; enabled: boolean; has_key: boolean }>(`/admin/providers/${route}`, { method: "PUT", body: JSON.stringify(body) }),
   documentCategories: () => request<DocumentCategory[]>("/documents/categories"),
   createDocumentCategory: (body: { label: string; description?: string }) =>
     request<DocumentCategory>("/documents/categories", { method: "POST", body: JSON.stringify(body) }),

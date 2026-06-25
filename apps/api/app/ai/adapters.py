@@ -93,8 +93,41 @@ class OpenAICompatAdapter(ModelAdapter):
         return ModelResponse(content=content, model=self.model_name, provider=self.base_url)
 
 
+# Runtime overrides set from the admin UI (global), take precedence over env.
+# Shape: {route_value: {"enabled","base_url","model","api_key"}}
+_RUNTIME: dict[str, dict] = {}
+
+
+def set_runtime_override(route_value: str, cfg: dict | None) -> None:
+    if cfg is None:
+        _RUNTIME.pop(route_value, None)
+    else:
+        _RUNTIME[route_value] = cfg
+
+
+def load_overrides(session) -> None:
+    """Load admin-configured external providers from the DB into the runtime cache."""
+    from ..models import ProviderSetting
+    from ..security.crypto import decrypt
+    from sqlmodel import select
+
+    _RUNTIME.clear()
+    for row in session.exec(select(ProviderSetting)).all():
+        key = decrypt(row.api_key_enc, settings.secret_key) if row.api_key_enc else ""
+        _RUNTIME[row.route] = {"enabled": row.enabled, "base_url": row.base_url,
+                               "model": row.model, "api_key": key}
+
+
 def get_adapter(route: ModelRoute) -> ModelAdapter:
-    """Resolve the configured adapter for a route, falling back to MOCK."""
+    """Resolve the configured adapter for a route, falling back to MOCK.
+
+    Order: admin UI runtime override → env settings → MOCK.
+    """
+    ov = _RUNTIME.get(route.value)
+    if ov and ov.get("enabled") and ov.get("base_url"):
+        return OpenAICompatAdapter(route, ov["base_url"], ov.get("api_key", ""),
+                                   ov.get("model") or route.value)
+
     cfg = {
         ModelRoute.PREMIUM: (settings.premium_enabled, settings.premium_base_url, settings.premium_api_key, settings.premium_model),
         ModelRoute.OPEN: (settings.open_enabled, settings.open_base_url, settings.open_api_key, settings.open_model),

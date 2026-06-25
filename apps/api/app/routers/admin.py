@@ -331,6 +331,68 @@ def update_billing(
     return {"ok": True}
 
 
+class ProviderIn(BaseModel):
+    enabled: bool = False
+    base_url: str = ""
+    model: str = ""
+    api_key: str = ""          # write-only; stored encrypted, never returned
+
+
+_EXTERNAL_ROUTES = ("premium", "open")
+
+
+@router.get("/providers")
+def list_providers(
+    _: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN)),
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """External model providers (GPT/Claude/Llama…) configurable from the UI."""
+    from ..models import ProviderSetting
+
+    rows = {r.route: r for r in session.exec(select(ProviderSetting)).all()}
+    out = []
+    for route in _EXTERNAL_ROUTES:
+        r = rows.get(route)
+        out.append({
+            "route": route,
+            "enabled": bool(r and r.enabled),
+            "base_url": (r.base_url if r else ""),
+            "model": (r.model if r else ""),
+            "has_key": bool(r and r.api_key_enc),
+        })
+    return out
+
+
+@router.put("/providers/{route}")
+def update_provider(
+    route: str,
+    body: ProviderIn,
+    _: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN)),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Set an external provider's endpoint/model/key. PII is redacted before any
+    external call (privacy router), so keys here only enable that egress."""
+    from ..ai.adapters import load_overrides
+    from ..models import ProviderSetting
+
+    if route not in _EXTERNAL_ROUTES:
+        raise HTTPException(status_code=400, detail="Ruta externa inválida (usa premium u open)")
+    row = session.exec(select(ProviderSetting).where(ProviderSetting.route == route)).first()
+    if not row:
+        row = ProviderSetting(route=route)
+    row.enabled = body.enabled
+    row.base_url = body.base_url.strip()
+    row.model = body.model.strip()
+    if body.api_key:
+        row.api_key_enc = encrypt(body.api_key, settings.secret_key)
+    elif not body.enabled and not body.base_url:
+        row.api_key_enc = ""
+    session.add(row)
+    session.commit()
+    load_overrides(session)   # refresh runtime cache immediately
+    return {"route": route, "enabled": row.enabled, "has_key": bool(row.api_key_enc)}
+
+
 @router.get("/routes")
 def model_routes(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS))) -> list[dict]:
     """Which model routes are enabled (real provider vs mock fallback)."""

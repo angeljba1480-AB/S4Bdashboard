@@ -44,6 +44,30 @@ export interface DocumentItem {
   created_at: string;
 }
 
+export interface NotebookSource {
+  id: string;
+  filename: string;
+  area: string;
+  sensitivity: Sensitivity;
+}
+
+export interface Notebook {
+  id: string;
+  name: string;
+  document_ids: string[];
+  sources: NotebookSource[];
+  created_at: string;
+}
+
+export interface NotebookAnswer {
+  content: string;
+  route: string;
+  citations: { filename: string; text: string; score: number; sensitivity: string }[];
+  empty?: boolean;
+  message?: string;
+  blocked?: boolean;
+}
+
 export interface FlowNode {
   id: string;
   type: "start" | "step" | "decision" | "end" | "danger";

@@ -11,6 +11,9 @@ export default function AdminPage() {
   const [routes, setRoutes] = useState<{ route: string; provider: string; enabled: boolean; model: string; mode: string }[]>([]);
   const [users, setUsers] = useState<{ id: string; email: string; name: string; role: string; area: string; license: string; mfa_enabled: boolean; status: string }[]>([]);
   const [tenants, setTenants] = useState<Awaited<ReturnType<typeof api.adminTenants>>>([]);
+  const [providers, setProviders] = useState<Awaited<ReturnType<typeof api.adminProviders>>>([]);
+  const [provDraft, setProvDraft] = useState<Record<string, { enabled: boolean; base_url: string; model: string; api_key: string }>>({});
+  const PROVIDER_LABELS: Record<string, string> = { premium: "Premium (GPT / Claude / Gemini)", open: "Abierto (Llama / OpenRouter / vLLM)" };
   const [security, setSecurity] = useState<Security | null>(null);
   const [n8n, setN8n] = useState<N8n | null>(null);
   const [n8nUrl, setN8nUrl] = useState("");
@@ -92,6 +95,16 @@ export default function AdminPage() {
     }
   }
 
+  async function saveProvider(route: string) {
+    const d = provDraft[route];
+    if (!d) return;
+    await api.updateProvider(route, d);
+    api.adminProviders().then((p) => {
+      setProviders(p);
+      setProvDraft(Object.fromEntries(p.map((x) => [x.route, { enabled: x.enabled, base_url: x.base_url, model: x.model, api_key: "" }])));
+    }).catch(() => {});
+  }
+
   function loadProposals() {
     api.recipeProposals().then(setProposals).catch(() => {});
   }
@@ -122,6 +135,10 @@ export default function AdminPage() {
     api.routes().then(setRoutes).catch((e) => setError(e.message));
     api.users().then(setUsers).catch(() => {});
     api.adminTenants().then(setTenants).catch(() => setTenants([]));
+    api.adminProviders().then((p) => {
+      setProviders(p);
+      setProvDraft(Object.fromEntries(p.map((x) => [x.route, { enabled: x.enabled, base_url: x.base_url, model: x.model, api_key: "" }])));
+    }).catch(() => {});
     api.security().then(setSecurity).catch(() => {});
     loadN8n();
     loadProposals();
@@ -512,6 +529,40 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+
+        {providers.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="mb-1 font-semibold text-slate-800">Modelos externos (GPT / Claude / Llama)</h2>
+            <p className="mb-4 text-xs text-slate-400">
+              Conecta proveedores abiertos/premium. El enrutador de privacidad <b>redacta PII y minimiza</b> antes de
+              cualquier salida; los datos restringidos nunca salen. La llave se guarda cifrada.
+            </p>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {providers.map((p) => {
+                const d = provDraft[p.route] || { enabled: false, base_url: "", model: "", api_key: "" };
+                const upd = (patch: Partial<typeof d>) => setProvDraft((s) => ({ ...s, [p.route]: { ...d, ...patch } }));
+                return (
+                  <div key={p.route} className="rounded-xl border border-slate-200 p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-sm font-semibold text-slate-800">{PROVIDER_LABELS[p.route] || p.route}</span>
+                      <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                        <input type="checkbox" checked={d.enabled} onChange={(e) => upd({ enabled: e.target.checked })} /> Activo
+                      </label>
+                    </div>
+                    <input value={d.base_url} onChange={(e) => upd({ base_url: e.target.value })}
+                      placeholder="Base URL (ej. https://api.openai.com/v1)" className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    <input value={d.model} onChange={(e) => upd({ model: e.target.value })}
+                      placeholder="Modelo (ej. gpt-4o, claude-..., llama-3.1)" className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    <input value={d.api_key} onChange={(e) => upd({ api_key: e.target.value })} type="password"
+                      placeholder={p.has_key ? "•••••• (guardada — escribe para reemplazar)" : "API key"}
+                      className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    <button onClick={() => saveProvider(p.route)} className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">Guardar</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="mb-1 font-semibold text-slate-800">Usuarios del tenant</h2>

@@ -22,6 +22,7 @@ from .routers import (
     drive,
     export,
     flowcharts,
+    notebooks,
     integrations,
     oauth,
     recipes,
@@ -41,6 +42,14 @@ async def lifespan(app: FastAPI):
 
     seed()
     ensure_super_admin()
+    # Load admin-configured external providers into the adapter runtime cache.
+    from .ai.adapters import load_overrides
+    from .db import get_session as _gs
+    _s = next(_gs())
+    try:
+        load_overrides(_s)
+    finally:
+        _s.close()
     if settings.scheduler_enabled:
         from .scheduler import start as start_scheduler
         start_scheduler()
@@ -88,6 +97,7 @@ app.include_router(company.router)
 app.include_router(export.router)
 app.include_router(flowcharts.router)
 app.include_router(drive.router)
+app.include_router(notebooks.router)
 
 
 @app.get("/health", tags=["meta"])

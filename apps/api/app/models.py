@@ -167,6 +167,33 @@ class DocumentChunk(SQLModel, table=True):
     embedding: str = ""            # JSON-encoded float vector
 
 
+class ProviderSetting(SQLModel, table=True):
+    """Runtime config for an external model route (premium / open), set from the
+    admin UI instead of env vars. API key is encrypted at rest. Global (platform)."""
+    __tablename__ = "provider_settings"
+    id: str = Field(default_factory=lambda: _uuid("prov"), primary_key=True)
+    route: str = Field(index=True)   # "premium" | "open"
+    enabled: bool = False
+    base_url: str = ""
+    model: str = ""
+    api_key_enc: str = ""
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Notebook(SQLModel, table=True):
+    """A NotebookLM-style workspace: a named set of source documents the user can
+    query and turn into artifacts (summary, FAQ, study guide…), grounded ONLY in
+    those sources via the existing RAG index."""
+    __tablename__ = "notebooks"
+    id: str = Field(default_factory=lambda: _uuid("nb"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    name: str = "Nuevo notebook"
+    document_ids: str = "[]"       # JSON list of Document ids (the sources)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class Conversation(SQLModel, table=True):
     __tablename__ = "conversations"
     id: str = Field(default_factory=lambda: _uuid("conv"), primary_key=True)
