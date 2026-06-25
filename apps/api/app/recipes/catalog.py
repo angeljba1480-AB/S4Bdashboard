@@ -641,7 +641,7 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
         ref = maybe_refine(
             decision=decision, base_content=contenido, base_route=gen.route, instruction=instruction,
             want_precision=bool(inputs.get("precision")), advanced=bool(recipe.get("advanced")),
-            approved=bool(inputs.get("approve_external")),
+            approved=bool(inputs.get("approve_external")), escalate_if_insufficient=True,
         )
         escalation_pending = ref["escalation_pending"]
         if ref["escalated"]:

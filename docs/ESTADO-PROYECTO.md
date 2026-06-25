@@ -49,9 +49,14 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
 
 ### Modelos
 - ✅ **Router de privacidad** con redacción de PII y fallback.
-- ✅ **Modelos externos** (GPT/Claude/Llama) configurables en la UI (cifrados).
+- ✅ **Modelos externos** (GPT/Claude/Llama/DeepSeek) configurables en la UI
+  (cifrados; endpoints compatibles con OpenAI).
 - ✅ **Cascada**: borrador con modelo abierto → refinar con premium (aprobación
   para contenido sensible).
+- ✅ **Eficiencia de tokens**: antes de pagar premium, el contexto grande (PDFs)
+  se **condensa con el modelo barato** (NaN/open) → premium recibe un extracto
+  chico. Escala a premium si la respuesta del barato **es insuficiente**.
+  **Tope de tokens por consulta** configurable (`MAX_TOKENS_PER_REQUEST`).
 
 ### Toolkit de acciones (Google/Microsoft)
 - ✅ Enviar correo, crear eventos, append a Sheets, publicar en Teams.
@@ -86,14 +91,20 @@ Para activar lo que depende de credenciales/permisos:
 
 ## 5. Pendientes / backlog
 
-> Sección a completar con los detalles que el cliente comparta.
+### 🔜 Próximo sprint: Memoria + Tags (recordar trabajos)
+Para poder decir *"¿recuerdas el trabajo C?"* y que el sistema recupere lo hecho.
+- [ ] **Memoria persistente**: guardar resultados/respuestas (chat, casos, notebooks)
+  como elementos de memoria recuperables.
+- [ ] **Tags** estilo gestor de contenido para organizar y filtrar el trabajo.
+- [ ] **Recall en RAG**: incluir la memoria en la recuperación (responder con base
+  en trabajos previos), respetando permisos por área.
+- [ ] UI: "Mis trabajos / Memoria" con búsqueda por tag y "continuar este trabajo".
 
-- [ ] _(por definir)_
-
-### Ideas ya identificadas (candidatas a próximos sprints)
+### Otras ideas (candidatas)
 - Más acciones/lecturas del toolkit (Sheets/Excel read, SharePoint, OneDrive).
 - Conector de **base de datos** (solo lectura) y **SFTP/CSV** para sistemas legados.
 - Centrar integraciones a medida en **n8n** (catálogo de recetas: DB, SOAP, apps propias).
+- **Tope de gasto en la UI** (hoy por variable de entorno) + reporte de ahorro por condensación.
 - Verificación del primer **modelo premium real** en producción.
 
 _MaestroAI · Estado del proyecto._
