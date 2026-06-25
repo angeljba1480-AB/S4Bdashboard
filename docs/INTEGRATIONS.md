@@ -18,6 +18,35 @@ En *Admin → Integraciones* registra un conector (CRM/ERP/Delivery/Custom) con 
 `base_url` y token. Una automatización con acción **connector** hace POST del
 payload a ese endpoint. Botón "Probar" para validar.
 
+## 3) Toolkit de acciones — Google Workspace / Microsoft 365
+En *Acciones* la plataforma **ejecuta** tareas en tus herramientas (enviar correo,
+crear eventos, append a Google Sheets, publicar en Teams) usando el **OAuth del
+usuario**.
+- Las acciones de **escritura** requieren **aprobación humana**; con **“Permitir
+  siempre”** se auto-aprueban a futuro (revocable).
+- Endpoints: `GET /actions`, `POST /actions/run`, `GET /actions/requests`,
+  `POST /actions/requests/{id}/approve?always=`, `/reject`, `GET/DELETE /actions/grants`.
+- Setup de permisos/scopes: **[ACCIONES-ESCRITURA-SETUP.md](./ACCIONES-ESCRITURA-SETUP.md)**.
+
+## 4) Google Drive como contexto
+*Documentos → Importar de Google Drive*: lista y descarga archivos (Docs/Sheets/
+Slides/texto) y los mete al pipeline de clasificación + índice RAG. Requiere el
+scope `drive.readonly` (reconectar Google). Endpoints: `GET /drive/files`,
+`POST /drive/import`.
+
+## 5) Modelos externos (GPT / Claude / Llama)
+*Admin → Modelos externos*: configura proveedores **premium** y **abierto**
+(Base URL + modelo + API key cifrada). La **redacción de PII** se aplica antes de
+cualquier salida. Soporta **cascada** (borrador con modelo abierto → refinar con
+premium, con aprobación para contenido sensible).
+
+## 6) Sistemas a la medida sin API — recomendación
+1. **n8n** (ya integrado): puente universal (REST/SOAP/DB/FTP/correo + 400 apps).
+2. **Conector REST de salida** (sección 2) si exponen cualquier endpoint HTTP.
+3. **Webhooks entrantes** firmados si el sistema empuja eventos.
+4. Sin API: **BD de solo lectura**, **SFTP/CSV**, **adaptador delgado** (wrapper REST),
+   o **correo-a-acción**. Regla: webhooks para *eventos*, REST para *comandos*, n8n para el resto.
+
 ## Automatizaciones (disparador → acción)
 - Disparadores: **manual**, **programada** (daily/weekly/monthly), **por evento**
   (`document_uploaded`).

@@ -103,16 +103,25 @@ class Settings(BaseSettings):
     microsoft_client_secret: str = ""
     microsoft_tenant: str = "common"   # 'common' for personal + work accounts
     microsoft_redirect_uri: str = ""   # e.g. https://<api>/oauth/microsoft/callback
-    microsoft_scopes: str = "offline_access User.Read Mail.Read Calendars.Read"
+    # Read (summary) + write (action toolkit: send mail, create events, Teams).
+    microsoft_scopes: str = (
+        "offline_access User.Read Mail.Read Mail.Send "
+        "Calendars.ReadWrite ChannelMessage.Send"
+    )
 
     google_oauth_enabled: bool = False
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = ""      # e.g. https://<api>/oauth/google/callback
+    # Read (summary + Drive context) + write (action toolkit: send mail, create
+    # events, append to Sheets).
     google_scopes: str = (
-        "openid email https://www.googleapis.com/auth/gmail.readonly "
-        "https://www.googleapis.com/auth/calendar.readonly "
-        "https://www.googleapis.com/auth/drive.readonly"
+        "openid email "
+        "https://www.googleapis.com/auth/gmail.readonly "
+        "https://www.googleapis.com/auth/gmail.send "
+        "https://www.googleapis.com/auth/calendar.events "
+        "https://www.googleapis.com/auth/drive.readonly "
+        "https://www.googleapis.com/auth/spreadsheets"
     )
 
     # SSO / OIDC (optional, pluggable). When disabled, password login is used.

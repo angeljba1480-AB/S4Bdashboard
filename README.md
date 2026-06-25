@@ -16,8 +16,9 @@ evidencia auditable.
 
 ```
 apps/
-  web/            Portal Next.js (App Router + Tailwind): dashboard, agentes,
-                  documentos, chat con fuentes, workflows, auditoría, admin.
+  web/            Portal Next.js (App Router + Tailwind): dashboard, casos de uso,
+                  flujogramas, documentos por área, chat con fuentes, notebooks,
+                  acciones (Google/MS), integraciones, workflows, auditoría, admin.
   api/            Backend FastAPI: auth multi-tenant, policy engine, clasificador
                   de datos, detección PII (RFC/CURP/CLABE…), RAG, router de
                   privacidad, model adapters, auditoría y cost meter.
@@ -130,6 +131,17 @@ tenants y el flujo completo de `/chat`.
   - **Export** de reportes/SOWs/conversaciones a PDF y Markdown.
   - **Red-teaming**: suite de pruebas de prompt injection, exfiltración, fuga de PII y aislamiento entre tenants.
   - _Pendiente_: confidential computing/TEE y wrapping de llaves con KMS real (AWS/GCP/Vault).
+
+## Documentación
+
+| Guía | Para qué |
+|---|---|
+| [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) · [`docs/blueprint/`](docs/blueprint/) | PRD y blueprint original + los 3 flujogramas base |
+| [`docs/CORREO-OAUTH-SETUP.md`](docs/CORREO-OAUTH-SETUP.md) | Conectar correo/agenda (Outlook/Gmail/IMAP) |
+| [`docs/ACCIONES-ESCRITURA-SETUP.md`](docs/ACCIONES-ESCRITURA-SETUP.md) | **Habilitar acciones de escritura** (toolkit Google/MS): scopes + reconexión |
+| [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | API `/v1`, conectores, toolkit de acciones, Drive, modelos externos, sistemas a la medida |
+| [`docs/MANUAL-ADMIN.md`](docs/MANUAL-ADMIN.md) · [`docs/MANUAL-USUARIO.md`](docs/MANUAL-USUARIO.md) | Manuales de admin y usuario |
+| [`docs/MCP.md`](docs/MCP.md) · [`docs/OLLAMA-SETUP.md`](docs/OLLAMA-SETUP.md) | MCP de trámites y modelos locales |
 
 ## Blueprint
 

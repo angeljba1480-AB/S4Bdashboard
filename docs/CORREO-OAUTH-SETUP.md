@@ -26,8 +26,14 @@ redactado) y genera el resumen.
 
 ### 2. Permisos (scopes)
 1. **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated**.
-2. Agrega: `User.Read`, `Mail.Read`, `Calendars.Read`, `offline_access`.
-3. (Opcional) **Grant admin consent**.
+2. Agrega (lectura, para el resumen): `User.Read`, `Mail.Read`, `Calendars.Read`, `offline_access`.
+3. Agrega (escritura, para el **toolkit de acciones** — enviar correo, crear eventos, Teams):
+   `Mail.Send`, `Calendars.ReadWrite`, `ChannelMessage.Send`.
+4. (Opcional) **Grant admin consent**.
+
+> Si solo quieres lectura (resumen de correo/agenda), basta con el punto 2. Para
+> habilitar las **acciones de escritura** agrega también el punto 3. Detalle completo
+> en **[ACCIONES-ESCRITURA-SETUP.md](./ACCIONES-ESCRITURA-SETUP.md)**.
 
 ### 3. Secreto
 1. **Certificates & secrets** → **New client secret** → copia el **Value** (solo se ve una vez).
@@ -49,8 +55,11 @@ APP_PUBLIC_URL          = https://plataforma.maestroai.mx
 ## B) Google / Gmail (opcional)
 
 1. **https://console.cloud.google.com** → crea proyecto → **APIs & Services**.
-2. Habilita **Gmail API** y **Google Calendar API**.
+2. Habilita **Gmail API**, **Google Calendar API**, **Google Drive API** y (para acciones) **Google Sheets API**.
 3. **OAuth consent screen**: External; agrega tu correo como *test user* mientras esté en pruebas.
+   Agrega los scopes de lectura (gmail.readonly, calendar.events, drive.readonly) y, para el
+   **toolkit de acciones**, también `gmail.send` y `spreadsheets`. Ver
+   **[ACCIONES-ESCRITURA-SETUP.md](./ACCIONES-ESCRITURA-SETUP.md)**.
 4. **Credentials → Create credentials → OAuth client ID → Web application**.
    - **Authorized redirect URI:** `https://s4bdashboard.onrender.com/oauth/google/callback`
 5. Variables en Render:
