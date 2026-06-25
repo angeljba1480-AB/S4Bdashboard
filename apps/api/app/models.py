@@ -183,6 +183,24 @@ class ActionRequest(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class MemoryItem(SQLModel, table=True):
+    """Persistent memory of past work (chat answers, recipe outputs, notebook
+    artifacts, manual notes). Taggable (CMS-style) and semantically searchable so
+    the user can recall: '¿recuerdas el trabajo C?'. Area-scoped like documents."""
+    __tablename__ = "memory_items"
+    id: str = Field(default_factory=lambda: _uuid("mem"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    title: str = ""
+    content: str = ""
+    source: str = "manual"         # chat | recipe | notebook | manual
+    source_id: str = ""
+    tags: str = "[]"              # JSON list
+    area: str = ""
+    embedding: str = ""            # JSON float vector for semantic recall
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class ActionGrant(SQLModel, table=True):
     """Standing authorization: a user opted to auto-approve a given action so it
     runs without asking each time. Revocable. (Set via 'Permitir siempre'.)"""

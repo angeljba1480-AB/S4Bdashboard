@@ -128,6 +128,12 @@ def chat(
         tramite_matches = _tramite_search(session, tenant, q=body.prompt, country=tenant.country)[:4]
         context_texts = context_texts + [_tramite_context(t) for t in tramite_matches]
 
+    # 2c. Memory recall: fold in past work ("¿recuerdas el trabajo C?").
+    if body.use_memory:
+        from .memory import recall as _recall
+        for m in _recall(session, tenant.id, user, body.prompt, top_k=3):
+            context_texts.append(f"[Memoria · {m.title}] {m.content[:600]}")
+
     # 3. Privacy Model Router
     decision = route_request(tenant, agent, body.prompt, context_texts, task="chat")
 

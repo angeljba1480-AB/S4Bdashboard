@@ -6,7 +6,7 @@ import { Shell } from "@/components/Shell";
 import { SourceCitation } from "@/components/SourceCitation";
 import { api } from "@/lib/api";
 import type { Agent, ChatResponse, DocumentItem } from "@shared/types";
-import { Send, Sparkles } from "lucide-react";
+import { Brain, Save, Send, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface Turn {
@@ -21,6 +21,7 @@ export default function ChatPage() {
   const [agentId, setAgentId] = useState("");
   const [ctxMode, setCtxMode] = useState<"none" | "all" | "select">("all");
   const [precision, setPrecision] = useState(false);
+  const [useMemory, setUseMemory] = useState(false);
   const [lastPrompt, setLastPrompt] = useState("");
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -72,6 +73,7 @@ export default function ChatPage() {
         prompt,
         conversation_id: convId,
         use_rag: ctxMode !== "none",
+        use_memory: useMemory,
         document_ids: ctxMode === "select" && selectedDocs.length ? selectedDocs : undefined,
         precision,
         approve_external: approveExternal,
@@ -87,6 +89,14 @@ export default function ChatPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function saveToMemory(content: string) {
+    const title = (lastPrompt || content).slice(0, 60);
+    try {
+      await api.createMemory({ title, content, source: "chat", tags: ["chat"] });
+      alert("Guardado en memoria ✓");
+    } catch { alert("No se pudo guardar"); }
   }
 
   function toggleDoc(id: string) {
@@ -179,7 +189,13 @@ export default function ChatPage() {
                   )}
                   {t.meta && (
                     <>
-                      <div className="mt-2 text-xs text-slate-400">Ruta: {t.meta.reason}</div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Ruta: {t.meta.reason}</span>
+                        <button onClick={() => saveToMemory(t.content)}
+                          className="flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-800">
+                          <Save className="h-3 w-3" /> Guardar en memoria
+                        </button>
+                      </div>
                       <SourceCitation citations={t.meta.citations} />
                     </>
                   )}
@@ -207,10 +223,16 @@ export default function ChatPage() {
                 )}
               </div>
             )}
-            <label className="mb-2 flex w-fit cursor-pointer items-center gap-1.5 text-xs text-slate-600">
-              <input type="checkbox" checked={precision} onChange={(e) => setPrecision(e.target.checked)} />
-              <Sparkles className="h-3.5 w-3.5 text-violet-600" /> Máxima precisión (refina con modelo premium)
-            </label>
+            <div className="mb-2 flex flex-wrap gap-4">
+              <label className="flex w-fit cursor-pointer items-center gap-1.5 text-xs text-slate-600">
+                <input type="checkbox" checked={precision} onChange={(e) => setPrecision(e.target.checked)} />
+                <Sparkles className="h-3.5 w-3.5 text-violet-600" /> Máxima precisión (refina con premium)
+              </label>
+              <label className="flex w-fit cursor-pointer items-center gap-1.5 text-xs text-slate-600">
+                <input type="checkbox" checked={useMemory} onChange={(e) => setUseMemory(e.target.checked)} />
+                <Brain className="h-3.5 w-3.5 text-violet-600" /> Usar memoria (trabajos previos)
+              </label>
+            </div>
             <div className="flex gap-2">
               <input
                 value={input}

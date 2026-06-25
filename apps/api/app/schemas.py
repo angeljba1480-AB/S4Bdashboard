@@ -98,6 +98,7 @@ class ChatRequest(BaseModel):
     prompt: str
     document_ids: list[str] = []
     use_rag: bool = True          # False = "sin contexto" (pure model, no retrieval)
+    use_memory: bool = False      # incluir memoria (trabajos previos) en el contexto
     precision: bool = False       # "máxima precisión": refinar con modelo premium
     approve_external: bool = False  # aprueba escalar contenido sensible a premium
     privacy_mode: str = "auto"
