@@ -38,6 +38,12 @@ def _odata_literal(value) -> str:
     return str(value or "").replace("'", "''")
 
 
+def _odata_path_literal(value, safe: str = "") -> str:
+    """OData-escape then URL-encode a literal interpolated into a Graph URL path,
+    so characters like ) / # ? or spaces can't break the request."""
+    return quote(_odata_literal(value), safe=safe)
+
+
 def execute(action_id: str, token: str, params: dict) -> str:
     p = params or {}
 
@@ -75,7 +81,7 @@ def execute(action_id: str, token: str, params: dict) -> str:
                          for e in evs) or "Sin eventos próximos."
 
     if action_id == "onedrive.list":
-        q = p.get("query", "").strip().replace("'", "''")  # escape OData single quotes
+        q = _odata_path_literal(p.get("query", "").strip())  # escape + URL-encode OData literal
         if q:
             url = f"{GRAPH}/me/drive/root/search(q='{q}')?$top=25&$select=name,webUrl"
         else:
@@ -86,8 +92,8 @@ def execute(action_id: str, token: str, params: dict) -> str:
 
     if action_id == "excel.read":
         item = quote(str(p.get("item_id", "")), safe="")
-        sheet = _odata_literal(p.get("worksheet", "Sheet1"))
-        addr = _odata_literal(p.get("range", "A1:Z50"))
+        sheet = _odata_path_literal(p.get("worksheet", "Sheet1"))
+        addr = _odata_path_literal(p.get("range", "A1:Z50"), safe=":")
         url = (f"{GRAPH}/me/drive/items/{item}/workbook/worksheets('{sheet}')"
                f"/range(address='{addr}')")
         r = httpx.get(url, headers=_auth(token), timeout=TIMEOUT)
@@ -173,7 +179,7 @@ def execute(action_id: str, token: str, params: dict) -> str:
 
     if action_id == "excel.append":
         item = quote(str(p.get("item_id", "")), safe="")
-        table = _odata_literal(p.get("table", "Table1"))
+        table = _odata_path_literal(p.get("table", "Table1"))
         url = f"{GRAPH}/me/drive/items/{item}/workbook/tables('{table}')/rows/add"
         r = httpx.post(url, headers=_auth(token), json={"values": _rows(p.get("values"))}, timeout=TIMEOUT)
         r.raise_for_status()

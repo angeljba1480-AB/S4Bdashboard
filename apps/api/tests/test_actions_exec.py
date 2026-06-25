@@ -34,8 +34,9 @@ def test_excel_read_builds_workbook_range_url(monkeypatch):
     monkeypatch.setattr(httpx, "get", fake_get)
     out = actions_exec.execute("excel.read", "tok", {
         "item_id": "01ABC", "worksheet": "Hoja's", "range": "A1:B2"})
-    assert "workbook/worksheets('Hoja''s')" in captured["url"]  # comilla escapada
-    assert "range(address='A1:B2')" in captured["url"]
+    # comilla OData escapada (doblada) y luego URL-encoded → %27%27
+    assert "workbook/worksheets('Hoja%27%27s')" in captured["url"]
+    assert "range(address='A1:B2')" in captured["url"]  # ':' preservado en el rango
     assert "a | b" in out and "1 | 2" in out
 
 
