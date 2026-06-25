@@ -21,6 +21,18 @@ import type {
   UsageSummary,
 } from "@shared/types";
 
+export type GeneratedImageDto = {
+  id: string;
+  prompt: string;
+  model: string;
+  size: string;
+  provider: string;
+  area: string;
+  has_data: boolean;
+  source_url: string;
+  created_at: string;
+};
+
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || "http://localhost:8000";
 
@@ -157,10 +169,11 @@ export const api = {
     request<{ id: string; name: string }>("/automations", { method: "POST", body: JSON.stringify(body) }),
   // Integrations: connectors + API keys
   connectors: () =>
-    request<{ id: string; kind: string; name: string; base_url: string; has_token: boolean; enabled: boolean }[]>("/integrations/connectors"),
+    request<{ id: string; kind: string; name: string; base_url: string; auth_header: string; has_token: boolean; enabled: boolean; example: { base_url?: string; auth_header?: string; auth_hint?: string; payload_example?: Record<string, unknown> } }[]>("/integrations/connectors"),
   createConnector: (body: { kind: string; name: string; base_url: string; auth_header?: string; token?: string }) =>
     request<{ id: string; name: string }>("/integrations/connectors", { method: "POST", body: JSON.stringify(body) }),
   testConnector: (id: string) => request<{ status: string; detail: string }>(`/integrations/connectors/${id}/test`, { method: "POST" }),
+  revealConnector: (id: string) => request<{ auth_header: string; token: string }>(`/integrations/connectors/${id}/reveal`),
   deleteConnector: (id: string) => request<{ ok: boolean }>(`/integrations/connectors/${id}`, { method: "DELETE" }),
   connectorTemplates: () =>
     request<{ id: string; kind: string; name: string; auth_header: string; base_url: string; auth_hint: string; payload_example: Record<string, unknown> }[]>("/integrations/connector-templates"),
@@ -348,8 +361,18 @@ export const api = {
     request<{ id: string; filename: string; rows: number }>(`/datasources/${id}/import`, { method: "POST" }),
   importCsv: (body: { name: string; csv_text: string; delimiter?: string; area?: string; category?: string }) =>
     request<{ id: string; filename: string; rows: number }>("/datasources/import-csv", { method: "POST", body: JSON.stringify(body) }),
+  revealDataSource: (id: string) =>
+    request<{ dsn: string }>(`/datasources/${id}/reveal`),
   deleteDataSource: (id: string) =>
     request<{ ok: boolean }>(`/datasources/${id}`, { method: "DELETE" }),
+  // Text-to-image generation (NaN / FLUX)
+  imageConfig: () =>
+    request<{ configured: boolean; aspect_ratios: string[]; default_model: string }>("/images/config"),
+  generateImages: (body: { prompt: string; aspect_ratio: string; variants: number }) =>
+    request<{ images: GeneratedImageDto[] }>("/images/generate", { method: "POST", body: JSON.stringify(body) }),
+  images: () => request<GeneratedImageDto[]>("/images"),
+  imageDataUrl: (id: string) => `${api.base}/images/${id}/data`,
+  deleteImage: (id: string) => request<{ ok: boolean }>(`/images/${id}`, { method: "DELETE" }),
   // Notebooks (NotebookLM-style over the company RAG)
   notebooks: () => request<Notebook[]>("/notebooks"),
   createNotebook: (body: { name: string; document_ids: string[] }) =>

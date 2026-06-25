@@ -228,6 +228,25 @@ class DataSource(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class GeneratedImage(SQLModel, table=True):
+    """Imagen generada de texto (text-to-image) vía el proveedor abierto (NaN/FLUX).
+    Se guarda una copia en la plataforma (b64) para gobernanza y para que la galería
+    sobreviva aunque expire el enlace del proveedor. Por área + auditada."""
+    __tablename__ = "generated_images"
+    id: str = Field(default_factory=lambda: _uuid("img"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    owner_id: str = Field(foreign_key="users.id")
+    prompt: str = ""
+    model: str = ""
+    size: str = ""               # ej. 1024x1024
+    provider: str = ""
+    source_url: str = ""         # enlace devuelto por el proveedor (puede caducar)
+    data_b64: str = ""           # copia almacenada (image/png base64)
+    mime_type: str = "image/png"
+    area: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class PlatformSetting(SQLModel, table=True):
     """Runtime key/value config set from the admin UI (overrides env defaults).
     Used for token-efficiency controls (condensación, tope de gasto) y contadores."""

@@ -2,7 +2,7 @@
 
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
-import { CheckCircle2, KeyRound, Link2, Mail, Trash2, Webhook } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, Info, KeyRound, Link2, Mail, Trash2, Webhook } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type MailProvider = { provider: string; label: string; kind: string; enabled?: boolean; configured: boolean };
@@ -22,9 +22,11 @@ export default function IntegrationsPage() {
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyValue, setNewKeyValue] = useState("");
   const [templates, setTemplates] = useState<Awaited<ReturnType<typeof api.connectorTemplates>>>([]);
-  const [connectors, setConnectors] = useState<{ id: string; kind: string; name: string; enabled: boolean }[]>([]);
+  const [connectors, setConnectors] = useState<Awaited<ReturnType<typeof api.connectors>>>([]);
   const [cnx, setCnx] = useState({ kind: "crm", name: "", base_url: "", auth_header: "Authorization", token: "" });
   const [cnxMsg, setCnxMsg] = useState("");
+  const [openCnx, setOpenCnx] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [webhooks, setWebhooks] = useState<{ id: string; name: string; default_event: string; url: string }[]>([]);
   const [whName, setWhName] = useState("");
   const [whSecret, setWhSecret] = useState<{ url: string; secret: string } | null>(null);
@@ -132,6 +134,16 @@ export default function IntegrationsPage() {
     await api.createConnector(cnx);
     setCnx({ kind: "crm", name: "", base_url: "", auth_header: "Authorization", token: "" });
     load();
+  }
+  async function toggleConnectorSecret(id: string) {
+    if (revealed[id] !== undefined) { setRevealed((s) => { const n = { ...s }; delete n[id]; return n; }); return; }
+    try { const r = await api.revealConnector(id); setRevealed((s) => ({ ...s, [id]: r.token || "(sin token)" })); }
+    catch (e) { setRevealed((s) => ({ ...s, [id]: e instanceof Error ? e.message : "Error" })); }
+  }
+  async function toggleDsnSecret(id: string) {
+    if (revealed[id] !== undefined) { setRevealed((s) => { const n = { ...s }; delete n[id]; return n; }); return; }
+    try { const r = await api.revealDataSource(id); setRevealed((s) => ({ ...s, [id]: r.dsn || "(vacío)" })); }
+    catch (e) { setRevealed((s) => ({ ...s, [id]: e instanceof Error ? e.message : "Error" })); }
   }
   async function createWebhook() {
     const r = await api.createWebhook({ name: whName || "Webhook entrante", default_event: "document_uploaded" });
@@ -261,12 +273,39 @@ export default function IntegrationsPage() {
           </form>
           <div className="mt-2 space-y-1">
             {connectors.map((c) => (
-              <div key={c.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                <span className="text-slate-700"><span className="uppercase text-slate-400">{c.kind}</span> · {c.name}</span>
-                <div className="flex gap-3">
-                  <button onClick={() => api.testConnector(c.id).then((r) => setCnxMsg(`${c.name}: ${r.status} · ${r.detail}`))} className="text-xs font-semibold text-violet-700">Probar</button>
-                  <button onClick={() => api.deleteConnector(c.id).then(load)} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+              <div key={c.id} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-700"><span className="uppercase text-slate-400">{c.kind}</span> · {c.name}
+                    {c.has_token && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">token</span>}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setOpenCnx(openCnx === c.id ? null : c.id)} title="Ver detalles" className="text-slate-400 hover:text-slate-700"><Info className="h-4 w-4" /></button>
+                    <button onClick={() => api.testConnector(c.id).then((r) => setCnxMsg(`${c.name}: ${r.status} · ${r.detail}`))} className="text-xs font-semibold text-violet-700">Probar</button>
+                    <button onClick={() => api.deleteConnector(c.id).then(load)} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                  </div>
                 </div>
+                {openCnx === c.id && (
+                  <div className="mt-2 space-y-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                    <div><span className="text-slate-400">Endpoint:</span> <span className="font-mono break-all">{c.base_url || "—"}</span></div>
+                    <div><span className="text-slate-400">Header de auth:</span> <span className="font-mono">{c.auth_header}</span></div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400">Secreto:</span>
+                      <span className="font-mono break-all">{c.has_token ? (revealed[c.id] !== undefined ? revealed[c.id] : "••••••••") : "(sin token)"}</span>
+                      {c.has_token && (
+                        <button onClick={() => toggleConnectorSecret(c.id)} title={revealed[c.id] !== undefined ? "Ocultar" : "Mostrar"} className="text-slate-400 hover:text-slate-700">
+                          {revealed[c.id] !== undefined ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </button>
+                      )}
+                    </div>
+                    {c.example?.payload_example && (
+                      <div className="pt-1">
+                        <div className="text-slate-400">Ejemplo de payload ({c.kind}):</div>
+                        <pre className="mt-0.5 overflow-x-auto rounded bg-white p-2 font-mono text-[11px] text-slate-600">{JSON.stringify(c.example.payload_example, null, 2)}</pre>
+                        {c.example.auth_hint && <div className="text-slate-400">Auth: <span className="font-mono">{c.example.auth_hint}</span></div>}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -314,13 +353,21 @@ export default function IntegrationsPage() {
           {dsMsg && <div className="mt-2 text-xs text-slate-500">{dsMsg}</div>}
           <div className="mt-3 space-y-1">
             {sources.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                <span className="truncate text-slate-700">{s.name} <span className="font-mono text-xs text-slate-400">{s.query.slice(0, 40)}…</span></span>
-                <div className="flex flex-shrink-0 gap-3">
-                  <button onClick={() => testSource(s.id)} className="text-xs font-semibold text-violet-700">Probar</button>
-                  <button onClick={() => importSource(s.id)} className="text-xs font-semibold text-emerald-700">Importar</button>
-                  <button onClick={() => api.deleteDataSource(s.id).then(() => api.dataSources().then(setSources))} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+              <div key={s.id} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="truncate text-slate-700">{s.name} <span className="font-mono text-xs text-slate-400">{s.query.slice(0, 40)}…</span></span>
+                  <div className="flex flex-shrink-0 items-center gap-3">
+                    <button onClick={() => toggleDsnSecret(s.id)} title="Ver DSN (sensible)" className="text-slate-400 hover:text-slate-700">
+                      {revealed[s.id] !== undefined ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                    <button onClick={() => testSource(s.id)} className="text-xs font-semibold text-violet-700">Probar</button>
+                    <button onClick={() => importSource(s.id)} className="text-xs font-semibold text-emerald-700">Importar</button>
+                    <button onClick={() => api.deleteDataSource(s.id).then(() => api.dataSources().then(setSources))} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                  </div>
                 </div>
+                {revealed[s.id] !== undefined && (
+                  <div className="mt-1 rounded bg-slate-50 p-2 font-mono text-[11px] break-all text-slate-600">{revealed[s.id]}</div>
+                )}
               </div>
             ))}
           </div>

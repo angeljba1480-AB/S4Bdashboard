@@ -24,6 +24,7 @@ from .routers import (
     drive,
     export,
     flowcharts,
+    images,
     memory,
     notebooks,
     integrations,
@@ -106,6 +107,7 @@ app.include_router(notebooks.router)
 app.include_router(actions.router)
 app.include_router(memory.router)
 app.include_router(datasources.router)
+app.include_router(images.router)
 
 
 @app.get("/health", tags=["meta"])

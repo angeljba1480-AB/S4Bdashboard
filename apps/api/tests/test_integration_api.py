@@ -61,8 +61,13 @@ def test_connector_crud(client):
     c = client.post("/integrations/connectors", headers=h, json={
         "kind": "delivery", "name": "Rappi", "base_url": "https://example.test/webhook", "token": "secret"}).json()
     assert c["kind"] == "delivery" and c["has_token"] is True
+    # Detalles + ejemplo por tipo (para guiar la configuración).
+    assert c["example"]["base_url"] and c["example"]["payload_example"]
     lst = client.get("/integrations/connectors", headers=h).json()
     assert any(x["id"] == c["id"] for x in lst)
+    # 'Ojito': revela el secreto configurado (auditado).
+    rev = client.get(f"/integrations/connectors/{c['id']}/reveal", headers=h).json()
+    assert rev["token"] == "secret"
     assert client.delete(f"/integrations/connectors/{c['id']}", headers=h).json()["ok"] is True
 
 
