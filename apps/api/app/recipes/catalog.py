@@ -648,6 +648,9 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
             escalated = True
             contenido = ref["content"]
             route = ref["route"]
+            if ref.get("tokens_saved"):
+                from .. import runtime_config
+                runtime_config.add_tokens_saved(session, ref["tokens_saved"])
 
     tokens = estimate_tokens(instruction + contenido)
     cost = estimate_cost(ModelRoute(route), tokens)

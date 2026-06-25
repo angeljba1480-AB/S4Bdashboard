@@ -47,9 +47,11 @@ async def lifespan(app: FastAPI):
     # Load admin-configured external providers into the adapter runtime cache.
     from .ai.adapters import load_overrides
     from .db import get_session as _gs
+    from . import runtime_config
     _s = next(_gs())
     try:
         load_overrides(_s)
+        runtime_config.load(_s)
     finally:
         _s.close()
     if settings.scheduler_enabled:

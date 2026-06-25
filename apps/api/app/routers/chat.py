@@ -184,6 +184,9 @@ def chat(
             content = ref["content"] + "\n\n_(Refinado con modelo premium · cascada.)_"
             tokens = estimate_tokens(body.prompt + content)
             cost = estimate_cost(used_route, tokens)
+            if ref.get("tokens_saved"):
+                from .. import runtime_config
+                runtime_config.add_tokens_saved(session, ref["tokens_saved"])
 
     # 6. Persist assistant message
     msg = Message(

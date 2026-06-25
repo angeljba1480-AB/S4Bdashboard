@@ -212,6 +212,15 @@ class ActionGrant(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class PlatformSetting(SQLModel, table=True):
+    """Runtime key/value config set from the admin UI (overrides env defaults).
+    Used for token-efficiency controls (condensación, tope de gasto) y contadores."""
+    __tablename__ = "platform_settings"
+    key: str = Field(primary_key=True)
+    value: str = ""
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class ProviderSetting(SQLModel, table=True):
     """Runtime config for an external model route (premium / open), set from the
     admin UI instead of env vars. API key is encrypted at rest. Global (platform)."""

@@ -156,6 +156,9 @@ def _generate(session: Session, tenant: Tenant, user: User, nb: Notebook,
             escalated = True
             content = ref["content"] + "\n\n_(Refinado con modelo premium · cascada.)_"
             route = ref["route"]
+            if ref.get("tokens_saved"):
+                from .. import runtime_config
+                runtime_config.add_tokens_saved(session, ref["tokens_saved"])
 
     session.add(AuditEvent(
         tenant_id=tenant.id, user_id=user.id, event_type="notebook", object_type="notebook",
