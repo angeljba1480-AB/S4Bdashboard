@@ -1,0 +1,94 @@
+word,region_code,region,flag,meaning,note,emoji,category
+Wicked,BOS,Boston / New England,☘️,'very / really' (wicked good),wicked cold = very cold,💯,Intensifier
+Y'all,SOUTH,South / Dixie,🤠,'you all' (plural you),,🤠,Pronoun
+Y'all,TX,Texas,⭐,'you all' (plural you),,🤠,Pronoun
+Yinz,MIDWEST,Midwest,🌽,'you all' (Pittsburgh),Pittsburgh-specific,👥,Pronoun
+Youse / Youse guys,NE,Northeast / NYC,🗽,'you all',NY/NJ,👥,Pronoun
+Youse / Youse guys,CHI,Chicago,🌭,'you all',,👥,Pronoun
+Pop,MIDWEST,Midwest,🌽,carbonated soft drink,,🥤,Noun
+Pop,PNW,Pacific Northwest,🌲,carbonated soft drink,,🥤,Noun
+Soda,NE,Northeast / NYC,🗽,carbonated soft drink,,🥤,Noun
+Soda,WEST,West Coast / California,🌴,carbonated soft drink,,🥤,Noun
+Coke,SOUTH,South / Dixie,🤠,ANY soft drink (generic),'what kind of coke?',🥤,Noun
+Hella,WEST,West Coast / California,🌴,'a lot / very',NorCal origin,💯,Intensifier
+Jawn,PHL,Philadelphia,🔔,catch-all noun for anything/anyone,'pass me that jawn',🫳,Noun
+Bodega,NE,Northeast / NYC,🗽,corner store,NYC,🏪,Noun
+The City,NE,Northeast / NYC,🗽,refers to the nearest big city (often NYC/SF),= Manhattan,🏙️,Noun
+The City,WEST,West Coast / California,🌴,refers to the nearest big city (often NYC/SF),= San Francisco,🏙️,Noun
+Bubbler,BOS,Boston / New England,☘️,water/drinking fountain,,⛲,Noun
+Bubbler,MIDWEST,Midwest,🌽,water/drinking fountain,Wisconsin,⛲,Noun
+Frappe,BOS,Boston / New England,☘️,milkshake (with ice cream),,🥤,Noun
+Grinder / Hoagie / Sub / Hero,BOS,Boston / New England,☘️,long sandwich,grinder,🥪,Noun
+Grinder / Hoagie / Sub / Hero,PHL,Philadelphia,🔔,long sandwich,hoagie,🥪,Noun
+Grinder / Hoagie / Sub / Hero,NE,Northeast / NYC,🗽,long sandwich,hero (NYC),🥪,Noun
+Pop / Soda / Coke,MIDWEST,Midwest,🌽,(see regional split for soft drink),,🥤,Noun
+Tennis shoes / Sneakers / Gym shoes,SOUTH,South / Dixie,🤠,athletic shoes,tennis shoes,👟,Noun
+Tennis shoes / Sneakers / Gym shoes,NE,Northeast / NYC,🗽,athletic shoes,sneakers,👟,Noun
+Tennis shoes / Sneakers / Gym shoes,CHI,Chicago,🌭,athletic shoes,gym shoes,👟,Noun
+Buggy,SOUTH,South / Dixie,🤠,shopping cart,,🛒,Noun
+Fixin' to,SOUTH,South / Dixie,🤠,'about to / getting ready to',,⏳,Phrase
+Fixin' to,TX,Texas,⭐,'about to / getting ready to',,⏳,Phrase
+Bless your heart,SOUTH,South / Dixie,🤠,sympathy OR subtle insult (context!),,😇,Phrase
+Reckon,SOUTH,South / Dixie,🤠,'think / suppose',,🤔,Verb
+Ope,MIDWEST,Midwest,🌽,'oops / excuse me' (bumping into someone),,😯,Interjection
+You betcha,MIDWEST,Midwest,🌽,"'yes, absolutely'",Minnesota/Dakotas,👍,Phrase
+Uff da,MIDWEST,Midwest,🌽,exclamation of surprise/dismay (Scandinavian),Minnesota,😅,Interjection
+Cattywampus,SOUTH,South / Dixie,🤠,crooked / askew / messed up,,↩️,Adjective
+Cattywampus,MIDWEST,Midwest,🌽,crooked / askew / messed up,,↩️,Adjective
+Janky,GENZ,Gen-Z (nationwide),📱,low quality / unreliable,,🔧,Adjective
+Janky,WEST,West Coast / California,🌴,low quality / unreliable,,🔧,Adjective
+Hyphy,WEST,West Coast / California,🌴,hyped / wild (Bay Area),Oakland,🔊,Adjective
+Gnarly,WEST,West Coast / California,🌴,intense (good or bad) / surfer term,,🤙,Adjective
+Stoked,WEST,West Coast / California,🌴,very excited,,🤩,Adjective
+Bet,GENZ,Gen-Z (nationwide),📱,'okay / it's a deal / for sure',,✅,Interjection
+Bet,AAVE,AAVE (African American Vernacular),🎤,'okay / it's a deal / for sure',,✅,Interjection
+Finna,AAVE,AAVE (African American Vernacular),🎤,'fixing to / about to',,⏳,Verb
+Finna,SOUTH,South / Dixie,🤠,'fixing to / about to',,⏳,Verb
+Cap / No cap,AAVE,AAVE (African American Vernacular),🎤,"lie / 'no lie, for real'",,🧢,Slang
+Cap / No cap,GENZ,Gen-Z (nationwide),📱,"lie / 'no lie, for real'",,🧢,Slang
+Bussin',AAVE,AAVE (African American Vernacular),🎤,really good (esp. food),,🤤,Adjective
+Bussin',GENZ,Gen-Z (nationwide),📱,really good (esp. food),,🤤,Adjective
+Drip,AAVE,AAVE (African American Vernacular),🎤,stylish outfit / swagger,,💧,Noun
+Drip,GENZ,Gen-Z (nationwide),📱,stylish outfit / swagger,,💧,Noun
+Salty,GENZ,Gen-Z (nationwide),📱,bitter / upset,,🧂,Adjective
+Lowkey / Highkey,GENZ,Gen-Z (nationwide),📱,'secretly / openly',,🤫,Adverb
+Sus,GENZ,Gen-Z (nationwide),📱,suspicious,,🤨,Adjective
+Rizz,GENZ,Gen-Z (nationwide),📱,charisma / flirting skill,,😏,Noun
+Bougie,AAVE,AAVE (African American Vernacular),🎤,fancy / upper-class (from bourgeois),,💅,Adjective
+Bougie,GENZ,Gen-Z (nationwide),📱,fancy / upper-class (from bourgeois),,💅,Adjective
+Tight,NE,Northeast / NYC,🗽,cool OR annoyed (regional),'that's tight' = cool,😤,Adjective
+Tight,WEST,West Coast / California,🌴,cool OR annoyed (regional),,😤,Adjective
+Dank,GENZ,Gen-Z (nationwide),📱,high quality (esp. memes/weed),,🔥,Adjective
+Dank,WEST,West Coast / California,🌴,high quality (esp. memes/weed),,🔥,Adjective
+Crunchy,PNW,Pacific Northwest,🌲,hippie / granola lifestyle,,🥾,Adjective
+Crunchy,WEST,West Coast / California,🌴,hippie / granola lifestyle,,🥾,Adjective
+Spendy,PNW,Pacific Northwest,🌲,expensive,,💸,Adjective
+Spendy,MIDWEST,Midwest,🌽,expensive,,💸,Adjective
+Spilling tea,GENZ,Gen-Z (nationwide),📱,sharing gossip,,☕,Phrase
+Spilling tea,AAVE,AAVE (African American Vernacular),🎤,sharing gossip,,☕,Phrase
+Whip,AAVE,AAVE (African American Vernacular),🎤,car,,🚗,Noun
+Whip,GENZ,Gen-Z (nationwide),📱,car,,🚗,Noun
+Plug,AAVE,AAVE (African American Vernacular),🎤,connection / supplier,,🔌,Noun
+Plug,GENZ,Gen-Z (nationwide),📱,connection / supplier,,🔌,Noun
+Slaps,GENZ,Gen-Z (nationwide),📱,'this song slaps' = is great,,🔊,Verb
+Mid,GENZ,Gen-Z (nationwide),📱,mediocre,,😐,Adjective
+Glizzy,GENZ,Gen-Z (nationwide),📱,hot dog,,🌭,Noun
+Glizzy,AAVE,AAVE (African American Vernacular),🎤,hot dog,,🌭,Noun
+Da kine,HI,Hawaii (Pidgin),🌺,catch-all word for anything (like 'jawn'),Pidgin,🤙,Noun
+Shoots,HI,Hawaii (Pidgin),🌺,'okay / sounds good',Pidgin,👍,Interjection
+Brah,HI,Hawaii (Pidgin),🌺,bro / friend,,🤙,Noun
+Brah,WEST,West Coast / California,🌴,bro / friend,,🤙,Noun
+Slippahs,HI,Hawaii (Pidgin),🌺,flip-flops / sandals,Pidgin,🩴,Noun
+Wicked pissah,BOS,Boston / New England,☘️,'awesome / excellent',,💢,Phrase
+Down the shore,PHL,Philadelphia,🔔,going to the beach,NJ/Philly,🏖️,Phrase
+Down the shore,NE,Northeast / NYC,🗽,going to the beach,,🏖️,Phrase
+Water ice,PHL,Philadelphia,🔔,Italian ice / shaved-ice dessert,,🍧,Noun
+Drawlin',AAVE,AAVE (African American Vernacular),🎤,acting up / being extra,Atlanta,😒,Verb
+Pull up,AAVE,AAVE (African American Vernacular),🎤,'come over / show up',,🚙,Phrase
+Pull up,GENZ,Gen-Z (nationwide),📱,'come over / show up',,🚙,Phrase
+Cap city,AAVE,AAVE (African American Vernacular),🎤,total lie,,🧢,Phrase
+Gucci,GENZ,Gen-Z (nationwide),📱,good / fine ('we're gucci'),,👌,Adjective
+Sketchy / Sketch,WEST,West Coast / California,🌴,shady / unsafe,,👀,Adjective
+Sketchy / Sketch,GENZ,Gen-Z (nationwide),📱,shady / unsafe,,👀,Adjective
+Catch a vibe,GENZ,Gen-Z (nationwide),📱,get into a good mood,,✨,Phrase
+Catch a vibe,AAVE,AAVE (African American Vernacular),🎤,get into a good mood,,✨,Phrase
