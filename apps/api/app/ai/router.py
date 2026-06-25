@@ -59,8 +59,6 @@ def route_request(
     needs_redaction = pii.has_pii or sensitivity in (Sensitivity.CONFIDENTIAL, Sensitivity.RESTRICTED)
     safe_context = [redact(c) for c in minimized] if needs_redaction else minimized
 
-    requires_premium = bool(agent and agent.requires_premium_reasoning)
-
     def build(route: ModelRoute, reason: str) -> RouteDecision:
         return RouteDecision(
             route=route,
@@ -90,11 +88,15 @@ def route_request(
             return build(ModelRoute.VPC, "PII detectado: se mantiene en VPC privada (no externa)")
         return build(ModelRoute.LOCAL, "PII detectado sin VPC: fallback local")
 
-    # 6. INTERNAL / PUBLIC -> premium reasoning if requested + allowed, else open.
-    if requires_premium and policy.allows_external:
-        return build(ModelRoute.PREMIUM, "Tarea de razonamiento premium con datos no sensibles")
+    # 6. INTERNAL / PUBLIC -> always START on the cheap open model (NaN). Premium
+    #    is never the base route: it's an on-demand cascade escalation (máxima
+    #    precisión / respuesta insuficiente), so non-sensitive work begins on NaN
+    #    and only sube a premium si no convence. Esto también evita prometer
+    #    "premium" cuando no hay proveedor premium configurado.
     if policy.allows_external:
-        return build(ModelRoute.OPEN, "Datos no sensibles: modelo abierto optimizado en costo")
+        return build(ModelRoute.OPEN,
+                     "Datos no sensibles: empieza con el modelo abierto (NaN); "
+                     "escala a premium solo si pides máxima precisión o la respuesta es insuficiente")
 
     # 7. External not allowed by policy -> keep private.
     if policy.allows_vpc:

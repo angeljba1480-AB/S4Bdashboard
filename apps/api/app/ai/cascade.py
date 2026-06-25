@@ -2,8 +2,11 @@
 public model (Claude/GPT) for advanced tasks — without breaking privacy.
 
 Escalation rules:
-- Only when requested (manual "máxima precisión") OR the task is marked advanced.
-- Only if a premium provider is actually configured.
+- Start with the cheap/open model (NaN) ALWAYS; premium is only an escalation.
+- Escalate when requested (manual "máxima precisión") OR when the cheap answer
+  looks insufficient ("en caso de no estar de acuerdo"). A static "advanced" flag
+  does NOT force premium by itself — NaN first, premium on demand.
+- Only if a premium provider is actually configured (si no, se queda en NaN).
 - Never escalate sensitive content (PII / confidential / restricted) WITHOUT
   explicit approval — instead we signal `escalation_pending` so the UI can ask.
 - The refine step is grounded in the already-minimized + redacted context.
@@ -47,8 +50,11 @@ def maybe_refine(
     base = {"content": base_content, "route": base_route.value, "model": None,
             "escalated": False, "escalation_pending": False, "tokens_saved": 0, "over_budget": False}
 
+    # NaN first: premium only on explicit "máxima precisión" or a weak answer.
+    # `advanced` (static agent flag) is kept for compatibility but no longer forces
+    # escalation by itself — that's what made the chat jump straight to premium.
     insufficient = escalate_if_insufficient and looks_insufficient(base_content)
-    if not (want_precision or advanced or insufficient):
+    if not (want_precision or insufficient):
         return base
     if base_route in (ModelRoute.BLOCKED, ModelRoute.PREMIUM):
         return base  # already premium or blocked — nothing to escalate

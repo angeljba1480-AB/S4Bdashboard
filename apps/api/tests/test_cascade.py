@@ -41,10 +41,21 @@ def test_non_sensitive_precision_escalates(monkeypatch):
     assert out["escalated"] is True and out["content"] == "REFINADO" and out["route"] == "premium"
 
 
-def test_advanced_escalates_without_explicit_precision(monkeypatch):
+def test_advanced_alone_does_not_escalate(monkeypatch):
+    # NaN primero: la marca 'advanced' por sí sola NO sube a premium; se requiere
+    # 'máxima precisión' o que la respuesta sea insuficiente.
     _fake_refined(monkeypatch)
-    out = cascade.maybe_refine(decision=_decision(False), base_content="b",
+    out = cascade.maybe_refine(decision=_decision(False), base_content="una respuesta amplia y suficiente",
                                base_route=ModelRoute.OPEN, instruction="x", advanced=True)
+    assert out["escalated"] is False
+
+
+def test_insufficient_answer_escalates(monkeypatch):
+    # "en caso de no estar de acuerdo": si el borrador barato es pobre, escala.
+    _fake_refined(monkeypatch)
+    out = cascade.maybe_refine(decision=_decision(False), base_content="no sé",
+                               base_route=ModelRoute.OPEN, instruction="x",
+                               escalate_if_insufficient=True)
     assert out["escalated"] is True
 
 

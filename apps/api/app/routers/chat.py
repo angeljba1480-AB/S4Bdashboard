@@ -38,8 +38,8 @@ _SENS_LABEL = {
 _ROUTE_LABEL = {
     "local": "local (self-hosted, no sale de tu infraestructura)",
     "vpc": "VPC privada (gestionada, sin proveedor externo)",
-    "open": "modelo abierto de volumen",
-    "premium": "premium externo",
+    "open": "modelo abierto (NaN) · premium solo a demanda",
+    "premium": "premium externo (escalada)",
     "blocked": "bloqueada",
 }
 
