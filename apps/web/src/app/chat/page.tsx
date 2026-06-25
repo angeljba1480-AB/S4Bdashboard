@@ -6,7 +6,7 @@ import { Shell } from "@/components/Shell";
 import { SourceCitation } from "@/components/SourceCitation";
 import { api } from "@/lib/api";
 import type { Agent, ChatResponse, DocumentItem } from "@shared/types";
-import { Send } from "lucide-react";
+import { Send, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface Turn {
@@ -20,6 +20,8 @@ export default function ChatPage() {
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [agentId, setAgentId] = useState("");
   const [ctxMode, setCtxMode] = useState<"none" | "all" | "select">("all");
+  const [precision, setPrecision] = useState(false);
+  const [lastPrompt, setLastPrompt] = useState("");
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
@@ -59,11 +61,10 @@ export default function ChatPage() {
     return () => clearTimeout(t);
   }, [input, agentId, selectedDocs, ctxMode]);
 
-  async function send() {
-    if (!input.trim() || !agentId) return;
-    const prompt = input.trim();
-    setInput("");
-    setTurns((t) => [...t, { role: "user", content: prompt }]);
+  async function send(promptArg?: string, approveExternal = false) {
+    const prompt = (promptArg ?? input).trim();
+    if (!prompt || !agentId) return;
+    if (!promptArg) { setInput(""); setTurns((t) => [...t, { role: "user", content: prompt }]); }
     setLoading(true);
     try {
       const res = await api.chat({
@@ -72,8 +73,11 @@ export default function ChatPage() {
         conversation_id: convId,
         use_rag: ctxMode !== "none",
         document_ids: ctxMode === "select" && selectedDocs.length ? selectedDocs : undefined,
+        precision,
+        approve_external: approveExternal,
       });
       setConvId(res.conversation_id);
+      setLastPrompt(prompt);
       setTurns((t) => [...t, { role: "assistant", content: res.content, meta: res }]);
     } catch (err) {
       setTurns((t) => [
@@ -159,6 +163,20 @@ export default function ChatPage() {
                     </div>
                   )}
                   <div className="whitespace-pre-wrap">{t.content}</div>
+                  {t.meta?.escalated && (
+                    <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                      <Sparkles className="h-3 w-3" /> Refinado con premium
+                    </div>
+                  )}
+                  {t.meta?.escalation_pending && (
+                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      Contenido sensible. ¿Refinar con el modelo premium (envío externo con PII redactada)?
+                      <button onClick={() => send(lastPrompt, true)} disabled={loading}
+                        className="ml-2 rounded-md bg-amber-600 px-2 py-1 font-semibold text-white disabled:opacity-50">
+                        Aprobar y refinar
+                      </button>
+                    </div>
+                  )}
                   {t.meta && (
                     <>
                       <div className="mt-2 text-xs text-slate-400">Ruta: {t.meta.reason}</div>
@@ -189,6 +207,10 @@ export default function ChatPage() {
                 )}
               </div>
             )}
+            <label className="mb-2 flex w-fit cursor-pointer items-center gap-1.5 text-xs text-slate-600">
+              <input type="checkbox" checked={precision} onChange={(e) => setPrecision(e.target.checked)} />
+              <Sparkles className="h-3.5 w-3.5 text-violet-600" /> Máxima precisión (refina con modelo premium)
+            </label>
             <div className="flex gap-2">
               <input
                 value={input}
@@ -198,7 +220,7 @@ export default function ChatPage() {
                 className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
               />
               <button
-                onClick={send}
+                onClick={() => send()}
                 disabled={loading}
                 className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
               >

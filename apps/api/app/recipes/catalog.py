@@ -78,6 +78,7 @@ def _r(**kw) -> dict:
     kw.setdefault("produces", "el resultado")
     kw.setdefault("prompt", "")
     kw.setdefault("rag_category", "")   # document category this recipe grounds in
+    kw.setdefault("advanced", False)    # auto-escalate to premium (cascade) when set
     return kw
 
 
@@ -120,7 +121,7 @@ RECIPES: list[dict] = [
              "placeholder": "Ej. Resultados del Q2, diagnóstico de operaciones…"},
             {"key": "periodo", "type": "text", "label": "Periodo", "placeholder": "Ej. Q2 2026"},
             _area_input()],
-        produces="un reporte por industria", rag_category="conocimiento",
+        produces="un reporte por industria", rag_category="conocimiento", advanced=True,
         approve_label="Generar reporte",
     ),
 
@@ -143,7 +144,7 @@ RECIPES: list[dict] = [
                 "placeholder": "Ventajas, casos de éxito, garantías…"},
                {"key": "vigencia", "type": "text", "label": "Vigencia de la oferta", "placeholder": "Ej. 30 días"},
                _tono_input(), _area_input()],
-       produces="una propuesta comercial", rag_category="propuesta_comercial",
+       produces="una propuesta comercial", rag_category="propuesta_comercial", advanced=True,
        prompt=("Propuesta comercial para {cliente} (contacto: {contacto}) sobre {servicio}. "
                "Necesidad del cliente: {necesidad}. Alcance/entregables: {alcance}. "
                "Precio: {precio}. Plazo: {plazo}. Diferenciadores: {diferenciadores}. "
@@ -477,7 +478,7 @@ def db_recipe_to_dict(row) -> dict:
 
 def public_recipe(r: dict) -> dict:
     keys = ("id", "category", "name", "icon", "description", "inputs",
-            "connections", "approval", "approve_label", "rag_category")
+            "connections", "approval", "approve_label", "rag_category", "advanced")
     return {k: r[k] for k in keys}
 
 
@@ -630,10 +631,32 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
 
     gen = generate_with_fallback(decision.route, system, instruction, decision.context or ground_context)
     contenido = gen.response.content if gen.route != ModelRoute.BLOCKED else ""
+    route = gen.route.value
+
+    # Cascade: refine advanced/"máxima precisión" drafts with a premium model,
+    # respecting privacy (sensitive content needs explicit approval to escalate).
+    from ..ai.cascade import maybe_refine
+    escalated = escalation_pending = False
+    if gen.route != ModelRoute.BLOCKED and contenido:
+        ref = maybe_refine(
+            decision=decision, base_content=contenido, base_route=gen.route, instruction=instruction,
+            want_precision=bool(inputs.get("precision")), advanced=bool(recipe.get("advanced")),
+            approved=bool(inputs.get("approve_external")),
+        )
+        escalation_pending = ref["escalation_pending"]
+        if ref["escalated"]:
+            escalated = True
+            contenido = ref["content"]
+            route = ref["route"]
+
     tokens = estimate_tokens(instruction + contenido)
-    cost = estimate_cost(gen.route, tokens)
-    summary = (f"Generé {produces} con tus datos por la ruta «{gen.route.value}». "
-               f"Revisa y aprueba; el dato se procesó de forma privada y queda auditado.")
+    cost = estimate_cost(ModelRoute(route), tokens)
+    summary = (f"Generé {produces} con tus datos por la ruta «{route}»"
+               + (" (refinado con modelo premium)" if escalated else "")
+               + ". Revisa y aprueba; el dato se procesó de forma privada y queda auditado.")
+    if escalation_pending:
+        summary += ("\n\n⚠️ Para máxima precisión puedo refinarlo con un modelo premium, pero el "
+                    "contenido es sensible. Aprueba el envío externo para escalarlo.")
     if region_aware:
         summary += "\n\n" + _REGION_DISCLAIMER
     return {
@@ -641,12 +664,14 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
         "plan": instruction,            # what I understood (transparency)
         "contenido": contenido,         # AI-generated draft to review
         "produces": produces,
-        "route": gen.route.value,
+        "route": route,
         "region_aware": region_aware,
         "tokens": tokens,
         "cost": cost,
         "fuentes": fuentes,
         "summary": summary,
+        "escalated": escalated,
+        "escalation_pending": escalation_pending,
     }
 
 

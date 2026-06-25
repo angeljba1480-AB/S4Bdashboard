@@ -66,6 +66,8 @@ export interface NotebookAnswer {
   empty?: boolean;
   message?: string;
   blocked?: boolean;
+  escalated?: boolean;
+  escalation_pending?: boolean;
 }
 
 export interface FlowNode {
@@ -121,6 +123,8 @@ export interface ChatResponse {
   token_count: number;
   cost_estimate: number;
   citations: Citation[];
+  escalated?: boolean;
+  escalation_pending?: boolean;
 }
 
 export interface AuditEvent {
@@ -186,6 +190,7 @@ export interface Recipe {
   approval: "draft" | "connection";
   approve_label: string;
   rag_category?: string;
+  advanced?: boolean;
 }
 
 export interface RecipeConnection {

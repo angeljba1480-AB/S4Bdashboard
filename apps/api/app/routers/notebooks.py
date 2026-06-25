@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from ..ai.cascade import maybe_refine
 from ..ai.rag import retrieve
 from ..ai.resilience import generate_with_fallback
 from ..ai.router import route_request
@@ -120,6 +121,8 @@ def delete_notebook(
 
 class AskBody(BaseModel):
     question: str
+    precision: bool = False
+    approve_external: bool = False
 
 
 def _scoped_ids(nb: Notebook, user: User) -> list[str]:
@@ -128,7 +131,7 @@ def _scoped_ids(nb: Notebook, user: User) -> list[str]:
 
 
 def _generate(session: Session, tenant: Tenant, user: User, nb: Notebook,
-              instruction: str, query: str) -> dict:
+              instruction: str, query: str, *, precision: bool = False, approved: bool = False) -> dict:
     ids = _scoped_ids(nb, user)
     if not ids:
         return {"content": "", "citations": [], "route": "", "empty": True,
@@ -142,19 +145,32 @@ def _generate(session: Session, tenant: Tenant, user: User, nb: Notebook,
               "Si algo no está en las fuentes, dilo. Responde en español y cita lo relevante.")
     decision = route_request(tenant, None, instruction, context, task="chat")
     gen = generate_with_fallback(decision.route, system, instruction, decision.context or context)
+
+    content, route, escalated, escalation_pending = gen.response.content, gen.route.value, False, False
+    if gen.route != ModelRoute.BLOCKED:
+        ref = maybe_refine(decision=decision, base_content=content, base_route=gen.route,
+                           instruction=instruction, want_precision=precision, advanced=False, approved=approved)
+        escalation_pending = ref["escalation_pending"]
+        if ref["escalated"]:
+            escalated = True
+            content = ref["content"] + "\n\n_(Refinado con modelo premium · cascada.)_"
+            route = ref["route"]
+
     session.add(AuditEvent(
         tenant_id=tenant.id, user_id=user.id, event_type="notebook", object_type="notebook",
-        object_id=nb.id, classification=decision.classification, selected_route=gen.route,
+        object_id=nb.id, classification=decision.classification, selected_route=ModelRoute(route),
         selected_model=gen.response.model, risk_level="low",
-        reason=f"notebook '{nb.name}': {instruction[:60]}",
+        reason=f"notebook '{nb.name}': {instruction[:60]}" + (" (refinado premium)" if escalated else ""),
     ))
     session.commit()
     return {
-        "content": gen.response.content,
-        "route": gen.route.value,
+        "content": content,
+        "route": route,
         "citations": [{"filename": c.filename, "text": c.text, "score": c.score,
                        "sensitivity": c.sensitivity.value} for c in citations],
         "blocked": gen.route == ModelRoute.BLOCKED,
+        "escalated": escalated,
+        "escalation_pending": escalation_pending,
     }
 
 
@@ -168,12 +184,14 @@ def ask(
     nb = _get_owned(session, tenant, user, nb_id)
     if not body.question.strip():
         raise HTTPException(status_code=422, detail="Escribe una pregunta")
-    return _generate(session, tenant, user, nb, body.question.strip(), body.question.strip())
+    return _generate(session, tenant, user, nb, body.question.strip(), body.question.strip(),
+                     precision=body.precision, approved=body.approve_external)
 
 
 @router.post("/{nb_id}/generate/{kind}")
 def generate_artifact(
     nb_id: str, kind: str,
+    precision: bool = False, approve_external: bool = False,
     tenant: Tenant = Depends(get_current_tenant),
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
@@ -183,4 +201,5 @@ def generate_artifact(
     if not instruction:
         raise HTTPException(status_code=404, detail="Tipo de artefacto desconocido")
     # Broad query so retrieval pulls representative chunks across the sources.
-    return _generate(session, tenant, user, nb, instruction, f"{kind} {nb.name}")
+    return _generate(session, tenant, user, nb, instruction, f"{kind} {nb.name}",
+                     precision=precision, approved=approve_external)

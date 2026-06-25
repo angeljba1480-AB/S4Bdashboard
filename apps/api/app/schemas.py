@@ -98,6 +98,8 @@ class ChatRequest(BaseModel):
     prompt: str
     document_ids: list[str] = []
     use_rag: bool = True          # False = "sin contexto" (pure model, no retrieval)
+    precision: bool = False       # "máxima precisión": refinar con modelo premium
+    approve_external: bool = False  # aprueba escalar contenido sensible a premium
     privacy_mode: str = "auto"
     response_format: str = "markdown"
     human_approval_required: bool = False
@@ -127,6 +129,8 @@ class ChatResponse(BaseModel):
     token_count: int
     cost_estimate: float
     citations: list[CitationOut]
+    escalated: bool = False           # refinado con modelo premium (cascada)
+    escalation_pending: bool = False  # sensible: requiere aprobación para escalar
 
 
 class RoutePreview(BaseModel):

@@ -65,12 +65,12 @@ export default function RecipesPage() {
     setInputs({});
   }
 
-  async function start() {
+  async function start(extra?: Record<string, string>) {
     if (!active) return;
     setBusy(true);
     setError("");
     try {
-      setRun(await api.startRecipe(active.id, inputs));
+      setRun(await api.startRecipe(active.id, { ...inputs, ...(extra || {}) }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -275,6 +275,12 @@ export default function RecipesPage() {
                           className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
                       )}
                     </div>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                      <input type="checkbox" checked={inputs.precision === "1"}
+                        onChange={(e) => setInputs((s) => ({ ...s, precision: e.target.checked ? "1" : "" }))} />
+                      <FileText className="h-4 w-4 text-violet-600" /> Máxima precisión (refina con modelo premium)
+                      {active.rag_category && active.advanced && <span className="text-xs text-violet-500">· este caso ya usa premium</span>}
+                    </label>
                   </div>
                   {active.inputs.map((f) => {
                     const cls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm";
@@ -342,7 +348,7 @@ export default function RecipesPage() {
                     );
                   })}
                   <button
-                    onClick={start}
+                    onClick={() => start()}
                     disabled={busy}
                     className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                   >
@@ -357,6 +363,16 @@ export default function RecipesPage() {
                   {run.draft?.summary && (
                     <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800">
                       {run.draft.summary as string}
+                    </div>
+                  )}
+
+                  {run.draft?.escalation_pending === true && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                      Para máxima precisión puedo refinarlo con un modelo premium, pero el contenido es sensible.
+                      <button onClick={() => start({ precision: "1", approve_external: "1" })} disabled={busy}
+                        className="ml-2 rounded-md bg-amber-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">
+                        Aprobar y refinar
+                      </button>
                     </div>
                   )}
 

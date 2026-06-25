@@ -23,6 +23,8 @@ export default function NotebooksPage() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<NotebookAnswer | null>(null);
   const [busy, setBusy] = useState(false);
+  const [precision, setPrecision] = useState(false);
+  const [lastAction, setLastAction] = useState<{ type: "ask"; q: string } | { type: "gen"; kind: string } | null>(null);
 
   function loadNotebooks() { api.notebooks().then(setNotebooks).catch(() => {}); }
   useEffect(() => { loadNotebooks(); api.documents().then(setDocs).catch(() => {}); }, []);
@@ -55,18 +57,26 @@ export default function NotebooksPage() {
     loadNotebooks();
   }
 
-  async function ask() {
+  async function ask(approve = false) {
     if (!active || !question.trim()) return;
     setBusy(true); setAnswer(null);
-    try { setAnswer(await api.notebookAsk(active.id, question.trim())); }
+    setLastAction({ type: "ask", q: question.trim() });
+    try { setAnswer(await api.notebookAsk(active.id, question.trim(), { precision, approve_external: approve })); }
     finally { setBusy(false); }
   }
 
-  async function generate(kind: string) {
+  async function generate(kind: string, approve = false) {
     if (!active) return;
     setBusy(true); setAnswer(null);
-    try { setAnswer(await api.notebookGenerate(active.id, kind)); }
+    setLastAction({ type: "gen", kind });
+    try { setAnswer(await api.notebookGenerate(active.id, kind, { precision, approve_external: approve })); }
     finally { setBusy(false); }
+  }
+
+  async function approveEscalation() {
+    if (!lastAction) return;
+    if (lastAction.type === "ask") await ask(true);
+    else await generate(lastAction.kind, true);
   }
 
   function toggle(id: string) {
@@ -132,11 +142,15 @@ export default function NotebooksPage() {
                     </button>
                   ))}
                 </div>
+                <label className="mb-2 flex w-fit cursor-pointer items-center gap-1.5 text-xs text-slate-600">
+                  <input type="checkbox" checked={precision} onChange={(e) => setPrecision(e.target.checked)} />
+                  <Sparkles className="h-3.5 w-3.5 text-violet-600" /> Máxima precisión (refina con modelo premium)
+                </label>
                 <div className="flex gap-2">
                   <input value={question} onChange={(e) => setQuestion(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && ask()}
                     placeholder="Pregunta sobre tus fuentes…" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-                  <button onClick={ask} disabled={busy || !question.trim()}
+                  <button onClick={() => ask()} disabled={busy || !question.trim()}
                     className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
                     <Send className="h-4 w-4" /> Preguntar
                   </button>
@@ -149,6 +163,18 @@ export default function NotebooksPage() {
                       <p className="text-sm text-amber-600">{answer.message}</p>
                     ) : (
                       <>
+                        {answer.escalation_pending && (
+                          <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            Contenido sensible. ¿Refinar con el modelo premium (envío externo con PII redactada)?
+                            <button onClick={approveEscalation} disabled={busy}
+                              className="ml-2 rounded-md bg-amber-600 px-2 py-1 font-semibold text-white disabled:opacity-50">Aprobar y refinar</button>
+                          </div>
+                        )}
+                        {answer.escalated && (
+                          <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                            <Sparkles className="h-3 w-3" /> Refinado con premium
+                          </div>
+                        )}
                         <div className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{answer.content}</div>
                         {answer.citations.length > 0 && (
                           <div className="mt-3">

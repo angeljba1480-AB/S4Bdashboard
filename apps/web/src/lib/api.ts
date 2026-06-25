@@ -319,10 +319,15 @@ export const api = {
     request<Notebook>(`/notebooks/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteNotebook: (id: string) =>
     request<{ ok: boolean }>(`/notebooks/${id}`, { method: "DELETE" }),
-  notebookAsk: (id: string, question: string) =>
-    request<NotebookAnswer>(`/notebooks/${id}/ask`, { method: "POST", body: JSON.stringify({ question }) }),
-  notebookGenerate: (id: string, kind: string) =>
-    request<NotebookAnswer>(`/notebooks/${id}/generate/${kind}`, { method: "POST" }),
+  notebookAsk: (id: string, question: string, opts?: { precision?: boolean; approve_external?: boolean }) =>
+    request<NotebookAnswer>(`/notebooks/${id}/ask`, { method: "POST", body: JSON.stringify({ question, ...opts }) }),
+  notebookGenerate: (id: string, kind: string, opts?: { precision?: boolean; approve_external?: boolean }) => {
+    const qs = new URLSearchParams();
+    if (opts?.precision) qs.set("precision", "true");
+    if (opts?.approve_external) qs.set("approve_external", "true");
+    const q = qs.toString();
+    return request<NotebookAnswer>(`/notebooks/${id}/generate/${kind}${q ? `?${q}` : ""}`, { method: "POST" });
+  },
   // External model providers (admin)
   adminProviders: () =>
     request<{ route: string; enabled: boolean; base_url: string; model: string; has_key: boolean }[]>("/admin/providers"),

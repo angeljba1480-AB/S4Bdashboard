@@ -12,6 +12,7 @@ from sqlmodel import Session
 
 from ..ai.cost import estimate_cost, estimate_tokens
 from ..ai.rag import retrieve
+from ..ai.cascade import maybe_refine
 from ..ai.resilience import generate_with_fallback
 from ..ai.router import route_request
 from ..auth import get_current_tenant, get_current_user
@@ -159,6 +160,24 @@ def chat(
             tokens = estimate_tokens(body.prompt + content)
             cost = estimate_cost(gen.route, tokens)
 
+    # 5b. Cascade: optionally refine the draft with a premium model (advanced
+    # tasks / "máxima precisión"), respecting privacy (sensitive needs approval).
+    escalated = escalation_pending = False
+    if used_route != ModelRoute.BLOCKED:
+        ref = maybe_refine(
+            decision=decision, base_content=content, base_route=used_route,
+            instruction=body.prompt, want_precision=body.precision,
+            advanced=bool(agent.requires_premium_reasoning), approved=body.approve_external,
+        )
+        escalation_pending = ref["escalation_pending"]
+        if ref["escalated"]:
+            escalated = True
+            used_route = ModelRoute(ref["route"])
+            model_used = ref["model"] or model_used
+            content = ref["content"] + "\n\n_(Refinado con modelo premium · cascada.)_"
+            tokens = estimate_tokens(body.prompt + content)
+            cost = estimate_cost(used_route, tokens)
+
     # 6. Persist assistant message
     msg = Message(
         conversation_id=conv.id, role="assistant", content_redacted=content,
@@ -189,4 +208,5 @@ def chat(
         blocked=blocked, reason=audit_reason,
         token_count=tokens, cost_estimate=cost,
         citations=[CitationOut(**c.__dict__) for c in citations],
+        escalated=escalated, escalation_pending=escalation_pending,
     )
