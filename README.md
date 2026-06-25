@@ -137,6 +137,8 @@ tenants y el flujo completo de `/chat`.
 | Guía | Para qué |
 |---|---|
 | [`docs/ESTADO-PROYECTO.md`](docs/ESTADO-PROYECTO.md) | **Estado del proyecto**: qué está hecho, despliegue, configuración pendiente y backlog |
+| [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) | **Diagramas** de arquitectura y funcionalidades (Mermaid) |
+| [`docs/ENTORNOS.md`](docs/ENTORNOS.md) · [`CHANGELOG.md`](CHANGELOG.md) | Modelo Dev→QA→Prod y bitácora de cambios |
 | [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) · [`docs/blueprint/`](docs/blueprint/) | PRD y blueprint original + los 3 flujogramas base |
 | [`docs/CORREO-OAUTH-SETUP.md`](docs/CORREO-OAUTH-SETUP.md) | Conectar correo/agenda (Outlook/Gmail/IMAP) |
 | [`docs/ACCIONES-ESCRITURA-SETUP.md`](docs/ACCIONES-ESCRITURA-SETUP.md) | **Habilitar acciones de escritura** (toolkit Google/MS): scopes + reconexión |
