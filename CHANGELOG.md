@@ -3,6 +3,14 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Ayuda en español (in-app)**: nueva sección *Ayuda* con guías paso a paso
+  (conectar **n8n**, correo, documentos/RAG, acciones Google/MS, conectores, importar
+  BD/CSV, modelos/cascada/rerank, imágenes, webhooks). Buscador + banner desde
+  Integraciones.
+- **Reranking del RAG (NaN)**: tras recuperar por embeddings, reordena los candidatos
+  con el reranker (Qwen3-Reranker vía `/rerank`) para más precisión (embedding → rerank
+  → LLM). Toggle en *Admin → Eficiencia de tokens*; usa el proveedor abierto. Si el
+  reranker falla, cae al orden por coseno.
 - **Generación de imágenes (texto→imagen)**: nueva sección *Generar imágenes* (ruta
   estándar OpenAI `/images/generations` sobre el proveedor abierto). Prompt con
   redacción de PII, relación de aspecto (1:1/16:9/9:16) y variantes (1–4). Galería por

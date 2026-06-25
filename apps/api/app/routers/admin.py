@@ -435,18 +435,24 @@ class EfficiencyIn(BaseModel):
     condense_enabled: bool | None = None
     condense_threshold_chars: int | None = None
     max_tokens_per_request: int | None = None
+    rerank_enabled: bool | None = None
 
 
-@router.get("/efficiency")
-def get_efficiency(_: User = Depends(require_roles(Role.SUPER_ADMIN))) -> dict:
-    """Token-efficiency controls (condensación + tope de gasto) y ahorro acumulado."""
+def _efficiency_state() -> dict:
     from .. import runtime_config
     return {
         "condense_enabled": runtime_config.condense_enabled(),
         "condense_threshold_chars": runtime_config.condense_threshold_chars(),
         "max_tokens_per_request": runtime_config.max_tokens_per_request(),
+        "rerank_enabled": runtime_config.rerank_enabled(),
         "tokens_saved_total": runtime_config.tokens_saved_total(),
     }
+
+
+@router.get("/efficiency")
+def get_efficiency(_: User = Depends(require_roles(Role.SUPER_ADMIN))) -> dict:
+    """Token-efficiency controls (condensación + tope de gasto + rerank) y ahorro."""
+    return _efficiency_state()
 
 
 @router.put("/efficiency")
@@ -462,12 +468,9 @@ def update_efficiency(
         runtime_config.set_value(session, "condense_threshold_chars", str(max(0, body.condense_threshold_chars)))
     if body.max_tokens_per_request is not None:
         runtime_config.set_value(session, "max_tokens_per_request", str(max(0, body.max_tokens_per_request)))
-    return {
-        "condense_enabled": runtime_config.condense_enabled(),
-        "condense_threshold_chars": runtime_config.condense_threshold_chars(),
-        "max_tokens_per_request": runtime_config.max_tokens_per_request(),
-        "tokens_saved_total": runtime_config.tokens_saved_total(),
-    }
+    if body.rerank_enabled is not None:
+        runtime_config.set_value(session, "rerank_enabled", str(body.rerank_enabled).lower())
+    return _efficiency_state()
 
 
 @router.get("/routes")

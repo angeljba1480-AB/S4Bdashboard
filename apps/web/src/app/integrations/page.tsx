@@ -2,7 +2,7 @@
 
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
-import { CheckCircle2, Eye, EyeOff, Info, KeyRound, Link2, Mail, Trash2, Webhook } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, HelpCircle, Info, KeyRound, Link2, Mail, Trash2, Webhook } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type MailProvider = { provider: string; label: string; kind: string; enabled?: boolean; configured: boolean };
@@ -156,6 +156,10 @@ export default function IntegrationsPage() {
     <Shell>
       <PageHeader title="Integraciones" subtitle="Conecta MaestroAI con tus sistemas: CRM, ERP, delivery y más." />
       <div className="space-y-6 p-8">
+        <a href="/help" className="flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 hover:bg-violet-100">
+          <HelpCircle className="h-4 w-4" />
+          ¿Cómo conecto n8n, correo o un sistema legado? Mira las guías paso a paso en <b>Ayuda</b>.
+        </a>
         {/* Mailbox connect (OAuth) */}
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mb-1 flex items-center gap-2"><Mail className="h-5 w-5 text-violet-600" /><h2 className="font-semibold text-slate-800">Conectar correo (Outlook / Gmail)</h2></div>

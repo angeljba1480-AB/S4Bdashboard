@@ -73,8 +73,9 @@ Formato OpenAI (`{"error": {message, type, param, code}}`). Códigos: `401` auth
 ## Qué usa MaestroAI de NaN hoy
 - ✅ **Chat / generación** (ruta `open`) → `qwen3.6` por defecto (compatible OpenAI).
   Es el modelo barato de la **cascada** y de la **condensación** de contexto.
+- ✅ **rerank** (Qwen3-Reranker vía `/rerank`) → reordena el RAG para más precisión
+  (embedding → rerank → LLM). Toggle en *Admin → Eficiencia de tokens*.
 - 🔜 **Candidatos de alto valor** (endpoints reales de NaN, aún sin cablear):
-  - **rerank** → mejora la precisión del RAG (embedding → rerank → LLM).
   - **TTS (kokoro)** → narrar salidas en español; **STT (whisper)** → transcribir audio.
   - **embeddings (qwen3-embedding)** → fuente de embeddings del RAG.
 - ⏳ **Imágenes**: la sección *Generar imágenes* está lista (ruta OpenAI estándar)
