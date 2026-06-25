@@ -75,6 +75,10 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
   **leer rango de Excel**, **buscar en SharePoint**.
 - ✅ **Aprobación humana** para escrituras + **“Permitir siempre”** (revocable).
 
+### Ayuda
+- ✅ **Ayuda in-app en español**: guías paso a paso (n8n, correo, RAG, acciones,
+  conectores, BD/CSV, modelos/rerank, imágenes, webhooks) con buscador.
+
 ### Gobernanza y visibilidad
 - ✅ **Super admin** (ve todos los tenants) + **permisos por área y licencia**.
 - ✅ **Flujogramas navegables** (los 3 base del blueprint + flujo de caso + libre).

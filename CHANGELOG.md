@@ -3,6 +3,10 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Ayuda en español (in-app)**: nueva sección *Ayuda* con guías paso a paso
+  (conectar **n8n**, correo, documentos/RAG, acciones Google/MS, conectores, importar
+  BD/CSV, modelos/cascada/rerank, imágenes, webhooks). Buscador + banner desde
+  Integraciones.
 - **Reranking del RAG (NaN)**: tras recuperar por embeddings, reordena los candidatos
   con el reranker (Qwen3-Reranker vía `/rerank`) para más precisión (embedding → rerank
   → LLM). Toggle en *Admin → Eficiencia de tokens*; usa el proveedor abierto. Si el
