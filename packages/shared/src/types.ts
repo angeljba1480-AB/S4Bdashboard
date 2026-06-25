@@ -44,6 +44,27 @@ export interface DocumentItem {
   created_at: string;
 }
 
+export interface FlowNode {
+  id: string;
+  type: "start" | "step" | "decision" | "end" | "danger";
+  title: string;
+  detail?: string;
+  next?: string;
+  branches?: { label: string; to: string }[];
+}
+
+export interface FlowchartSummary {
+  id: string;
+  title: string;
+  description: string;
+}
+
+export interface Flowchart extends FlowchartSummary {
+  note?: string;
+  start: string;
+  nodes: FlowNode[];
+}
+
 export interface DocumentCategory {
   id: string;
   key: string;

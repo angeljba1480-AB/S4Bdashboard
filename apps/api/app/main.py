@@ -20,6 +20,7 @@ from .routers import (
     dashboards,
     documents,
     export,
+    flowcharts,
     integrations,
     oauth,
     recipes,
@@ -84,6 +85,7 @@ app.include_router(usage.router)
 app.include_router(admin.router)
 app.include_router(company.router)
 app.include_router(export.router)
+app.include_router(flowcharts.router)
 
 
 @app.get("/health", tags=["meta"])

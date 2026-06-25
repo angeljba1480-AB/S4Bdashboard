@@ -7,6 +7,7 @@ import {
   Bot,
   Building2,
   FileText,
+  GitBranch,
   IdCard,
   LayoutDashboard,
   LayoutGrid,
@@ -38,6 +39,7 @@ const NAV = [
     group: "PLATAFORMA",
     items: [
       { href: "/recipes", label: "Casos de uso", icon: Sparkles },
+      { href: "/flowcharts", label: "Flujogramas", icon: GitBranch },
       { href: "/dashboards", label: "Tableros", icon: LayoutGrid },
       { href: "/regional", label: "Trámites y casos", icon: MapPin },
       { href: "/apps", label: "App Studio", icon: Rocket },

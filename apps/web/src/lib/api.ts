@@ -8,6 +8,8 @@ import type {
   DocumentCategory,
   DocumentItem,
   Eje,
+  Flowchart,
+  FlowchartSummary,
   Me,
   Procedure,
   Recipe,
@@ -300,6 +302,8 @@ export const api = {
     request<{ ok: boolean }>(`/documents/${id}`, { method: "DELETE" }),
   updateDocument: (id: string, body: { area?: string; category?: string; sensitivity?: string }) =>
     request<DocumentItem>(`/documents/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  flowcharts: () => request<FlowchartSummary[]>("/flowcharts"),
+  flowchart: (id: string) => request<Flowchart>(`/flowcharts/${id}`),
   documentCategories: () => request<DocumentCategory[]>("/documents/categories"),
   createDocumentCategory: (body: { label: string; description?: string }) =>
     request<DocumentCategory>("/documents/categories", { method: "POST", body: JSON.stringify(body) }),
