@@ -123,6 +123,8 @@ export interface CompanyProfile {
   tech_stack: string[];
   completed: boolean;
   completion: number;
+  missing_required?: string[];
+  required_complete?: boolean;
   company_name?: string;
 }
 

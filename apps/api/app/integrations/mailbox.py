@@ -218,7 +218,7 @@ _INSTR = {
 }
 
 
-def summarize(session, tenant, data: dict, output_type: str) -> dict:
+def summarize(session, tenant, data: dict, output_type: str, extra_instruction: str = "") -> dict:
     """Summarize fetched mail/events through the privacy router + model fallback."""
     from ..ai.resilience import generate_with_fallback
     from ..ai.router import route_request
@@ -227,6 +227,8 @@ def summarize(session, tenant, data: dict, output_type: str) -> dict:
     if not context:
         return {"content": "", "route": "", "empty": True}
     instruction = _INSTR.get(output_type, _INSTR["Resumen diario"])
+    if extra_instruction:
+        instruction = instruction + "\n\n" + extra_instruction
     system = ("Eres un asistente ejecutivo. Resume correo y agenda en español, claro y accionable. "
               "No inventes; usa solo lo provisto.")
     decision = route_request(tenant, None, instruction, context, task="recipe")

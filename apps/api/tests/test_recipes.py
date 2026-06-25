@@ -274,6 +274,24 @@ def test_reject_proposal(client):
     assert r["status"] == "rejected"
 
 
+def test_company_profile_exposes_required_baseline(client):
+    h = _auth(client)
+    p = client.get("/company/profile", headers=h).json()
+    assert "required_complete" in p and isinstance(p["missing_required"], list)
+
+
+def test_objetivo_notas_formato_woven_into_prompt(client):
+    """The universal intent step (objetivo/notas/formato) shapes the instruction."""
+    h = _auth(client)
+    start = client.post("/recipes/propuesta_comercial/start", headers=h, json={
+        "inputs": {"cliente": "ACME", "servicio": "CRM",
+                   "objetivo": "OBJETIVOXYZ ganar la cuenta", "formato": "tabla"},
+    }).json()
+    plan = start["draft"]["plan"]
+    assert "OBJETIVOXYZ" in plan
+    assert "tabla" in plan.lower()
+
+
 def test_multiple_accounts_per_user(client, monkeypatch):
     """A user can connect several mailboxes; each is selectable and removable."""
     from app.integrations import mailbox

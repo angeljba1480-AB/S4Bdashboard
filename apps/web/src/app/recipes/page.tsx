@@ -55,7 +55,10 @@ export default function RecipesPage() {
     setPropMsg("¡Gracias! Tu caso fue enviado y entrará a revisión para el catálogo.");
   }
 
+  const locked = profile?.required_complete === false;
+
   function open(r: Recipe) {
+    if (locked) return; // onboarding baseline required first
     setActive(r);
     setRun(null);
     setError("");
@@ -103,7 +106,28 @@ export default function RecipesPage() {
       <div className="p-8">
         {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
 
-        {!active && profile && profile.completion < 100 && (
+        {/* Mandatory onboarding gate: block the use cases until the baseline is set. */}
+        {!active && locked && (
+          <Link
+            href="/company"
+            className="mb-5 flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 transition hover:border-amber-400"
+          >
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white">
+              <Building2 className="h-5 w-5 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-amber-900">
+                Completa la información base de tu empresa para habilitar los casos de uso
+              </div>
+              <p className="text-xs text-amber-700">
+                Es obligatoria para obtener resultados confiables. Falta:{" "}
+                <b>{(profile?.missing_required || []).join(", ")}</b>. Toca aquí para completarla →
+              </p>
+            </div>
+          </Link>
+        )}
+
+        {!active && !locked && profile && profile.completion < 100 && (
           <Link
             href="/company"
             className="mb-5 flex items-center gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4 transition hover:border-violet-400"
@@ -154,7 +178,9 @@ export default function RecipesPage() {
                 <button
                   key={r.id}
                   onClick={() => open(r)}
-                  className="rounded-2xl border border-slate-200 bg-white p-5 text-left transition hover:border-violet-400 hover:shadow-sm"
+                  disabled={locked}
+                  title={locked ? "Completa la información base de tu empresa para habilitar este caso" : undefined}
+                  className={`rounded-2xl border border-slate-200 bg-white p-5 text-left transition hover:border-violet-400 hover:shadow-sm ${locked ? "cursor-not-allowed opacity-50 hover:border-slate-200 hover:shadow-none" : ""}`}
                 >
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50">
                     <Sparkles className="h-5 w-5 text-violet-600" />
@@ -217,6 +243,39 @@ export default function RecipesPage() {
               {/* Step 1: minimal inputs */}
               {!run && (
                 <div className="mt-5 space-y-4">
+                  {/* Universal intent step: goal + notes + output format (shapes every case). */}
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">¿Qué quieres lograr? (objetivo)</label>
+                      <textarea rows={2} value={inputs.objetivo || ""} placeholder="Ej. Cerrar al cliente con una propuesta clara y persuasiva…"
+                        onChange={(e) => setInputs((s) => ({ ...s, objetivo: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">Notas / lo que te interesa incluir</label>
+                      <textarea rows={2} value={inputs.notas || ""} placeholder="Datos, tono, puntos a destacar, lo que NO quieres…"
+                        onChange={(e) => setInputs((s) => ({ ...s, notas: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">Formato de salida</label>
+                      <select value={inputs.formato || ""} onChange={(e) => setInputs((s) => ({ ...s, formato: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        <option value="">Predeterminado</option>
+                        <option value="documento_formal">Documento formal</option>
+                        <option value="resumen_ejecutivo">Resumen ejecutivo (bullets)</option>
+                        <option value="tabla">Tabla</option>
+                        <option value="presentacion">Presentación (esquema)</option>
+                        <option value="carta">Carta / comunicado</option>
+                        <option value="personalizado">Diseñar con AI (describe abajo)</option>
+                      </select>
+                      {inputs.formato === "personalizado" && (
+                        <textarea rows={2} value={inputs.formato_notas || ""} placeholder="Describe el formato que quieres y lo armo…"
+                          onChange={(e) => setInputs((s) => ({ ...s, formato_notas: e.target.value }))}
+                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                      )}
+                    </div>
+                  </div>
                   {active.inputs.map((f) => {
                     const cls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm";
                     const val = inputs[f.key] || "";

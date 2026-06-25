@@ -488,6 +488,40 @@ def prefill(recipe: dict, session: Session, tenant: Tenant, inputs: dict, user_i
     return _prefill_generic(recipe, session, tenant, inputs)
 
 
+# Output-format presets shared by every use case (the "formato de salida" step).
+# An empty/unknown value means "predeterminado" (no extra shaping).
+FORMAT_GUIDE = {
+    "documento_formal": "Formato: documento formal y bien estructurado, con secciones y encabezados.",
+    "resumen_ejecutivo": "Formato: resumen ejecutivo breve, con viñetas y los puntos clave primero.",
+    "tabla": "Formato: presenta la información en tablas cuando sea posible.",
+    "presentacion": "Formato: esquema de presentación (diapositivas con título y viñetas).",
+    "carta": "Formato: carta/comunicado profesional listo para enviar.",
+}
+
+
+def apply_intent(system: str, instruction: str, inputs: dict) -> tuple[str, str]:
+    """Weave the universal 'objetivo + notas + formato' step into any prompt so
+    every use case can be steered toward the user's goal and desired output."""
+    objetivo = str(inputs.get("objetivo", "")).strip()
+    notas = str(inputs.get("notas", "")).strip()
+    formato = str(inputs.get("formato", "")).strip()
+    formato_notas = str(inputs.get("formato_notas", "")).strip()
+
+    extra: list[str] = []
+    if objetivo:
+        extra.append(f"Objetivo que busca el usuario: {objetivo}.")
+    if notas:
+        extra.append(f"Notas y preferencias a considerar: {notas}.")
+    guide = FORMAT_GUIDE.get(formato)
+    if guide:
+        extra.append(guide)
+    if formato == "personalizado" and formato_notas:
+        extra.append(f"Formato solicitado por el usuario: {formato_notas}.")
+    if extra:
+        instruction = instruction + "\n\n" + " ".join(extra)
+    return system, instruction
+
+
 def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dict) -> dict:
     """Generate real content through the privacy router + model fallback.
 
@@ -505,6 +539,9 @@ def _prefill_generic(recipe: dict, session: Session, tenant: Tenant, inputs: dic
     system = (f"Eres un asistente que genera {produces} para un negocio en {country['name']}. "
               f"Responde en español, claro y listo para usar. Usa el contexto de trámites "
               f"(empresa → estado → país) cuando aplique y cita la autoridad/fuente.")
+
+    # Universal "objetivo + notas + formato" step: steer toward the user's goal.
+    system, instruction = apply_intent(system, instruction, inputs)
 
     # Pre-configured company context (onboarding profile) personalizes the output.
     company_ctx = context_block(get_or_create(session, tenant.id),
@@ -656,7 +693,8 @@ def _execute_correo_agenda(session: Session, tenant_id: str, user_id: str | None
         return {**base, "message": "La conexión expiró o fue revocada. Reconéctala en Integraciones."}
 
     data = mailbox.fetch(conn.provider, access)
-    summary = mailbox.summarize(session, tenant, data, output)
+    _, extra = apply_intent("", "", inputs)  # objetivo/notas/formato → afina el resumen
+    summary = mailbox.summarize(session, tenant, data, output, extra_instruction=extra.strip())
     if summary.get("empty"):
         return {**base, "message": "No se encontraron correos ni eventos recientes para resumir."}
     counts = summary.get("counts", {})
