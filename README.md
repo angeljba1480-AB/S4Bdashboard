@@ -146,6 +146,29 @@ tenants y el flujo completo de `/chat`.
 | [`docs/MANUAL-ADMIN.md`](docs/MANUAL-ADMIN.md) · [`docs/MANUAL-USUARIO.md`](docs/MANUAL-USUARIO.md) | Manuales de admin y usuario |
 | [`docs/MCP.md`](docs/MCP.md) · [`docs/OLLAMA-SETUP.md`](docs/OLLAMA-SETUP.md) | MCP de trámites y modelos locales |
 
+## Flujo de trabajo (Dev → QA → Prod)
+
+Todo cambio se promueve por ramas, con CI como compuerta de calidad:
+
+```
+feature/*  →  dev  →  qa  →  main (producción)
+```
+
+1. Trabaja en una rama `feature/*` y abre PR a **`dev`**.
+2. Promueve **`dev → qa`** por PR; el **CI** (pytest + `tsc` + `next build`) debe pasar.
+3. Promueve **`qa → main`** por PR (revisión); `main` despliega a producción
+   (Vercel + Render).
+4. Cada PR agrega su línea al [`CHANGELOG.md`](CHANGELOG.md). Hotfix crítico:
+   `hotfix/* → main` y retro-merge a `qa`/`dev`.
+
+Detalle y configuración por entorno en [`docs/ENTORNOS.md`](docs/ENTORNOS.md);
+diagramas en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
+
+### Proteger ramas (recomendado, una vez)
+En GitHub → **Settings → Branches → Add branch ruleset** (o *Branch protection rule*):
+para `main` y `qa`, activa **Require a pull request before merging** y **Require
+status checks to pass** seleccionando **`API · pytest`** y **`Web · build`**.
+
 ## Blueprint
 
 El diseño completo está documentado en
