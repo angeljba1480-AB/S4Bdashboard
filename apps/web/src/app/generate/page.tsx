@@ -45,12 +45,14 @@ export default function GeneratePage() {
 
   return (
     <Shell>
-      <PageHeader title="Generar imágenes" subtitle="Texto a imagen con FLUX (NaN). El prompt se redacta de PII antes de salir; las imágenes quedan en tu galería por área y auditadas." />
+      <PageHeader title="Generar imágenes" subtitle="Texto a imagen (compatible OpenAI). El prompt se redacta de PII antes de salir; las imágenes quedan en tu galería por área y auditadas." />
 
       {!configured && (
         <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          No hay proveedor de imágenes configurado. En <b>Admin → Modelos externos</b> configura el proveedor
-          <b> Abierto</b> (NaN) con su Base URL, modelo y API key, y pulsa <b>Probar conexión</b>.
+          No hay proveedor de imágenes configurado. Esta sección usa la ruta estándar de OpenAI
+          (<code>/images/generations</code>). Nota: la <b>API documentada de NaN no expone generación de
+          imágenes hoy</b> (su «Generate» es de su web). Configura en <b>Admin → Modelos externos → Abierto</b>
+          un proveedor que sí exponga ese endpoint.
         </div>
       )}
 

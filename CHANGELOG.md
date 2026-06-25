@@ -3,10 +3,13 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
-- **Generación de imágenes (texto→imagen)**: nueva sección *Generar imágenes* con
-  FLUX vía NaN (proveedor abierto, compatible OpenAI `/images/generations`). Prompt
-  con redacción de PII, relación de aspecto (1:1/16:9/9:16) y variantes (1–4).
-  Galería por área, copia almacenada y auditada (`/images/*`).
+- **Generación de imágenes (texto→imagen)**: nueva sección *Generar imágenes* (ruta
+  estándar OpenAI `/images/generations` sobre el proveedor abierto). Prompt con
+  redacción de PII, relación de aspecto (1:1/16:9/9:16) y variantes (1–4). Galería por
+  área, copia almacenada y auditada (`/images/*`). Nota: la API de NaN no expone
+  imágenes hoy (su *Generate* es web) — ver `docs/PROVEEDOR-NAN.md`.
+- **Contexto del proveedor NaN** (`docs/PROVEEDOR-NAN.md`): referencia de su API
+  compatible OpenAI (endpoints, modelos, rate limits) y productos (Agents, Apps).
 - **Conectores · detalles + "ojito"**: ver qué se configuró (endpoint, header, ejemplo
   de payload por tipo) y revelar el secreto/DSN con un ojo (solo ADMIN/DEVOPS, auditado):
   `GET /integrations/connectors/{id}/reveal` y `GET /datasources/{id}/reveal`.

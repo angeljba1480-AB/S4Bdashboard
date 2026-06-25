@@ -48,9 +48,12 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
   (resumen, FAQ, guía, briefing, cronología).
 
 ### Imágenes (texto → imagen)
-- ✅ **Generar imágenes** con FLUX vía NaN (proveedor abierto, compatible OpenAI).
-  Prompt con redacción de PII, relación de aspecto y variantes. **Galería por área**,
-  copia almacenada en la plataforma y auditada.
+- ✅ **Generar imágenes** vía la ruta estándar OpenAI `/images/generations` sobre el
+  proveedor abierto. Prompt con redacción de PII, relación de aspecto y variantes.
+  **Galería por área**, copia almacenada y auditada.
+  ⚠️ La **API de NaN no expone imágenes hoy** (su *Generate* es web) — la sección
+  queda lista para cualquier proveedor que exponga ese endpoint. Ver
+  [`PROVEEDOR-NAN.md`](./PROVEEDOR-NAN.md).
 
 ### Modelos
 - ✅ **Router de privacidad** con redacción de PII y fallback.

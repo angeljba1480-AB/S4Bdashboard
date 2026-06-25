@@ -1,9 +1,13 @@
 """Text-to-image generation via the OpenAI-compatible images endpoint.
 
-Reuses the **open** provider (NaN Builders / FLUX) configured in Admin → Modelos
-externos (admin runtime override) or env. NaN exposes an OpenAI-compatible API, so
-we POST to `{base_url}/images/generations`. The model defaults to FLUX.2 but is
-configurable. PII in the prompt is redacted before the external call.
+Reuses the **open** provider configured in Admin → Modelos externos (admin runtime
+override) or env: POST to `{base_url}/images/generations` (OpenAI standard). The
+model defaults to FLUX.2 but is configurable. PII in the prompt is redacted before
+the external call.
+
+NOTE: NaN Builders' *documented* API does NOT expose image generation today (their
+`cloud.nan.builders/generate` is a web-app feature, not an API endpoint). This module
+works with any provider that serves `/images/generations`; see docs/PROVEEDOR-NAN.md.
 """
 from __future__ import annotations
 

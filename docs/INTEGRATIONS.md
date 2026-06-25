@@ -50,12 +50,16 @@ premium, con aprobación para contenido sensible). Usa **Probar conexión** para
 verificar que el proveedor responde (llamada real mínima → latencia + muestra, o error).
 
 ### Generación de imágenes (texto → imagen)
-*Generar imágenes*: FLUX vía **NaN** (proveedor **abierto**, compatible OpenAI
-`/images/generations`). El prompt se **redacta de PII** antes de salir; eliges
-relación de aspecto (1:1/16:9/9:16) y variantes (1–4). Cada imagen se guarda como
-copia del tenant (galería por área, auditada). Endpoints: `GET /images/config`,
+*Generar imágenes*: usa la **ruta estándar de OpenAI** `/images/generations` sobre el
+proveedor **abierto**. El prompt se **redacta de PII** antes de salir; eliges relación
+de aspecto (1:1/16:9/9:16) y variantes (1–4). Cada imagen se guarda como copia del
+tenant (galería por área, auditada). Endpoints: `GET /images/config`,
 `POST /images/generate`, `GET /images`, `GET /images/{id}/data`, `DELETE /images/{id}`.
-Requiere configurar el proveedor abierto (NaN) en *Admin → Modelos externos*.
+
+> ⚠️ La **API documentada de NaN no expone generación de imágenes** (su *Generate* es
+> una función web, no API — ver [`PROVEEDOR-NAN.md`](./PROVEEDOR-NAN.md)). Esta sección
+> funciona con cualquier proveedor que exponga `/images/generations`; configúralo en
+> *Admin → Modelos externos → Abierto* cuando esté disponible.
 
 ## 6) Fuentes de datos legadas → RAG (`/datasources`)
 *Integraciones → Fuentes de datos*. Dos vías para sistemas sin API:
