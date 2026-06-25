@@ -30,9 +30,12 @@ Microsoft Graph → Delegated** y agrega:
 | `Mail.Send` | Enviar correo (Outlook) |
 | `Calendars.ReadWrite` | Crear eventos de calendario |
 | `ChannelMessage.Send` | Publicar en un canal de Teams |
+| `Files.ReadWrite.All` | OneDrive (listar) + Excel (leer rango / agregar fila a tabla) |
+| `Sites.Read.All` | Buscar en SharePoint |
 
 > Ya deberías tener de antes: `User.Read`, `Mail.Read`, `offline_access`.
 > `Calendars.ReadWrite` reemplaza/incluye a `Calendars.Read`.
+> `Files.ReadWrite.All` incluye lectura (cubre el listado de OneDrive existente).
 
 (Opcional pero recomendado en cuentas de empresa) **Grant admin consent**.
 
@@ -86,9 +89,17 @@ Como los permisos cambiaron, cada usuario debe **volver a autorizar**:
 | Enviar correo (Outlook) | Microsoft | `to`, `subject`, `body` |
 | Crear evento (Outlook Calendar) | Microsoft | `summary`, `start`, `end`, `location` |
 | Publicar en Teams | Microsoft | `team_id`, `channel_id`, `message` |
+| Agregar fila a tabla de Excel | Microsoft | `item_id`, `table`, `values` |
+| **Lecturas** (sin aprobación) | | |
+| Leer Google Sheets | Google | `spreadsheet_id`, `range` |
+| Próximos eventos (Google / Outlook) | Google / Microsoft | `days` |
+| Listar archivos (OneDrive) | Microsoft | `query` |
+| Leer rango de Excel | Microsoft | `item_id`, `worksheet`, `range` |
+| Buscar en SharePoint | Microsoft | `query` |
 
 > Fechas en formato ISO 8601 (ej. `2026-07-01T10:00:00Z`). `values` admite una lista
-> separada por comas (una fila).
+> separada por comas (una fila). En Excel, `item_id` es el id del archivo en
+> OneDrive/SharePoint (lo da *Listar archivos* o *Buscar en SharePoint*).
 
 ---
 

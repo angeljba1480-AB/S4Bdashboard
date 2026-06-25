@@ -3,6 +3,13 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Toolkit · Excel y SharePoint**: leer rango de Excel y **agregar fila a tabla**
+  (Graph workbook), **buscar en SharePoint**. Nuevos scopes `Files.ReadWrite.All`
+  y `Sites.Read.All` (la escritura sigue con aprobación humana).
+- **Conector CSV** para sistemas legados sin API: importa un CSV pegado al
+  repositorio + RAG (`/datasources/import-csv`), con panel en Integraciones.
+
+## 2026-06-25 — promovido a prod (PR #12)
 - CI: primera corrida en `dev`/`qa` para registrar los checks (`API · pytest`,
   `Web · build`) y validar la compuerta antes de producción.
 - **Eficiencia de tokens en la UI**: controles de condensación y tope de gasto por

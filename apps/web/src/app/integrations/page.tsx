@@ -36,6 +36,8 @@ export default function IntegrationsPage() {
   const [sources, setSources] = useState<Awaited<ReturnType<typeof api.dataSources>>>([]);
   const [ds, setDs] = useState({ name: "", dsn: "", query: "", category: "" });
   const [dsMsg, setDsMsg] = useState("");
+  const [csv, setCsv] = useState({ name: "", csv_text: "", delimiter: ",", category: "" });
+  const [csvMsg, setCsvMsg] = useState("");
   const apiBase = api.base;
 
   async function addSource() {
@@ -54,6 +56,14 @@ export default function IntegrationsPage() {
   async function importSource(id: string) {
     try { const r = await api.importDataSource(id); setDsMsg(`Importado ${r.rows} filas → ${r.filename}`); }
     catch (e) { setDsMsg(e instanceof Error ? e.message : "Error al importar"); }
+  }
+  async function importCsv() {
+    if (!csv.csv_text.trim()) { setCsvMsg("Pega el contenido del CSV."); return; }
+    try {
+      const r = await api.importCsv(csv);
+      setCsv({ name: "", csv_text: "", delimiter: ",", category: "" });
+      setCsvMsg(`Importado ${r.rows} filas → ${r.filename}`);
+    } catch (e) { setCsvMsg(e instanceof Error ? e.message : "Error al importar"); }
   }
 
   function load() {
@@ -314,6 +324,23 @@ export default function IntegrationsPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* CSV import — legacy systems that can only export flat files */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="mb-1 flex items-center gap-2"><Link2 className="h-5 w-5 text-indigo-600" /><h2 className="font-semibold text-slate-800">Importar CSV (exportaciones de sistemas legados)</h2></div>
+          <p className="mb-3 text-sm text-slate-500">
+            ¿El sistema no tiene API pero exporta <b>CSV/Excel</b>? Pega el contenido aquí
+            (la primera fila son los encabezados) y se importa al repositorio + RAG, clasificado y cifrado.
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <input value={csv.name} onChange={(e) => setCsv({ ...csv, name: e.target.value })} placeholder="Nombre (ej. Cartera CSV)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <input value={csv.category} onChange={(e) => setCsv({ ...csv, category: e.target.value })} placeholder="Categoría (opcional)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <input value={csv.delimiter} onChange={(e) => setCsv({ ...csv, delimiter: e.target.value })} placeholder="Delimitador (, o ;)" maxLength={1} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          </div>
+          <textarea value={csv.csv_text} onChange={(e) => setCsv({ ...csv, csv_text: e.target.value })} placeholder={"nombre,monto\nACME,5000\nGlobex,8200"} rows={5} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs" />
+          <button onClick={importCsv} className="mt-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Importar CSV</button>
+          {csvMsg && <div className="mt-2 text-xs text-slate-500">{csvMsg}</div>}
         </div>
       </div>
     </Shell>

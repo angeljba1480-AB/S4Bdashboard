@@ -33,6 +33,17 @@ def _days(p: dict, default: int = 7) -> int:
         return default
 
 
+def _odata_literal(value) -> str:
+    """Escape a string for use inside an OData single-quoted literal: '...'."""
+    return str(value or "").replace("'", "''")
+
+
+def _odata_path_literal(value, safe: str = "") -> str:
+    """OData-escape then URL-encode a literal interpolated into a Graph URL path,
+    so characters like ) / # ? or spaces can't break the request."""
+    return quote(_odata_literal(value), safe=safe)
+
+
 def execute(action_id: str, token: str, params: dict) -> str:
     p = params or {}
 
@@ -70,7 +81,7 @@ def execute(action_id: str, token: str, params: dict) -> str:
                          for e in evs) or "Sin eventos próximos."
 
     if action_id == "onedrive.list":
-        q = p.get("query", "").strip().replace("'", "''")  # escape OData single quotes
+        q = _odata_path_literal(p.get("query", "").strip())  # escape + URL-encode OData literal
         if q:
             url = f"{GRAPH}/me/drive/root/search(q='{q}')?$top=25&$select=name,webUrl"
         else:
@@ -78,6 +89,33 @@ def execute(action_id: str, token: str, params: dict) -> str:
         r = httpx.get(url, headers=_auth(token), timeout=TIMEOUT)
         r.raise_for_status()
         return "\n".join(f"- {f.get('name', '')}" for f in r.json().get("value", [])) or "Sin archivos."
+
+    if action_id == "excel.read":
+        item = quote(str(p.get("item_id", "")), safe="")
+        sheet = _odata_path_literal(p.get("worksheet", "Sheet1"))
+        addr = _odata_path_literal(p.get("range", "A1:Z50"), safe=":")
+        url = (f"{GRAPH}/me/drive/items/{item}/workbook/worksheets('{sheet}')"
+               f"/range(address='{addr}')")
+        r = httpx.get(url, headers=_auth(token), timeout=TIMEOUT)
+        r.raise_for_status()
+        rows = r.json().get("values", [])
+        return "\n".join(" | ".join(map(str, row)) for row in rows[:50]) or "(rango vacío)"
+
+    if action_id == "sharepoint.search":
+        q = str(p.get("query", "")).strip()
+        if not q:
+            return "Indica un término de búsqueda."
+        body = {"requests": [{"entityTypes": ["driveItem"],
+                              "query": {"queryString": q}, "from": 0, "size": 25}]}
+        r = httpx.post(f"{GRAPH}/search/query", headers=_auth(token), json=body, timeout=TIMEOUT)
+        r.raise_for_status()
+        out = []
+        for resp in r.json().get("value", []):
+            for cont in resp.get("hitsContainers", []):
+                for hit in cont.get("hits", []):
+                    res = hit.get("resource", {}) or {}
+                    out.append(f"- {res.get('name', '(sin nombre)')}")
+        return "\n".join(out) or "Sin resultados."
 
     # --- Google ---
     if action_id == "gmail.send":
@@ -138,5 +176,13 @@ def execute(action_id: str, token: str, params: dict) -> str:
                        headers=_auth(token), json={"body": {"content": p.get("message", "")}}, timeout=TIMEOUT)
         r.raise_for_status()
         return "Mensaje publicado en Teams"
+
+    if action_id == "excel.append":
+        item = quote(str(p.get("item_id", "")), safe="")
+        table = _odata_path_literal(p.get("table", "Table1"))
+        url = f"{GRAPH}/me/drive/items/{item}/workbook/tables('{table}')/rows/add"
+        r = httpx.post(url, headers=_auth(token), json={"values": _rows(p.get("values"))}, timeout=TIMEOUT)
+        r.raise_for_status()
+        return f"Fila agregada a la tabla {p.get('table','Table1')}"
 
     raise ValueError(f"Acción no ejecutable: {action_id}")
