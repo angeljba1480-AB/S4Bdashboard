@@ -84,8 +84,11 @@ def test_read_action_runs_without_approval(client):
 
 def test_read_actions_in_catalog(client):
     acts = {a["id"]: a for a in client.get("/actions", headers=_auth(client)).json()}
-    for rid in ("gsheets.read", "gcal.list", "mscal.list", "onedrive.list"):
+    for rid in ("gsheets.read", "gcal.list", "mscal.list", "onedrive.list",
+                "excel.read", "sharepoint.search"):
         assert rid in acts and acts[rid]["write"] is False
+    # Excel append es escritura (con aprobación).
+    assert acts["excel.append"]["write"] is True
 
 
 def test_unknown_action_404(client):

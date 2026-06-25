@@ -110,10 +110,12 @@ class Settings(BaseSettings):
     microsoft_client_secret: str = ""
     microsoft_tenant: str = "common"   # 'common' for personal + work accounts
     microsoft_redirect_uri: str = ""   # e.g. https://<api>/oauth/microsoft/callback
-    # Read (summary) + write (action toolkit: send mail, create events, Teams).
+    # Read (summary, OneDrive/Excel, SharePoint) + write (action toolkit: send
+    # mail, create events, Teams, append a Excel).
     microsoft_scopes: str = (
         "offline_access User.Read Mail.Read Mail.Send "
-        "Calendars.ReadWrite ChannelMessage.Send"
+        "Calendars.ReadWrite ChannelMessage.Send "
+        "Files.ReadWrite.All Sites.Read.All"
     )
 
     google_oauth_enabled: bool = False

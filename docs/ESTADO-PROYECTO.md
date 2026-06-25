@@ -59,7 +59,10 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
   **Tope de tokens por consulta** configurable (`MAX_TOKENS_PER_REQUEST`).
 
 ### Toolkit de acciones (Google/Microsoft)
-- ✅ Enviar correo, crear eventos, append a Sheets, publicar en Teams.
+- ✅ Enviar correo, crear eventos, append a Sheets, publicar en Teams,
+  **agregar fila a tabla de Excel**.
+- ✅ **Lecturas**: Google Sheets, Google/Outlook Calendar, OneDrive,
+  **leer rango de Excel**, **buscar en SharePoint**.
 - ✅ **Aprobación humana** para escrituras + **“Permitir siempre”** (revocable).
 
 ### Gobernanza y visibilidad
@@ -107,10 +110,11 @@ Para poder decir *"¿recuerdas el trabajo C?"* y que el sistema recupere lo hech
 - ✅ **Revisión de seguridad** del código nuevo + fixes (authz global solo super
   admin, sanitización de queries Drive/OneDrive, denylist DML/CTE + esquemas DSN,
   escapado de URLs en acciones).
+- ✅ **Excel (Graph workbook)** lectura de rango + agregar fila a tabla; **SharePoint
+  search** (scopes `Files.ReadWrite.All` + `Sites.Read.All`).
 
 ### Otras ideas (candidatas)
 - **SFTP/CSV** para sistemas legados (requiere `paramiko`).
-- Excel (Graph workbook) lectura/escritura; SharePoint search.
 - Centrar integraciones a medida en **n8n** (catálogo de recetas: DB, SOAP, apps propias).
 - Verificación del primer **modelo premium real** en producción.
 

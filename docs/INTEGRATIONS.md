@@ -20,8 +20,10 @@ payload a ese endpoint. Botón "Probar" para validar.
 
 ## 3) Toolkit de acciones — Google Workspace / Microsoft 365
 En *Acciones* la plataforma **ejecuta** tareas en tus herramientas (enviar correo,
-crear eventos, append a Google Sheets, publicar en Teams) usando el **OAuth del
-usuario**.
+crear eventos, append a Google Sheets / tabla de Excel, publicar en Teams) usando
+el **OAuth del usuario**.
+- **Lecturas** (sin aprobación): Google Sheets, Google/Outlook Calendar, OneDrive,
+  leer rango de Excel, buscar en SharePoint.
 - Las acciones de **escritura** requieren **aprobación humana**; con **“Permitir
   siempre”** se auto-aprueban a futuro (revocable).
 - Endpoints: `GET /actions`, `POST /actions/run`, `GET /actions/requests`,
