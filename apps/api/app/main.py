@@ -19,6 +19,7 @@ from .routers import (
     chat,
     company,
     dashboards,
+    datasources,
     documents,
     drive,
     export,
@@ -104,6 +105,7 @@ app.include_router(drive.router)
 app.include_router(notebooks.router)
 app.include_router(actions.router)
 app.include_router(memory.router)
+app.include_router(datasources.router)
 
 
 @app.get("/health", tags=["meta"])
