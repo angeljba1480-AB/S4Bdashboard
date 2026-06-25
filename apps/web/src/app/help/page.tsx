@@ -86,9 +86,12 @@ const GUIDES: Guide[] = [
     steps: [
       "Admin → Modelos externos: configura el proveedor Abierto (NaN) y/o Premium (Base URL + modelo + API key).",
       "Pulsa Probar conexión para verificar que el modelo responde (latencia + muestra, o el error).",
-      "Cascada: el modelo barato redacta y el premium refina las tareas avanzadas (con aprobación para contenido sensible).",
+      "Enrutamiento NaN-primero: los datos NO sensibles siempre empiezan con NaN (open). El premium NO es la ruta base.",
+      "Cascada (premium a demanda): se escala a premium solo si activas “Máxima precisión” o si la respuesta de NaN es insuficiente. Contenido sensible requiere tu aprobación.",
+      "Si NO hay premium configurado: todo se resuelve con NaN (no se promete premium). Si tampoco hay NaN, responde en modo demostración (mock) e indica que configures un proveedor real.",
       "Eficiencia (Admin → Eficiencia de tokens): condensa contexto grande antes de premium, pon un tope de gasto y activa Reranking RAG para más precisión.",
     ],
+    note: "Datos sensibles (PII/confidencial/restringido) nunca salen a NaN/premium: van a VPC o local según la política.",
   },
   {
     id: "imagenes",
