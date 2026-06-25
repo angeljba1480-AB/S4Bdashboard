@@ -319,6 +319,18 @@ def approve_run(
         reason=f"aprobado y ejecutado '{recipe['name']}' (run {run.id})",
     ))
     session.commit()
+
+    # Auto-capture the finished work into memory so it can be recalled later.
+    try:
+        from .memory import capture as _mem_capture
+        body = result.get("documento") or str(result.get("output") or "")
+        if body:
+            _mem_capture(session, tenant.id, user.id,
+                         title=f"{recipe['name']}: {inputs.get('cliente') or inputs.get('tema') or ''}".strip(": "),
+                         content=body, source="recipe", source_id=run.id,
+                         tags=[recipe.get("category", ""), recipe["id"]], area=str(inputs.get("area", "")))
+    except Exception:
+        pass
     session.refresh(run)
     return _run_out(run, recipe, [_conn_out(s, c) for s, c in conns])
 

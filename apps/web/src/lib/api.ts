@@ -2,6 +2,7 @@
 import type {
   ActionRequestItem,
   Agent,
+  MemoryItem,
   AppProject,
   AuditEvent,
   ChatResponse,
@@ -310,6 +311,18 @@ export const api = {
       `/drive/files${query ? `?query=${encodeURIComponent(query)}` : ""}`),
   driveImport: (body: { file_id: string; name: string; mime_type: string; area?: string; category?: string }) =>
     request<{ id: string; filename: string }>("/drive/import", { method: "POST", body: JSON.stringify(body) }),
+  // Memory + tags
+  memory: (params?: { q?: string; tag?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.q) qs.set("q", params.q);
+    if (params?.tag) qs.set("tag", params.tag);
+    const s = qs.toString();
+    return request<MemoryItem[]>(`/memory${s ? `?${s}` : ""}`);
+  },
+  memoryTags: () => request<string[]>("/memory/tags"),
+  createMemory: (body: { title: string; content: string; tags?: string[]; source?: string; source_id?: string; area?: string }) =>
+    request<MemoryItem>("/memory", { method: "POST", body: JSON.stringify(body) }),
+  deleteMemory: (id: string) => request<{ ok: boolean }>(`/memory/${id}`, { method: "DELETE" }),
   // Google/Microsoft action toolkit
   actions: () => request<{ id: string; provider: string; label: string; write: boolean; params: string[]; connected: boolean; granted: boolean }[]>("/actions"),
   runAction: (action: string, params: Record<string, string>) =>
@@ -355,6 +368,9 @@ export const api = {
     conversation_id?: string;
     document_ids?: string[];
     use_rag?: boolean;
+    use_memory?: boolean;
+    precision?: boolean;
+    approve_external?: boolean;
   }) => request<ChatResponse>("/chat", { method: "POST", body: JSON.stringify(body) }),
   previewRoute: (body: { agent_id: string; prompt: string; document_ids?: string[]; use_rag?: boolean }) =>
     request<{

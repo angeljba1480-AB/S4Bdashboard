@@ -23,6 +23,7 @@ from .routers import (
     drive,
     export,
     flowcharts,
+    memory,
     notebooks,
     integrations,
     oauth,
@@ -100,6 +101,7 @@ app.include_router(flowcharts.router)
 app.include_router(drive.router)
 app.include_router(notebooks.router)
 app.include_router(actions.router)
+app.include_router(memory.router)
 
 
 @app.get("/health", tags=["meta"])

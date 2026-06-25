@@ -5,6 +5,7 @@ import type { Me } from "@shared/types";
 import {
   Activity,
   Bot,
+  Brain,
   Building2,
   FileText,
   GitBranch,
@@ -52,6 +53,7 @@ const NAV = [
       { href: "/documents", label: "Documentos", icon: FileText },
       { href: "/chat", label: "Chat con fuentes", icon: MessageSquare },
       { href: "/notebooks", label: "Notebooks", icon: NotebookPen },
+      { href: "/memory", label: "Memoria", icon: Brain },
       { href: "/workflows", label: "Workflows", icon: Workflow },
     ],
   },

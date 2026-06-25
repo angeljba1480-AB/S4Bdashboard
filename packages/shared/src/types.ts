@@ -44,6 +44,17 @@ export interface DocumentItem {
   created_at: string;
 }
 
+export interface MemoryItem {
+  id: string;
+  title: string;
+  content: string;
+  source: string;
+  source_id: string;
+  tags: string[];
+  area: string;
+  created_at: string;
+}
+
 export interface ActionRequestItem {
   id: string;
   action: string;
