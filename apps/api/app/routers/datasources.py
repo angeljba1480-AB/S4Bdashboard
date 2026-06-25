@@ -230,6 +230,25 @@ def import_csv(
         rows=len(rows), source_label=f"CSV '{name}'")
 
 
+@router.get("/{ds_id}/reveal")
+def reveal_source(
+    ds_id: str,
+    user: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Revela el DSN (con credenciales) configurado — para el 'ojito' de info
+    sensible. Solo ADMIN/DEVOPS y queda auditado."""
+    d = _owned(session, tenant, ds_id)
+    dsn = decrypt(d.dsn_enc, tenant.kms_key_id) if d.dsn_enc else ""
+    session.add(AuditEvent(
+        tenant_id=tenant.id, user_id=user.id, event_type="reveal", object_type="datasource",
+        object_id=d.id, risk_level="med", reason=f"reveló el DSN de la fuente '{d.name}'",
+    ))
+    session.commit()
+    return {"dsn": dsn}
+
+
 @router.delete("/{ds_id}")
 def delete_source(
     ds_id: str,

@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 
 from ..auth import get_current_tenant, require_roles
 from ..db import get_session
-from ..models import Connector, Role, Tenant, User, WebhookEndpoint
+from ..models import AuditEvent, Connector, Role, Tenant, User, WebhookEndpoint
 from ..security.crypto import decrypt, encrypt
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
@@ -56,9 +56,19 @@ class ConnectorIn(BaseModel):
     token: str = ""
 
 
+def _example_for(kind: str) -> dict:
+    """A ready-made example (base_url + auth hint + payload) for this kind."""
+    for t in CONNECTOR_TEMPLATES:
+        if t["kind"] == kind:
+            return {"base_url": t["base_url"], "auth_header": t["auth_header"],
+                    "auth_hint": t["auth_hint"], "payload_example": t["payload_example"]}
+    return {}
+
+
 def _out(c: Connector) -> dict:
     return {"id": c.id, "kind": c.kind, "name": c.name, "base_url": c.base_url,
-            "auth_header": c.auth_header, "has_token": bool(c.token_enc), "enabled": c.enabled}
+            "auth_header": c.auth_header, "has_token": bool(c.token_enc), "enabled": c.enabled,
+            "example": _example_for(c.kind)}
 
 
 def send_to_connector(session: Session, tenant: Tenant, connector_id: str, payload: dict) -> tuple[str, str]:
@@ -119,6 +129,27 @@ def test_connector(
 ) -> dict:
     status, detail = send_to_connector(session, tenant, connector_id, {"test": True, "from": "MaestroAI"})
     return {"status": status, "detail": detail}
+
+
+@router.get("/connectors/{connector_id}/reveal")
+def reveal_connector(
+    connector_id: str,
+    user: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Revela el secreto (token) configurado — para el 'ojito' de info sensible.
+    Solo ADMIN/DEVOPS y queda auditado."""
+    c = session.get(Connector, connector_id)
+    if not c or c.tenant_id != tenant.id:
+        raise HTTPException(status_code=404, detail="Conector no encontrado")
+    token = decrypt(c.token_enc, tenant.id) if c.token_enc else ""
+    session.add(AuditEvent(
+        tenant_id=tenant.id, user_id=user.id, event_type="reveal", object_type="connector",
+        object_id=c.id, risk_level="med", reason=f"reveló el secreto del conector '{c.name}'",
+    ))
+    session.commit()
+    return {"auth_header": c.auth_header, "token": token}
 
 
 @router.delete("/connectors/{connector_id}")

@@ -30,6 +30,12 @@ el **OAuth del usuario**.
   `POST /actions/requests/{id}/approve?always=`, `/reject`, `GET/DELETE /actions/grants`.
 - Setup de permisos/scopes: **[ACCIONES-ESCRITURA-SETUP.md](./ACCIONES-ESCRITURA-SETUP.md)**.
 
+### Detalles y secretos ("ojito")
+Cada conector muestra **qué se configuró** (endpoint, header de auth, ejemplo de
+payload por tipo) al abrir su detalle (ícono ℹ️). El **token** y el **DSN** de la
+fuente de datos se pueden **revelar con un ojo** (👁️) — solo ADMIN/DEVOPS y queda
+**auditado** (`GET /integrations/connectors/{id}/reveal`, `GET /datasources/{id}/reveal`).
+
 ## 4) Google Drive como contexto
 *Documentos → Importar de Google Drive*: lista y descarga archivos (Docs/Sheets/
 Slides/texto) y los mete al pipeline de clasificación + índice RAG. Requiere el
@@ -42,6 +48,14 @@ scope `drive.readonly` (reconectar Google). Endpoints: `GET /drive/files`,
 cualquier salida. Soporta **cascada** (borrador con modelo abierto → refinar con
 premium, con aprobación para contenido sensible). Usa **Probar conexión** para
 verificar que el proveedor responde (llamada real mínima → latencia + muestra, o error).
+
+### Generación de imágenes (texto → imagen)
+*Generar imágenes*: FLUX vía **NaN** (proveedor **abierto**, compatible OpenAI
+`/images/generations`). El prompt se **redacta de PII** antes de salir; eliges
+relación de aspecto (1:1/16:9/9:16) y variantes (1–4). Cada imagen se guarda como
+copia del tenant (galería por área, auditada). Endpoints: `GET /images/config`,
+`POST /images/generate`, `GET /images`, `GET /images/{id}/data`, `DELETE /images/{id}`.
+Requiere configurar el proveedor abierto (NaN) en *Admin → Modelos externos*.
 
 ## 6) Fuentes de datos legadas → RAG (`/datasources`)
 *Integraciones → Fuentes de datos*. Dos vías para sistemas sin API:

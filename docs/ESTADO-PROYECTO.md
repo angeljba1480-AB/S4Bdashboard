@@ -47,6 +47,11 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
 - ✅ **Notebooks** (estilo NotebookLM): fuentes + preguntas citadas + artefactos
   (resumen, FAQ, guía, briefing, cronología).
 
+### Imágenes (texto → imagen)
+- ✅ **Generar imágenes** con FLUX vía NaN (proveedor abierto, compatible OpenAI).
+  Prompt con redacción de PII, relación de aspecto y variantes. **Galería por área**,
+  copia almacenada en la plataforma y auditada.
+
 ### Modelos
 - ✅ **Router de privacidad** con redacción de PII y fallback.
 - ✅ **Modelos externos** (GPT/Claude/Llama/DeepSeek) configurables en la UI
