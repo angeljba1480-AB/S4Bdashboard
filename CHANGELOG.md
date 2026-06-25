@@ -3,7 +3,8 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
-- _En curso._
+- CI: primera corrida en `dev`/`qa` para registrar los checks (`API · pytest`,
+  `Web · build`) y validar la compuerta antes de producción.
 
 ## 2026-06-25
 
