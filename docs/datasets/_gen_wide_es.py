@@ -237,7 +237,14 @@ EXTRA = [
    [("niño / joven", ["VE"])]),
 ]
 
-DATA = BASE + EXTRA
+import json as _json
+_WF=[]
+_wf_path=os.path.join(OUT,"workflow_words.json")
+if os.path.exists(_wf_path):
+    for _w in _json.load(open(_wf_path,encoding="utf-8"))["words"]:
+        _vs=[(v["sig"],[c.strip() for c in v["paises"].split(",") if c.strip()]) for v in _w.get("variantes",[])]
+        _WF.append((_w["palabra"],_w.get("emoji",""),_w.get("categoria","Varios"),_w.get("general",""),_vs))
+DATA = BASE + EXTRA + _WF
 # Dedupe por palabra (conserva la última aparición = versión más completa)
 _seen = {}
 for _w in DATA:
