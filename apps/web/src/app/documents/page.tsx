@@ -136,6 +136,7 @@ export default function DocumentsPage() {
       <PageHeader
         title="Documentos"
         subtitle="Contenedor de documentos por área → categoría → tratamiento (público/privado) → índice RAG cifrado."
+        help="documentos"
       />
       <div className="grid grid-cols-1 gap-6 p-8 lg:grid-cols-3">
         {/* Upload */}

@@ -85,7 +85,7 @@ export default function NotebooksPage() {
 
   return (
     <Shell>
-      <PageHeader title="Notebooks" subtitle="Tu NotebookLM privado: elige fuentes y pregunta o genera artefactos, solo sobre esos documentos." />
+      <PageHeader title="Notebooks" subtitle="Tu NotebookLM privado: elige fuentes y pregunta o genera artefactos, solo sobre esos documentos." help="notebooks" />
       <div className="grid grid-cols-1 gap-6 p-8 lg:grid-cols-4">
         {/* Notebook list */}
         <aside className="space-y-2 lg:col-span-1">

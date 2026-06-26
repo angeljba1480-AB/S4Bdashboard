@@ -154,7 +154,7 @@ export default function IntegrationsPage() {
 
   return (
     <Shell>
-      <PageHeader title="Integraciones" subtitle="Conecta MaestroAI con tus sistemas: CRM, ERP, delivery y más." />
+      <PageHeader title="Integraciones" subtitle="Conecta MaestroAI con tus sistemas: CRM, ERP, delivery y más." help={["correo", "conectores", "legados", "webhooks", "n8n"]} />
       <div className="space-y-6 p-8">
         <a href="/help" className="flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 hover:bg-violet-100">
           <HelpCircle className="h-4 w-4" />
