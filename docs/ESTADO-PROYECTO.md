@@ -80,6 +80,9 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
 ### Ayuda
 - ✅ **Ayuda in-app en español**: guías paso a paso (n8n, correo, RAG, acciones,
   conectores, BD/CSV, modelos/rerank, imágenes, webhooks) con buscador.
+- ✅ **Ayuda contextual por sección**: botón *? Ayuda* en cada encabezado abre un
+  **popup** con la guía relevante (no solo el menú).
+- ✅ **Documentación** en Word y PowerPoint en `docs/generados/`.
 
 ### Gobernanza y visibilidad
 - ✅ **Super admin** (ve todos los tenants) + **permisos por área y licencia**.

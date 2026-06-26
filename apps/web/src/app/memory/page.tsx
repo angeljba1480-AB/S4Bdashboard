@@ -39,7 +39,7 @@ export default function MemoryPage() {
 
   return (
     <Shell>
-      <PageHeader title="Memoria" subtitle="Tus trabajos guardados. Búscalos, etiquétalos y recupéralos — '¿recuerdas el trabajo C?'." />
+      <PageHeader title="Memoria" subtitle="Tus trabajos guardados. Búscalos, etiquétalos y recupéralos — '¿recuerdas el trabajo C?'." help="memoria" />
       <div className="grid grid-cols-1 gap-6 p-8 lg:grid-cols-3">
         {/* Add */}
         <div className="lg:col-span-1">

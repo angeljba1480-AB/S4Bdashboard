@@ -3,6 +3,11 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Ayuda contextual (popup por sección)**: cada sección tiene un botón **? Ayuda** en
+  el encabezado que abre un **popup** con la guía relevante (pasos + notas) y enlace a la
+  Ayuda completa. Contenido compartido en `lib/help.ts`.
+- **Documentación generada**: `docs/generados/MaestroAI-Documentacion.docx` (documento
+  completo) y `MaestroAI-Presentacion.pptx` (presentación ejecutiva).
 - **Enrutamiento NaN-primero**: los datos no sensibles **siempre empiezan con NaN
   (open)**; premium dejó de ser ruta base y ahora es **escalada a demanda** (toggle
   «máxima precisión») o automática **si la respuesta es insuficiente**. El banner del

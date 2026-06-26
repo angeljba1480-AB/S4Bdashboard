@@ -3,6 +3,7 @@
 import { CostMeter } from "@/components/CostMeter";
 import { PrivacyBadge, SensitivityBadge } from "@/components/PrivacyBadge";
 import { Shell } from "@/components/Shell";
+import { HelpButton } from "@/components/HelpButton";
 import { SourceCitation } from "@/components/SourceCitation";
 import { api } from "@/lib/api";
 import type { Agent, ChatResponse, DocumentItem } from "@shared/types";
@@ -124,22 +125,25 @@ export default function ChatPage() {
                 </option>
               ))}
             </select>
-            {convId && (
-              <div className="ml-auto flex gap-2">
-                <button
-                  onClick={() => api.exportConversation(convId, "pdf")}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
-                >
-                  Exportar PDF
-                </button>
-                <button
-                  onClick={() => api.exportConversation(convId, "md")}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
-                >
-                  Markdown
-                </button>
-              </div>
-            )}
+            <div className="ml-auto flex items-center gap-2">
+              <HelpButton topics={["chat", "documentos", "modelos"]} />
+              {convId && (
+                <>
+                  <button
+                    onClick={() => api.exportConversation(convId, "pdf")}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                  >
+                    Exportar PDF
+                  </button>
+                  <button
+                    onClick={() => api.exportConversation(convId, "md")}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                  >
+                    Markdown
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 space-y-4 overflow-auto p-6">

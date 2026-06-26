@@ -70,7 +70,7 @@ export default function AutomationsPage() {
 
   return (
     <Shell>
-      <PageHeader title="Automatizaciones" subtitle="Conecta disparadores con acciones: resúmenes, cobranza, alertas, reportes…" />
+      <PageHeader title="Automatizaciones" subtitle="Conecta disparadores con acciones: resúmenes, cobranza, alertas, reportes…" help="n8n" />
       <div className="space-y-6 p-8">
         {msg && <div className="rounded-lg bg-slate-100 px-4 py-2 text-sm text-slate-600">{msg}</div>}
 

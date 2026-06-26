@@ -45,7 +45,7 @@ export default function GeneratePage() {
 
   return (
     <Shell>
-      <PageHeader title="Generar imágenes" subtitle="Texto a imagen (compatible OpenAI). El prompt se redacta de PII antes de salir; las imágenes quedan en tu galería por área y auditadas." />
+      <PageHeader title="Generar imágenes" subtitle="Texto a imagen (compatible OpenAI). El prompt se redacta de PII antes de salir; las imágenes quedan en tu galería por área y auditadas." help="imagenes" />
 
       {!configured && (
         <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
