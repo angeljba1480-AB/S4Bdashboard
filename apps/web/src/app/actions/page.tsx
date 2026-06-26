@@ -67,7 +67,7 @@ export default function ActionsPage() {
 
   return (
     <Shell>
-      <PageHeader title="Acciones" subtitle="Toolkit Google Workspace / Microsoft 365. Las acciones que modifican datos requieren tu aprobación." />
+      <PageHeader title="Acciones" subtitle="Toolkit Google Workspace / Microsoft 365. Las acciones que modifican datos requieren tu aprobación." help="acciones" />
       <div className="grid grid-cols-1 gap-6 p-8 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Group title="Google Workspace" items={google} />

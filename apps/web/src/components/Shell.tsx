@@ -1,6 +1,7 @@
 "use client";
 
 import { api, clearToken } from "@/lib/api";
+import { HelpButton } from "@/components/HelpButton";
 import type { Me } from "@shared/types";
 import {
   Activity,
@@ -155,10 +156,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+export function PageHeader({ title, subtitle, help }: { title: string; subtitle?: string; help?: string | string[] }) {
+  const topics = help ? (Array.isArray(help) ? help : [help]) : [];
   return (
     <div className="border-b border-slate-200 bg-white px-8 py-5">
-      <h1 className="text-xl font-bold text-slate-900">{title}</h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-xl font-bold text-slate-900">{title}</h1>
+        {topics.length > 0 && <HelpButton topics={topics} />}
+      </div>
       {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
     </div>
   );

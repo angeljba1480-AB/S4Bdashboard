@@ -192,7 +192,7 @@ export default function AdminPage() {
 
   return (
     <Shell>
-      <PageHeader title="Administración" subtitle="Usuarios, roles, modelos habilitados y rutas de privacidad." />
+      <PageHeader title="Administración" subtitle="Usuarios, roles, modelos habilitados y rutas de privacidad." help="modelos" />
       <div className="space-y-6 p-8">
         {error && <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
 
