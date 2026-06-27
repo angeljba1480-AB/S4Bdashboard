@@ -35,6 +35,8 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
 - ✅ **Tratamiento** (público/interno/confidencial/restringido) auto-detectado y editable.
 - ✅ Borrar y **re-etiquetar**; índice RAG cifrado.
 - ✅ **Google Drive** como contexto (importar archivos al RAG).
+- ✅ **Ingesta**: extrae texto de **PDF/DOCX** (OCR opcional) y **antivirus** en la
+  subida (firma EICAR + ClamAV opcional + tope de tamaño; rechaza y audita).
 
 ### Casos de uso (recetas)
 - ✅ Paso universal **objetivo / notas / formato** de salida.
