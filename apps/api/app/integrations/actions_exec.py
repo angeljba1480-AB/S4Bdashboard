@@ -5,6 +5,7 @@ string; raises on failure so the caller can mark the request failed.
 from __future__ import annotations
 
 import base64
+import json
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from urllib.parse import quote
@@ -42,6 +43,28 @@ def _odata_path_literal(value, safe: str = "") -> str:
     """OData-escape then URL-encode a literal interpolated into a Graph URL path,
     so characters like ) / # ? or spaces can't break the request."""
     return quote(_odata_literal(value), safe=safe)
+
+
+def _drive_multipart_upload(token: str, name: str, content: str, target_mime: str | None) -> str:
+    """Sube `content` a Google Drive vía multipart/related. Si target_mime es un tipo
+    de Google (p. ej. documento), Drive convierte el texto a ese formato."""
+    boundary = "maestroai-boundary-7f3a"
+    meta: dict = {"name": name or "documento"}
+    if target_mime:
+        meta["mimeType"] = target_mime
+    body = (
+        f"--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"
+        f"{json.dumps(meta)}\r\n"
+        f"--{boundary}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n"
+        f"{content or ''}\r\n"
+        f"--{boundary}--"
+    ).encode("utf-8")
+    r = httpx.post(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name",
+        headers={**_auth(token), "Content-Type": f"multipart/related; boundary={boundary}"},
+        content=body, timeout=TIMEOUT)
+    r.raise_for_status()
+    return r.json().get("name", name)
 
 
 def execute(action_id: str, token: str, params: dict) -> str:
@@ -149,6 +172,26 @@ def execute(action_id: str, token: str, params: dict) -> str:
         r.raise_for_status()
         return f"Fila agregada a la hoja {sid}"
 
+    if action_id == "gmail.draft":
+        msg = EmailMessage()
+        msg["To"] = p.get("to", "")
+        msg["Subject"] = p.get("subject", "")
+        msg.set_content(p.get("body", ""))
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        r = httpx.post("https://gmail.googleapis.com/gmail/v1/users/me/drafts",
+                       headers=_auth(token), json={"message": {"raw": raw}}, timeout=TIMEOUT)
+        r.raise_for_status()
+        return f"Borrador de correo creado para {p.get('to','')}"
+
+    if action_id == "gdrive.upload":
+        name = _drive_multipart_upload(token, p.get("name", "archivo.txt"), p.get("content", ""), None)
+        return f"Archivo subido a Google Drive: {name}"
+
+    if action_id == "gdocs.create":
+        name = _drive_multipart_upload(token, p.get("title", "Documento"), p.get("content", ""),
+                                       "application/vnd.google-apps.document")
+        return f"Documento de Google Docs creado: {name}"
+
     # --- Microsoft 365 ---
     if action_id == "outlook.send":
         body = {"message": {
@@ -184,5 +227,22 @@ def execute(action_id: str, token: str, params: dict) -> str:
         r = httpx.post(url, headers=_auth(token), json={"values": _rows(p.get("values"))}, timeout=TIMEOUT)
         r.raise_for_status()
         return f"Fila agregada a la tabla {p.get('table','Table1')}"
+
+    if action_id == "outlook.draft":
+        body = {"subject": p.get("subject", ""),
+                "body": {"contentType": "Text", "content": p.get("body", "")},
+                "toRecipients": [{"emailAddress": {"address": a.strip()}}
+                                 for a in str(p.get("to", "")).split(",") if a.strip()]}
+        r = httpx.post(f"{GRAPH}/me/messages", headers=_auth(token), json=body, timeout=TIMEOUT)
+        r.raise_for_status()
+        return f"Borrador de correo creado para {p.get('to','')}"
+
+    if action_id == "onedrive.upload":
+        name = _odata_path_literal(p.get("name", "archivo.txt"), safe=".")
+        url = f"{GRAPH}/me/drive/root:/{name}:/content"
+        r = httpx.put(url, headers={**_auth(token), "Content-Type": "text/plain"},
+                      content=(p.get("content", "") or "").encode("utf-8"), timeout=TIMEOUT)
+        r.raise_for_status()
+        return f"Archivo subido a OneDrive: {p.get('name','archivo.txt')}"
 
     raise ValueError(f"Acción no ejecutable: {action_id}")

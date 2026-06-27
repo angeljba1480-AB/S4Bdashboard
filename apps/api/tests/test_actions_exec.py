@@ -81,6 +81,51 @@ def test_excel_append_builds_table_add_url(monkeypatch):
     assert "Ventas" in out
 
 
+def test_gdocs_create_uses_drive_multipart(monkeypatch):
+    captured = {}
+
+    def fake_post(url, **kwargs):
+        captured["url"] = url
+        captured["content"] = kwargs.get("content")
+        captured["ctype"] = (kwargs.get("headers") or {}).get("Content-Type", "")
+        return _Resp({"id": "1", "name": "Acta"})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    out = actions_exec.execute("gdocs.create", "tok", {"title": "Acta", "content": "Hola"})
+    assert "upload/drive/v3/files" in captured["url"]
+    assert "multipart/related" in captured["ctype"]
+    assert b"application/vnd.google-apps.document" in captured["content"]
+    assert "Acta" in out
+
+
+def test_gmail_draft_posts_to_drafts(monkeypatch):
+    captured = {}
+
+    def fake_post(url, **kwargs):
+        captured["url"] = url
+        captured["json"] = kwargs.get("json")
+        return _Resp({"id": "d1"})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    out = actions_exec.execute("gmail.draft", "tok", {"to": "a@b.com", "subject": "Hi", "body": "x"})
+    assert captured["url"].endswith("/drafts") and "message" in captured["json"]
+    assert "borrador" in out.lower()
+
+
+def test_onedrive_upload_puts_content(monkeypatch):
+    captured = {}
+
+    def fake_put(url, **kwargs):
+        captured["url"] = url
+        captured["content"] = kwargs.get("content")
+        return _Resp({})
+
+    monkeypatch.setattr(httpx, "put", fake_put)
+    out = actions_exec.execute("onedrive.upload", "tok", {"name": "nota.txt", "content": "hola"})
+    assert "/me/drive/root:/nota.txt:/content" in captured["url"]
+    assert captured["content"] == b"hola" and "OneDrive" in out
+
+
 def test_unknown_action_raises():
     with pytest.raises(ValueError):
         actions_exec.execute("nope.x", "tok", {})

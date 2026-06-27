@@ -15,6 +15,12 @@ ACTIONS: dict[str, dict] = {
                           "params": ["summary", "start", "end", "location"]},
     "gsheets.append": {"provider": "google", "label": "Agregar fila a Google Sheets", "write": True,
                        "params": ["spreadsheet_id", "range", "values"]},
+    "gmail.draft": {"provider": "google", "label": "Crear borrador de correo (Gmail)", "write": True,
+                    "params": ["to", "subject", "body"]},
+    "gdrive.upload": {"provider": "google", "label": "Subir archivo de texto a Google Drive", "write": True,
+                      "params": ["name", "content"]},
+    "gdocs.create": {"provider": "google", "label": "Crear documento (Google Docs)", "write": True,
+                     "params": ["title", "content"]},
     # --- Google (lectura) ---
     "gsheets.read": {"provider": "google", "label": "Leer Google Sheets", "write": False,
                      "params": ["spreadsheet_id", "range"]},
@@ -29,6 +35,10 @@ ACTIONS: dict[str, dict] = {
                    "params": ["team_id", "channel_id", "message"]},
     "excel.append": {"provider": "microsoft", "label": "Agregar fila a tabla de Excel", "write": True,
                      "params": ["item_id", "table", "values"]},
+    "outlook.draft": {"provider": "microsoft", "label": "Crear borrador de correo (Outlook)", "write": True,
+                      "params": ["to", "subject", "body"]},
+    "onedrive.upload": {"provider": "microsoft", "label": "Subir archivo de texto a OneDrive", "write": True,
+                        "params": ["name", "content"]},
     # --- Microsoft 365 (lectura) ---
     "mscal.list": {"provider": "microsoft", "label": "Próximos eventos (Outlook Calendar)", "write": False,
                    "params": ["days"]},

@@ -125,7 +125,7 @@ Para activar lo que depende de credenciales/permisos:
 
 ## 4. Calidad
 
-- ✅ **241 pruebas** automatizadas en verde (API).
+- ✅ **245 pruebas** automatizadas en verde (API).
 - Migraciones aditivas idempotentes (sin pérdida de datos).
 - Credenciales cifradas (AES-256-GCM); todo auditado.
 
@@ -135,10 +135,12 @@ Para activar lo que depende de credenciales/permisos:
 
 ### Candidatas (producto)
 - [ ] **Catálogos de configuración empresarial** — *diferido*, a la espera de detalles.
-- [ ] **Perfil de trainer GPU/CUDA** para fine-tuning (NaN no entrena; sería nube/servidor).
-- [ ] Más acciones en el toolkit (subir a Drive, Google Docs, Slack), alertas programadas.
+- [ ] Activar **AI Actions (NLA)** de Zapier (requiere registro + API key — depende del cliente).
+- [ ] Alertas/notificaciones programadas.
 
 ### Hecho recientemente (en prod)
+- ✅ **Más acciones del toolkit** (Gmail/Outlook borrador, subir a Drive/OneDrive, Google Doc).
+- ✅ **Perfil de trainer GPU/CUDA** para fine-tuning (alternativa al lab MLX).
 - ✅ **Conector SFTP** (sistemas legados) → import de archivos al RAG.
 - ✅ **Recetas de automatización a la medida** (n8n **y Zapier**, DB/SOAP/apps) +
   integración con el agente. AI Actions (NLA) de Zapier preparado.
