@@ -130,6 +130,20 @@ export const GUIDES: Guide[] = [
     ],
   },
   {
+    id: "finetune",
+    title: "Fine-tuning ligero (LoRA)",
+    tag: "Modelos",
+    steps: [
+      "Sirve para enseñar TONO, FORMATO y tareas repetitivas — NO conocimiento (eso va por RAG).",
+      "1) Crea un dataset y agrega ejemplos (prompt → respuesta ideal), o impórtalos desde Memoria.",
+      "2) Cada ejemplo se anonimiza (la PII se redacta) antes de guardarse.",
+      "3) Revisa (gate): valida mínimo de ejemplos, sin PII residual y sin inyecciones.",
+      "4) Entrena: se exporta a JSONL y se manda a tu trainer con GPU (o queda 'simulado' si no hay backend).",
+      "5) El adapter resultante se sirve por Ollama/vLLM como ruta local/VPC (privado).",
+    ],
+    note: "Requiere un trainer con GPU (FINETUNE_TRAINER_URL). Sin él, los jobs quedan en modo laboratorio.",
+  },
+  {
     id: "notebooks",
     title: "Notebooks (estilo NotebookLM)",
     tag: "Notebooks",
