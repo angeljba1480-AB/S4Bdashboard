@@ -15,7 +15,12 @@ export default function AdminPage() {
   const [eff, setEff] = useState<Awaited<ReturnType<typeof api.adminEfficiency>> | null>(null);
   const [provDraft, setProvDraft] = useState<Record<string, { enabled: boolean; base_url: string; model: string; api_key: string }>>({});
   const [provTest, setProvTest] = useState<Record<string, string>>({});
-  const PROVIDER_LABELS: Record<string, string> = { premium: "Premium (GPT / Claude / Gemini)", open: "Abierto (Llama / OpenRouter / vLLM)" };
+  const PROVIDER_LABELS: Record<string, string> = {
+    local: "Local on-prem (Ollama)",
+    vpc: "VPC privada (vLLM / TGI)",
+    premium: "Premium (GPT / Claude / Gemini)",
+    open: "Abierto (NaN / Llama / OpenRouter)",
+  };
   const [security, setSecurity] = useState<Security | null>(null);
   const [n8n, setN8n] = useState<N8n | null>(null);
   const [n8nUrl, setN8nUrl] = useState("");
@@ -192,7 +197,7 @@ export default function AdminPage() {
 
   return (
     <Shell>
-      <PageHeader title="Administración" subtitle="Usuarios, roles, modelos habilitados y rutas de privacidad." help="modelos" />
+      <PageHeader title="Administración" subtitle="Usuarios, roles, modelos habilitados y rutas de privacidad." help={["modelos", "onprem"]} />
       <div className="space-y-6 p-8">
         {error && <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
 
@@ -582,10 +587,12 @@ export default function AdminPage() {
 
         {providers.length > 0 && (
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="mb-1 font-semibold text-slate-800">Modelos externos (GPT / Claude / Llama)</h2>
+            <h2 className="mb-1 font-semibold text-slate-800">Modelos y conectores (on-prem + externos)</h2>
             <p className="mb-4 text-xs text-slate-400">
-              Conecta proveedores abiertos/premium. El enrutador de privacidad <b>redacta PII y minimiza</b> antes de
-              cualquier salida; los datos restringidos nunca salen. La llave se guarda cifrada.
+              Conecta modelos <b>on-prem</b> (Ollama local, VPC) y externos (NaN/premium). El enrutador de privacidad
+              <b> redacta PII y minimiza</b> antes de cualquier salida; lo restringido se queda local. La llave se cifra.
+              <br />Para on-prem desde la nube, expón tu lab con un <b>túnel</b> (Cloudflare/ngrok) y pon esa URL pública
+              (ej. <code>https://&lt;túnel&gt;/v1</code>). Modelos de tu lab: <code>llama3.2:3b</code>, <code>deepseek-r1:8b</code>.
             </p>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {providers.map((p) => {
@@ -594,7 +601,10 @@ export default function AdminPage() {
                 return (
                   <div key={p.route} className="rounded-xl border border-slate-200 p-4">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-sm font-semibold text-slate-800">{PROVIDER_LABELS[p.route] || p.route}</span>
+                      <span className="text-sm font-semibold text-slate-800">
+                        {PROVIDER_LABELS[p.route] || p.route}
+                        {p.onprem && <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">on-prem</span>}
+                      </span>
                       <label className="flex items-center gap-1.5 text-xs text-slate-600">
                         <input type="checkbox" checked={d.enabled} onChange={(e) => upd({ enabled: e.target.checked })} /> Activo
                       </label>
