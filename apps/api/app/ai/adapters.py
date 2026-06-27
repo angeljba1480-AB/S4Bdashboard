@@ -138,6 +138,19 @@ class OpenAICompatAdapter(ModelAdapter):
 _RUNTIME: dict[str, dict] = {}
 
 
+def open_provider_config() -> dict | None:
+    """Resuelve el proveedor abierto (NaN): override del admin (UI) → env. Compartido
+    por imágenes, embeddings y voz para que configurar NaN en la UI baste para todo."""
+    ov = _RUNTIME.get(ModelRoute.OPEN.value)
+    if ov and ov.get("enabled") and ov.get("base_url"):
+        return {"base_url": ov["base_url"], "api_key": ov.get("api_key", ""),
+                "model": ov.get("model") or ""}
+    if settings.open_enabled and settings.open_base_url:
+        return {"base_url": settings.open_base_url, "api_key": settings.open_api_key,
+                "model": settings.open_model}
+    return None
+
+
 def set_runtime_override(route_value: str, cfg: dict | None) -> None:
     if cfg is None:
         _RUNTIME.pop(route_value, None)

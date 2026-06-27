@@ -81,8 +81,38 @@ def generate(prompt: str, *, n: int = 1, size: str = "1024x1024",
         timeout=TIMEOUT,
     )
     resp.raise_for_status()
+    return _parse_data(resp.json(), store)
+
+
+def edit(prompt: str, images: list[tuple[str, bytes]], *, n: int = 1, size: str = "1024x1024",
+         model: str | None = None, store: bool = True) -> list[GenImage]:  # pragma: no cover - network
+    """Image-to-image: genera a partir de hasta 4 imágenes de referencia
+    (`/images/edits`, multipart). PII del prompt redactada antes de enviar."""
+    import httpx
+
+    from ..security.dlp import redact
+
+    prov = _open_provider()
+    if not prov:
+        raise RuntimeError("No hay proveedor abierto (NaN) configurado para editar imágenes.")
+    use_model = (model or settings.image_model or DEFAULT_IMAGE_MODEL)
+    files = [("image[]", (name or "ref.png", data)) for name, data in images[:4]]
+    if not files:
+        raise RuntimeError("Sube al menos una imagen de referencia.")
+    resp = httpx.post(
+        f"{prov['base_url'].rstrip('/')}/images/edits",
+        headers={"Authorization": f"Bearer {prov['api_key']}"},
+        data={"model": use_model, "prompt": redact(prompt), "n": str(max(1, min(n, 4))), "size": size},
+        files=files,
+        timeout=TIMEOUT,
+    )
+    resp.raise_for_status()
+    return _parse_data(resp.json(), store)
+
+
+def _parse_data(payload: dict, store: bool) -> list[GenImage]:
     out: list[GenImage] = []
-    for item in resp.json().get("data", []):
+    for item in payload.get("data", []):
         b64 = item.get("b64_json") or ""
         url = item.get("url") or ""
         if store and not b64 and url:

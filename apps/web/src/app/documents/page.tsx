@@ -3,7 +3,7 @@
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
 import type { DocumentCategory, DocumentItem } from "@shared/types";
-import { FolderOpen, HardDrive, Trash2, Upload } from "lucide-react";
+import { FolderOpen, HardDrive, RefreshCw, Trash2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const SENS_OPTIONS = [
@@ -36,6 +36,17 @@ export default function DocumentsPage() {
   const [driveFiles, setDriveFiles] = useState<{ id: string; name: string; mime_type: string; is_folder: boolean }[]>([]);
   const [driveMsg, setDriveMsg] = useState("");
   const [driveBusy, setDriveBusy] = useState(false);
+  const [reindexing, setReindexing] = useState(false);
+
+  async function reindex() {
+    if (!window.confirm("Reconstruir los embeddings de todos los documentos? Úsalo tras cambiar el proveedor de embeddings (p. ej. a NaN).")) return;
+    setReindexing(true);
+    try {
+      const r = await api.reindexDocuments();
+      alert(`Re-indexado: ${r.documents} documento(s), ${r.chunks} fragmento(s).`);
+    } catch (e) { alert(e instanceof Error ? e.message : "No se pudo re-indexar"); }
+    finally { setReindexing(false); }
+  }
 
   async function loadDrive() {
     setDriveBusy(true);
@@ -138,7 +149,14 @@ export default function DocumentsPage() {
         subtitle="Contenedor de documentos por área → categoría → tratamiento (público/privado) → índice RAG cifrado."
         help="documentos"
       />
-      <div className="grid grid-cols-1 gap-6 p-8 lg:grid-cols-3">
+      <div className="flex justify-end px-8 pt-4">
+        <button onClick={reindex} disabled={reindexing}
+          className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+          title="Reconstruye los embeddings del RAG (tras cambiar de proveedor)">
+          <RefreshCw className={`h-3.5 w-3.5 ${reindexing ? "animate-spin" : ""}`} /> Re-indexar RAG
+        </button>
+      </div>
+      <div className="grid grid-cols-1 gap-6 px-8 pb-8 lg:grid-cols-3">
         {/* Upload */}
         <div className="lg:col-span-1">
           <form onSubmit={uploadText} className="rounded-2xl border border-slate-200 bg-white p-5">

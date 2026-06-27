@@ -125,7 +125,7 @@ Para activar lo que depende de credenciales/permisos:
 
 ## 4. Calidad
 
-- ✅ **222 pruebas** automatizadas en verde (API).
+- ✅ **232 pruebas** automatizadas en verde (API).
 - Migraciones aditivas idempotentes (sin pérdida de datos).
 - Credenciales cifradas (AES-256-GCM); todo auditado.
 
@@ -133,14 +133,20 @@ Para activar lo que depende de credenciales/permisos:
 
 ## 5. Pendientes / backlog
 
-### 🔜 Próximo sprint: Memoria + Tags (recordar trabajos)
-Para poder decir *"¿recuerdas el trabajo C?"* y que el sistema recupere lo hecho.
-- [ ] **Memoria persistente**: guardar resultados/respuestas (chat, casos, notebooks)
-  como elementos de memoria recuperables.
-- [ ] **Tags** estilo gestor de contenido para organizar y filtrar el trabajo.
-- [ ] **Recall en RAG**: incluir la memoria en la recuperación (responder con base
-  en trabajos previos), respetando permisos por área.
-- [ ] UI: "Mis trabajos / Memoria" con búsqueda por tag y "continuar este trabajo".
+### Candidatas (producto)
+- [ ] **Catálogos de configuración empresarial** — *diferido*, a la espera de detalles.
+- [ ] **SFTP** para sistemas legados (requiere `paramiko`).
+- [ ] **Recetas n8n a medida** (catálogo: DB, SOAP, apps propias del cliente).
+- [ ] **Perfil de trainer GPU/CUDA** para fine-tuning (NaN no entrena; sería nube/servidor).
+- [ ] Más acciones en el toolkit (subir a Drive, Google Docs, Slack), alertas programadas.
+
+### Hecho recientemente (en prod)
+- ✅ **Embeddings con NaN** (`qwen3-embedding`) + re-index del RAG.
+- ✅ **Voz**: TTS (kokoro) + STT (whisper) en el chat.
+- ✅ **Edición de imágenes** (image-to-image, flux-2-klein) + generación (flux-2-klein).
+- ✅ **Agente en el chat** + function-calling nativo (qwen3.6) + dry-run + recetas (playbooks).
+- ✅ **Autochequeo del sistema** (readiness + guía de arreglo).
+- ✅ **Memoria + Tags** (recall en chat, página *Memoria*).
 
 ### Hecho recientemente (trabajo autónomo en `dev`)
 - ✅ **Tope de gasto + eficiencia en la UI** (Admin → Eficiencia de tokens) + ahorro acumulado.
