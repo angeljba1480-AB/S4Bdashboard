@@ -130,6 +130,19 @@ export const GUIDES: Guide[] = [
     ],
   },
   {
+    id: "onprem",
+    title: "Integrar modelos/servicios on-prem (local del cliente)",
+    tag: "Modelos",
+    steps: [
+      "Sirve para que MaestroAI use la infraestructura LOCAL del cliente (Ollama, vLLM, Qdrant, n8n) en vez de la nube.",
+      "MaestroAI en la nube no ve 'localhost': expón el servicio con un túnel (Cloudflare/ngrok) y usa esa URL pública, o despliega MaestroAI on-prem.",
+      "Admin → Modelos y conectores → Local (Ollama): Base URL https://<túnel>/v1 + modelo (ej. llama3.2:3b) → Activo → Probar conexión.",
+      "Lo confidencial/restringido se procesará con tu modelo local y nunca saldrá a la nube.",
+      "Qdrant: VECTOR_STORE=qdrant + QDRANT_URL; n8n: Admin → n8n; trainer LoRA: FINETUNE_TRAINER_URL. Ver docs/ONPREM-LAB.md.",
+    ],
+    note: "Para producción regulada, lo ideal es desplegar MaestroAI dentro de la red del cliente (alcanza los servicios por red interna).",
+  },
+  {
     id: "finetune",
     title: "Fine-tuning ligero (LoRA)",
     tag: "Modelos",

@@ -24,7 +24,8 @@ def anonymize(text: str) -> str:
 
 
 def to_jsonl(examples: list[tuple[str, str]]) -> str:
-    """Serializa los pares (prompt, completion) a JSONL estilo chat (OpenAI)."""
+    """Serializa los pares (prompt, completion) a JSONL estilo chat (compatible con
+    OpenAI y con MLX-LM, que aceptan líneas {"messages": [...]})."""
     lines = []
     for prompt, completion in examples:
         lines.append(json.dumps({"messages": [
@@ -32,6 +33,38 @@ def to_jsonl(examples: list[tuple[str, str]]) -> str:
             {"role": "assistant", "content": completion},
         ]}, ensure_ascii=False))
     return "\n".join(lines)
+
+
+def split_jsonl(examples: list[tuple[str, str]], valid_ratio: float = 0.1) -> tuple[str, str]:
+    """Divide en train/valid (MLX-LM requiere train.jsonl Y valid.jsonl). Garantiza
+    al menos 1 ejemplo de validación cuando hay ≥ 2."""
+    n = len(examples)
+    n_valid = max(1, int(n * valid_ratio)) if n >= 2 else 0
+    valid = examples[n - n_valid:] if n_valid else []
+    train = examples[: n - n_valid] if n_valid else examples
+    return to_jsonl(train), to_jsonl(valid)
+
+
+# Mapa de nombres de Ollama → ids de modelo MLX (base para el fine-tuning en Apple
+# Silicon). Ampliable; si no está, se usa el base_model tal cual.
+MLX_MODEL_MAP = {
+    "llama3.2:3b": "mlx-community/Llama-3.2-3B-Instruct-4bit",
+    "llama3.1": "mlx-community/Meta-Llama-3.1-8B-Instruct-4bit",
+    "llama3.1:8b": "mlx-community/Meta-Llama-3.1-8B-Instruct-4bit",
+    "deepseek-r1:8b": "mlx-community/deepseek-r1-distill-llama-8b-4bit",
+}
+
+
+def mlx_model_for(base_model: str) -> str:
+    return MLX_MODEL_MAP.get(base_model, base_model)
+
+
+def suggest_ollama_name(dataset_name: str, version: int = 1) -> str:
+    """Nombre sugerido para registrar el modelo fusionado en Ollama (OLLAMA_NAME de
+    fuse-lora.sh). Slug seguro: minúsculas, guiones, sufijo de versión."""
+    base = "".join(c if (c.isalnum() or c in "-_") else "-" for c in (dataset_name or "").lower())
+    base = "-".join(filter(None, base.split("-"))) or "maestro"
+    return f"{base}-lora-v{max(1, version)}"
 
 
 def quality_gate(examples: list[tuple[str, str]]) -> dict:
@@ -62,9 +95,37 @@ def quality_gate(examples: list[tuple[str, str]]) -> dict:
     return {"ok": not issues, "issues": issues, "n": n, "pii_leaks": pii_leaks, "injection_flags": injection}
 
 
-def dispatch_training(job_id: str, base_model: str, jsonl: str, callback_url: str = "") -> dict:  # pragma: no cover - red
-    """Despacha el entrenamiento al trainer externo (GPU/n8n). Si no hay backend
-    configurado, devuelve estado 'simulado' (laboratorio). Nunca lanza."""
+def build_trainer_payload(job_id: str, base_model: str, examples: list[tuple[str, str]],
+                          callback_url: str = "", ollama_name: str = "") -> dict:
+    """Arma el payload que consume el wrapper del trainer MLX (train-lora.sh /
+    fuse-lora.sh del laboratorio on-prem). El wrapper escribe `train_jsonl`/
+    `valid_jsonl` a `$DATA/{train,valid}.jsonl`, usa `mlx_model` como `MODEL`,
+    `ollama_name` como `OLLAMA_NAME` y mapea `hyperparams` a ITERS/BATCH/LR/
+    NUM_LAYERS; al terminar hace POST a `callback_url` con el adapter y la URL de
+    Ollama servida. Ver docs/FINETUNING-SETUP.md."""
+    train_jsonl, valid_jsonl = split_jsonl(examples)
+    return {
+        "job_id": job_id,
+        "base_model": base_model,                 # nombre Ollama (informativo)
+        "mlx_model": mlx_model_for(base_model),    # id MLX → MODEL en train-lora.sh
+        "ollama_name": ollama_name or suggest_ollama_name(base_model),
+        "train_jsonl": train_jsonl,
+        "valid_jsonl": valid_jsonl,
+        "callback_url": callback_url,
+        "hyperparams": {
+            "iters": settings.finetune_iters,
+            "batch": settings.finetune_batch,
+            "learning_rate": settings.finetune_learning_rate,
+            "num_layers": settings.finetune_num_layers,
+        },
+    }
+
+
+def dispatch_training(job_id: str, base_model: str, examples: list[tuple[str, str]],
+                      callback_url: str = "", ollama_name: str = "") -> dict:  # pragma: no cover - red
+    """Despacha el entrenamiento al trainer externo (laboratorio MLX on-prem / GPU /
+    webhook n8n). Si no hay backend configurado, devuelve estado 'simulado'
+    (laboratorio). Nunca lanza."""
     if not (settings.finetune_enabled and settings.finetune_trainer_url):
         return {"status": "simulado",
                 "reason": "Sin trainer configurado (FINETUNE_TRAINER_URL): modo laboratorio."}
@@ -72,10 +133,10 @@ def dispatch_training(job_id: str, base_model: str, jsonl: str, callback_url: st
     headers = {"Content-Type": "application/json"}
     if settings.finetune_trainer_key:
         headers["Authorization"] = f"Bearer {settings.finetune_trainer_key}"
-    body = {"job_id": job_id, "base_model": base_model, "dataset_jsonl": jsonl, "callback_url": callback_url}
+    body = build_trainer_payload(job_id, base_model, examples, callback_url, ollama_name)
     try:
         r = httpx.post(settings.finetune_trainer_url, headers=headers, json=body, timeout=TIMEOUT)
         r.raise_for_status()
-        return {"status": "running", "reason": f"Despachado al trainer ({r.status_code})."}
+        return {"status": "running", "reason": f"Despachado al trainer MLX ({r.status_code})."}
     except Exception as exc:
         return {"status": "failed", "reason": f"No se pudo despachar al trainer: {exc}"}
