@@ -3,7 +3,7 @@
 import { AuthImage } from "@/components/AuthImage";
 import { PageHeader, Shell } from "@/components/Shell";
 import { api, type GeneratedImageDto } from "@/lib/api";
-import { ImageIcon, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { ImageIcon, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const ASPECTS = ["1:1", "16:9", "9:16"];
@@ -19,6 +19,7 @@ export default function GeneratePage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [configured, setConfigured] = useState(true);
+  const [preview, setPreview] = useState<GeneratedImageDto | null>(null);
 
   function load() {
     api.images().then(setGallery).catch(() => {});
@@ -55,6 +56,19 @@ export default function GeneratePage() {
   async function remove(id: string) {
     await api.deleteImage(id);
     setGallery((g) => g.filter((x) => x.id !== id));
+  }
+
+  async function downloadImage(img: GeneratedImageDto) {
+    try {
+      const url = img.has_data ? await api.imageBlob(img.id) : img.source_url;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `maestroai-${img.id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      if (img.has_data) setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch { /* noop */ }
   }
 
   return (
@@ -130,8 +144,11 @@ export default function GeneratePage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {gallery.map((img) => (
                 <div key={img.id} className="group relative overflow-hidden rounded-xl border border-slate-200">
-                  <AuthImage id={img.id} alt={img.prompt} hasData={img.has_data}
-                    fallbackUrl={img.source_url} className="aspect-square w-full object-cover" />
+                  <button type="button" onClick={() => setPreview(img)} title="Ver en grande"
+                    className="block w-full cursor-zoom-in">
+                    <AuthImage id={img.id} alt={img.prompt} hasData={img.has_data}
+                      fallbackUrl={img.source_url} className="aspect-square w-full object-cover" />
+                  </button>
                   <button onClick={() => remove(img.id)}
                     className="absolute right-1.5 top-1.5 rounded-md bg-white/90 p-1 text-slate-500 opacity-0 transition group-hover:opacity-100 hover:text-red-600">
                     <Trash2 className="h-4 w-4" />
@@ -143,6 +160,25 @@ export default function GeneratePage() {
           )}
         </div>
       </div>
+
+      {preview && (
+        <div onClick={() => setPreview(null)}
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/80 p-4">
+          <button onClick={() => setPreview(null)} aria-label="Cerrar"
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20">
+            <X className="h-5 w-5" />
+          </button>
+          <div onClick={(e) => e.stopPropagation()} className="flex max-h-[88vh] max-w-[92vw] flex-col items-center">
+            <AuthImage id={preview.id} alt={preview.prompt} hasData={preview.has_data}
+              fallbackUrl={preview.source_url} className="max-h-[80vh] max-w-[92vw] rounded-lg object-contain" />
+            <div className="mt-3 flex items-center gap-3">
+              <span className="max-w-[60vw] truncate text-sm text-white/80">{preview.prompt}</span>
+              <button onClick={() => downloadImage(preview)}
+                className="rounded-lg bg-white/15 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/25">Descargar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </Shell>
   );
 }
