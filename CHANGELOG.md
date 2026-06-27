@@ -3,6 +3,10 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Panel de Fine-tuning en la UI**: sección *Fine-tuning* que explica el beneficio de
+  cada paso (reunir ejemplos → desde Memoria → gate calidad/red-team → entrenar LoRA →
+  servir privado), con creación de datasets, ejemplos, import desde Memoria, gate, export
+  JSONL y lanzamiento/seguimiento de jobs. Ayuda contextual incluida.
 - **Fine-tuning ligero (LoRA) — andamiaje** (Fase 5 del blueprint): datasets versionados
   con **anonimización** de PII, **gate de calidad/red-team**, export JSONL y **jobs** que
   se despachan a un *trainer* externo con GPU (servidor / App NaN / webhook n8n) o quedan
