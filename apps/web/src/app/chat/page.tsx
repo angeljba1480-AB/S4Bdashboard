@@ -6,6 +6,7 @@ import { Shell } from "@/components/Shell";
 import { HelpButton } from "@/components/HelpButton";
 import { SourceCitation } from "@/components/SourceCitation";
 import { api } from "@/lib/api";
+import { cleanMarkdown } from "@/lib/format";
 import type { Agent, ChatResponse, DocumentItem } from "@shared/types";
 import { Brain, Mic, Pause, Save, Send, Sparkles, Volume2, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -237,7 +238,7 @@ export default function ChatPage() {
                       <CostMeter tokens={t.meta.token_count} cost={t.meta.cost_estimate} />
                     </div>
                   )}
-                  <div className="whitespace-pre-wrap">{t.content}</div>
+                  <div className="whitespace-pre-wrap">{t.role === "assistant" ? cleanMarkdown(t.content) : t.content}</div>
                   {t.meta?.escalated && (
                     <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
                       <Sparkles className="h-3 w-3" /> Refinado con premium
@@ -257,7 +258,7 @@ export default function ChatPage() {
                       <div className="mt-2 flex items-center justify-between">
                         <span className="text-xs text-slate-400">Ruta: {t.meta.reason}</span>
                         <span className="flex items-center gap-3">
-                          <button onClick={() => narrate(t.content, i)}
+                          <button onClick={() => narrate(cleanMarkdown(t.content), i)}
                             className="flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-800">
                             {narrating === i ? <><Pause className="h-3 w-3" /> Detener</> : <><Volume2 className="h-3 w-3" /> Narrar</>}
                           </button>
