@@ -3,6 +3,12 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Agente · previsualización (dry-run) y recetas guardadas**: el *Asistente de acciones*
+  ahora tiene **Previsualizar** (muestra el plan **sin ejecutar ni guardar nada**) además
+  de Ejecutar, y permite **guardar una instrucción como receta** (playbook) para
+  re-ejecutarla a demanda (`/actions/playbooks` CRUD + `/playbooks/{id}/run?dry_run=`).
+  Útil para comandos multi-paso recurrentes («Cierre semanal: lee la hoja X, resume y
+  publica en Teams»). El endpoint `/actions/agent` acepta `dry_run`.
 - **Autochequeo del sistema (readiness + guía de arreglo)**: `GET /admin/readiness`
   revisa qué está configurado (modelo abierto/premium, on-prem, n8n, toolkit conectado,
   antivirus, OCR, trainer de fine-tuning, MFA, cifrado) y, **por cada hueco, devuelve la

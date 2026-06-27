@@ -18,7 +18,8 @@ from ..ai.agent_planner import plan_steps, resolve_refs
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
 from ..integrations import actions_exec, token_store
-from ..models import ActionGrant, ActionRequest, AuditEvent, ModelRoute, Tenant, User
+from ..models import (ActionGrant, ActionRequest, AgentPlaybook, AuditEvent,
+                      ModelRoute, Tenant, User)
 from .workflows import CATALOG as WORKFLOW_CATALOG, trigger_catalog_workflow
 
 router = APIRouter(prefix="/actions", tags=["actions"])
@@ -126,6 +127,69 @@ def run_action(
 class AgentBody(BaseModel):
     instruction: str
     auto_approve: bool = False   # ejecuta también escrituras sin pedir aprobación
+    dry_run: bool = False        # solo previsualiza el plan, sin ejecutar ni guardar
+
+
+def _run_agent(session: Session, tenant: Tenant, user: User, instruction: str,
+               auto_approve: bool, dry_run: bool) -> dict:
+    """Núcleo del agente: planifica y (salvo dry_run) ejecuta los pasos. Reutilizado
+    por /actions/agent y por las recetas (/actions/playbooks/{id}/run)."""
+    # Herramientas disponibles: acciones de proveedores conectados + workflows n8n.
+    connected = {c.provider for c in token_store.list_connections(session, tenant.id, user.id)}
+    allowed = [a for a in catalog.list_actions() if a["provider"] in connected]
+    workflows = [{"id": w["id"], "name": w["name"], "steps": w["steps"]} for w in WORKFLOW_CATALOG]
+    if not allowed and not workflows:
+        raise HTTPException(status_code=400, detail="Conecta Google o Microsoft en Integraciones primero.")
+
+    # Planifica con el modelo (ruta abierta/NaN); cae a heurística si no hay modelo real.
+    adapter = get_adapter(ModelRoute.OPEN)
+    plan = plan_steps(instruction, allowed, adapter=adapter, workflows=workflows)
+
+    results: list[dict] = []
+    outputs: dict[int, str] = {}   # salida (1-based) de pasos ejecutados, para encadenar
+    for i, step in enumerate(plan["steps"], start=1):
+        action = step["action"]
+        if action.startswith("workflow:"):
+            provider, write = "n8n", True
+        else:
+            meta = catalog.get_action(action)
+            if not meta:
+                continue
+            provider, write = meta["provider"], bool(meta.get("write"))
+        # Encadenamiento: sustituye {{stepN}} por la salida de pasos previos.
+        params = resolve_refs(step.get("params", {}), outputs)
+        run_now = (not write) or auto_approve or _granted(session, tenant.id, user.id, action)
+
+        if dry_run:
+            # Previsualización: nada de DB ni ejecución, solo el plan propuesto.
+            out = {"action": action, "label": _label(action), "provider": provider,
+                   "params": params, "status": "preview", "result": None,
+                   "step_status": "ejecutaría" if run_now else "pediría_aprobación"}
+        else:
+            req = ActionRequest(tenant_id=tenant.id, user_id=user.id, provider=provider,
+                                action=action, params=json.dumps(params))
+            if run_now:
+                session.add(req); session.commit(); session.refresh(req)
+                out = _req_out(_execute(session, tenant, user, req))
+                out["step_status"] = "ejecutado"
+                outputs[i] = str(out.get("result") or "")
+            else:
+                req.status = "pending"
+                session.add(req); session.commit(); session.refresh(req)
+                out = _req_out(req)
+                out["step_status"] = "pendiente_aprobación"
+        out["reason"] = step.get("reason", "")
+        results.append(out)
+
+    if not dry_run:
+        session.add(AuditEvent(
+            tenant_id=tenant.id, user_id=user.id, event_type="agent", object_type="agent_run",
+            object_id="actions", risk_level="med",
+            reason=f"agente: {len(results)} paso(s) [{plan['source']}] — {instruction[:80]}",
+        ))
+        session.commit()
+    return {"instruction": instruction, "source": plan["source"], "note": plan.get("note", ""),
+            "dry_run": dry_run, "steps": results}
 
 
 @router.post("/agent")
@@ -136,57 +200,78 @@ def agent_run(
     session: Session = Depends(get_session),
 ) -> dict:
     """Agente de acciones: el modelo traduce una instrucción en pasos del toolkit y
-    los ejecuta «por detrás». Lecturas y escrituras autorizadas corren al momento;
-    el resto queda **pendiente de aprobación**. Todo auditado."""
-    # Herramientas disponibles: acciones de proveedores conectados + workflows n8n.
-    connected = {c.provider for c in token_store.list_connections(session, tenant.id, user.id)}
-    allowed = [a for a in catalog.list_actions() if a["provider"] in connected]
-    workflows = [{"id": w["id"], "name": w["name"], "steps": w["steps"]} for w in WORKFLOW_CATALOG]
-    if not allowed and not workflows:
-        raise HTTPException(status_code=400, detail="Conecta Google o Microsoft en Integraciones primero.")
+    los ejecuta «por detrás» (o solo los previsualiza con dry_run). Lecturas y
+    escrituras autorizadas corren al momento; el resto queda pendiente. Auditado."""
+    return _run_agent(session, tenant, user, body.instruction, body.auto_approve, body.dry_run)
 
-    # Planifica con el modelo (ruta abierta/NaN); cae a heurística si no hay modelo real.
-    adapter = get_adapter(ModelRoute.OPEN)
-    plan = plan_steps(body.instruction, allowed, adapter=adapter, workflows=workflows)
 
-    results: list[dict] = []
-    outputs: dict[int, str] = {}   # salida (1-based) de pasos ejecutados, para encadenar
-    for i, step in enumerate(plan["steps"], start=1):
-        action = step["action"]
-        is_wf = action.startswith("workflow:")
-        if is_wf:
-            provider, write = "n8n", True
-        else:
-            meta = catalog.get_action(action)
-            if not meta:
-                continue
-            provider, write = meta["provider"], bool(meta.get("write"))
-        # Encadenamiento: sustituye {{stepN}} por la salida de pasos previos.
-        params = resolve_refs(step.get("params", {}), outputs)
-        req = ActionRequest(tenant_id=tenant.id, user_id=user.id, provider=provider,
-                            action=action, params=json.dumps(params))
-        run_now = (not write) or body.auto_approve or _granted(session, tenant.id, user.id, action)
-        if run_now:
-            session.add(req); session.commit(); session.refresh(req)
-            out = _req_out(_execute(session, tenant, user, req))
-            out["step_status"] = "ejecutado"
-            outputs[i] = str(out.get("result") or "")
-        else:
-            req.status = "pending"
-            session.add(req); session.commit(); session.refresh(req)
-            out = _req_out(req)
-            out["step_status"] = "pendiente_aprobación"
-        out["reason"] = step.get("reason", "")
-        results.append(out)
+# --- recetas de acciones (playbooks) ----------------------------------------
+class PlaybookIn(BaseModel):
+    name: str
+    instruction: str
+    auto_approve: bool = False
 
-    session.add(AuditEvent(
-        tenant_id=tenant.id, user_id=user.id, event_type="agent", object_type="agent_run",
-        object_id="actions", risk_level="med",
-        reason=f"agente: {len(results)} paso(s) [{plan['source']}] — {body.instruction[:80]}",
-    ))
-    session.commit()
-    return {"instruction": body.instruction, "source": plan["source"], "note": plan.get("note", ""),
-            "steps": results}
+
+def _pb_out(p: AgentPlaybook) -> dict:
+    return {"id": p.id, "name": p.name, "instruction": p.instruction,
+            "auto_approve": p.auto_approve, "created_at": p.created_at.isoformat()}
+
+
+@router.post("/playbooks", status_code=201)
+def create_playbook(
+    body: PlaybookIn,
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    if not body.name.strip() or not body.instruction.strip():
+        raise HTTPException(status_code=422, detail="Nombre e instrucción son obligatorios")
+    p = AgentPlaybook(tenant_id=tenant.id, user_id=user.id, name=body.name.strip(),
+                      instruction=body.instruction.strip(), auto_approve=body.auto_approve)
+    session.add(p); session.commit(); session.refresh(p)
+    return _pb_out(p)
+
+
+@router.get("/playbooks")
+def list_playbooks(
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    rows = session.exec(select(AgentPlaybook).where(
+        AgentPlaybook.tenant_id == tenant.id, AgentPlaybook.user_id == user.id)
+        .order_by(AgentPlaybook.created_at.desc())).all()
+    return [_pb_out(p) for p in rows]
+
+
+def _owned_pb(session, tenant, user, pb_id) -> AgentPlaybook:
+    p = session.get(AgentPlaybook, pb_id)
+    if not p or p.tenant_id != tenant.id or p.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Receta no encontrada")
+    return p
+
+
+@router.post("/playbooks/{pb_id}/run")
+def run_playbook(
+    pb_id: str, dry_run: bool = False,
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    p = _owned_pb(session, tenant, user, pb_id)
+    return _run_agent(session, tenant, user, p.instruction, p.auto_approve, dry_run)
+
+
+@router.delete("/playbooks/{pb_id}")
+def delete_playbook(
+    pb_id: str,
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    p = _owned_pb(session, tenant, user, pb_id)
+    session.delete(p); session.commit()
+    return {"ok": True}
 
 
 @router.get("/requests")

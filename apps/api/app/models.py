@@ -214,6 +214,20 @@ class ActionGrant(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class AgentPlaybook(SQLModel, table=True):
+    """Receta de acciones guardada: una instrucción en lenguaje natural (posible
+    multi-paso, con encadenamiento {{stepN}}) que el agente vuelve a ejecutar a
+    demanda. Ej.: 'Cierre semanal: lee la hoja X, resume y publica en Teams'."""
+    __tablename__ = "agent_playbooks"
+    id: str = Field(default_factory=lambda: _uuid("pbk"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    name: str = ""
+    instruction: str = ""
+    auto_approve: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class DataSource(SQLModel, table=True):
     """Conector a sistemas a la medida sin API: una fuente de datos (hoy base de
     datos de SOLO LECTURA). Guarda una consulta SELECT y, al importar, vuelca el
