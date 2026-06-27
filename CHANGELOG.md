@@ -3,6 +3,11 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Conector SFTP (sistemas legados)**: trae archivos (PDF/DOCX/CSV/TXT) de un servidor
+  **SFTP de solo lectura** (un archivo o un directorio), extrae su texto y los importa al
+  repositorio + RAG (clasificados y cifrados). CRUD `/datasources/sftp` (ADMIN/DEVOPS) +
+  *Probar conexión*, *Importar* y *ojito* (revelar credencial, auditado). Credencial
+  (password o llave privada PEM) cifrada. Panel en *Integraciones*. (`paramiko`).
 - **Zapier Cloud (Zaps por webhook) + AI Actions preparado**: las recetas de
   automatización ahora soportan **provider n8n o zapier**. Para Zapier se pega la URL
   del *Catch Hook* del Zap (8,000+ apps); MaestroAI la dispara con payload y el agente
