@@ -37,6 +37,7 @@ def _ensure_columns() -> None:
     plan: dict[str, dict[str, str]] = {
         "documents": {"area": "''", "category": "''"},
         "users": {"area": "''", "license": "'basic'", "mfa_secret_enc": "''", "mfa_backup_codes": "''"},
+        "n8n_recipes": {"provider": "'n8n'", "webhook_url": "''"},
     }
     with engine.begin() as conn:
         for table, cols in plan.items():
