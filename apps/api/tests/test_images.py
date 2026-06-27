@@ -45,6 +45,27 @@ def _mock_gen(monkeypatch):
     monkeypatch.setattr(imagegen, "is_configured", lambda: True)
 
 
+def test_raise_for_image_status_surfaces_nan_error():
+    from app.ai import images as imagegen
+
+    class _R:
+        status_code = 400
+        def json(self):
+            return {"error": {"message": "size must be divisible by 16", "code": "invalid_request_error", "param": "size"}}
+        @property
+        def text(self):
+            return ""
+
+    import pytest as _pytest
+    with _pytest.raises(RuntimeError) as ei:
+        imagegen._raise_for_image_status(_R())
+    assert "400" in str(ei.value) and "size" in str(ei.value)
+    # 2xx no levanta.
+    class _OK:
+        status_code = 200
+    imagegen._raise_for_image_status(_OK())
+
+
 def test_config(client):
     r = client.get("/images/config", headers=_auth(client)).json()
     assert r["configured"] is True and "1:1" in r["aspect_ratios"]
