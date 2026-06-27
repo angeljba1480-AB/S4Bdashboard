@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     open_base_url: str = "https://api.nan.builders/v1"
     open_api_key: str = ""
     open_model: str = "qwen3.6"
+    # Modelo de imagen del proveedor abierto (NaN: flux-2-klein, requiere tier
+    # inference). Es distinto del modelo de chat (open_model) — no se reutiliza.
+    image_model: str = "flux-2-klein"
 
     # VPC private (vLLM / TGI)
     vpc_enabled: bool = False

@@ -3,6 +3,14 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Imágenes NaN reales (`flux-2-klein`)**: NaN ya expone `/v1/images/generations` y
+  `/v1/images/edits`. Se corrige el id del modelo (`flux-2-klein`, antes `FLUX.2-klein`
+  → 404) y se deja de reutilizar el modelo de chat (qwen3.6) para imágenes — ahora hay
+  un `settings.image_model` dedicado. *Generar imágenes* funciona end-to-end con una key
+  de tier *inference*. Contexto del proveedor actualizado (`docs/PROVEEDOR-NAN.md`).
+- **Confirmado: NaN no entrena (sin GPU para LoRA)**: el reference completo de la API no
+  expone fine-tuning, y las microVM de *Agents* son CPU-only (1 vCPU/2 GiB). El
+  fine-tuning se queda en infra del cliente (lab MLX / GPU externa). Documentado.
 - **Agente · previsualización (dry-run) y recetas guardadas**: el *Asistente de acciones*
   ahora tiene **Previsualizar** (muestra el plan **sin ejecutar ni guardar nada**) además
   de Ejecutar, y permite **guardar una instrucción como receta** (playbook) para
