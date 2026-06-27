@@ -52,6 +52,33 @@ def test_recipe_requires_webhook(client):
     assert client.post("/workflows/recipes", headers=h, json={"name": "x", "webhook_path": ""}).status_code == 422
 
 
+def test_zapier_recipe_crud_and_run(client, monkeypatch):
+    h = _auth(client)
+    # Zapier requiere webhook_url válida.
+    bad = client.post("/workflows/recipes", headers=h, json={
+        "name": "z", "provider": "zapier", "webhook_url": "no-url"})
+    assert bad.status_code == 422
+
+    r = client.post("/workflows/recipes", headers=h, json={
+        "name": "Alta en CRM", "provider": "zapier", "category": "app",
+        "webhook_url": "https://hooks.zapier.com/hooks/catch/123/abc", "params": ["email"]}).json()
+    assert r["provider"] == "zapier" and r["webhook_url"].startswith("https://hooks.zapier.com")
+
+    # Ejecutar: mockeamos el POST a Zapier.
+    from app.routers import workflows as wf
+    monkeypatch.setattr(wf, "_trigger_zapier", lambda url, payload: ("completed", "zapier 200"))
+    run = client.post(f"/workflows/recipes/{r['id']}/run", headers=h, json={"payload": {"email": "a@b.com"}}).json()
+    assert run["provider"] == "zapier" and run["status"] == "completed"
+
+    client.delete(f"/workflows/recipes/{r['id']}", headers=h)
+
+
+def test_zapier_status(client):
+    s = client.get("/workflows/zapier/status", headers=_auth(client)).json()
+    assert s["webhooks"]["available"] is True
+    assert s["ai_actions"]["status"] in ("preparado", "configurado")
+
+
 def test_recipe_available_to_agent(client):
     h = _auth(client)
     rid = client.post("/workflows/recipes", headers=h, json={

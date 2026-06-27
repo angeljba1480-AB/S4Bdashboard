@@ -91,9 +91,21 @@ def run_workflow(
 
 # --- recetas n8n a la medida (DB / SOAP / apps propias) ----------------------
 def _recipe_out(r: N8nRecipe) -> dict:
-    return {"id": r.id, "name": r.name, "description": r.description, "category": r.category,
-            "webhook_path": r.webhook_path, "params": json.loads(r.params or "[]"),
-            "enabled": r.enabled, "created_at": r.created_at.isoformat()}
+    return {"id": r.id, "provider": r.provider or "n8n", "name": r.name, "description": r.description,
+            "category": r.category, "webhook_path": r.webhook_path, "webhook_url": r.webhook_url,
+            "params": json.loads(r.params or "[]"), "enabled": r.enabled,
+            "created_at": r.created_at.isoformat()}
+
+
+def _trigger_zapier(webhook_url: str, payload: dict) -> tuple[str, str]:
+    """POST directo al Catch Hook del Zap. Devuelve (status, detail)."""
+    import httpx
+    try:  # pragma: no cover - network path
+        resp = httpx.post(webhook_url, json=payload, timeout=30)
+        resp.raise_for_status()
+        return "completed", f"zapier {resp.status_code}"
+    except Exception as exc:  # pragma: no cover - network path
+        return "failed", f"zapier error: {exc}"
 
 
 def list_recipe_rows(session: Session, tenant_id: str, only_enabled: bool = False) -> list[N8nRecipe]:
@@ -104,21 +116,30 @@ def list_recipe_rows(session: Session, tenant_id: str, only_enabled: bool = Fals
 
 def trigger_recipe(session: Session, tenant: Tenant, user: User, recipe: N8nRecipe,
                    payload: dict | None = None) -> dict:
-    """Dispara una receta a medida en el n8n del tenant, por su webhook_path."""
+    """Dispara una receta a medida: Zapier (webhook_url completo) o n8n (webhook_path)."""
     run_id = uuid.uuid4().hex[:12]
-    cfg = resolve_n8n(tenant)
-    run = trigger_workflow(cfg, recipe.webhook_path or recipe.id, {
-        "run_id": run_id, "recipe_id": recipe.id, "recipe": recipe.name,
-        "tenant_id": tenant.id, "user_id": user.id, **(payload or {}),
-    }, webhook_path=recipe.webhook_path or None)
+    body = {"run_id": run_id, "recipe_id": recipe.id, "recipe": recipe.name,
+            "tenant_id": tenant.id, "user_id": user.id, **(payload or {})}
+    provider = recipe.provider or "n8n"
+    if provider == "zapier":
+        if not recipe.webhook_url:
+            status, detail, source, engine, response = "simulated", "Zapier sin webhook_url", "off", "simulado", None
+        else:
+            status, detail = _trigger_zapier(recipe.webhook_url, body)
+            source, engine, response = "zapier", "zapier", None
+    else:
+        cfg = resolve_n8n(tenant)
+        run = trigger_workflow(cfg, recipe.webhook_path or recipe.id, body,
+                               webhook_path=recipe.webhook_path or None)
+        status, detail, source = run.status, run.detail, run.source
+        engine, response = ("n8n" if run.triggered else "simulado"), run.response
     session.add(AuditEvent(
-        tenant_id=tenant.id, user_id=user.id, event_type="workflow", object_type="n8n_recipe",
-        object_id=recipe.id, risk_level="med" if run.status == "failed" else "low",
-        reason=f"receta {recipe.name} (run {run_id}) · {run.status} · n8n:{run.source} · {run.detail}"))
+        tenant_id=tenant.id, user_id=user.id, event_type="workflow", object_type="automation_recipe",
+        object_id=recipe.id, risk_level="med" if status == "failed" else "low",
+        reason=f"receta {recipe.name} ({provider}, run {run_id}) · {status} · {detail}"))
     session.commit()
-    return {"run_id": run_id, "recipe": recipe.name, "status": run.status,
-            "engine": "n8n" if run.triggered else "simulado", "source": run.source,
-            "detail": run.detail, "response": run.response}
+    return {"run_id": run_id, "recipe": recipe.name, "provider": provider, "status": status,
+            "engine": engine, "source": source, "detail": detail, "response": response}
 
 
 def trigger_workflow_or_recipe(session: Session, tenant: Tenant, user: User,
@@ -135,11 +156,26 @@ def trigger_workflow_or_recipe(session: Session, tenant: Tenant, user: User,
 
 class RecipeIn(BaseModel):
     name: str
+    provider: str = "n8n"          # n8n | zapier
     description: str = ""
     category: str = "custom"
-    webhook_path: str = ""
+    webhook_path: str = ""        # n8n
+    webhook_url: str = ""         # zapier (URL completa del Catch Hook)
     params: list[str] = []
     enabled: bool = True
+
+
+def _validate_recipe(body: RecipeIn) -> str:
+    """Devuelve el provider normalizado o lanza 422 si falta el destino."""
+    provider = body.provider if body.provider in ("n8n", "zapier") else "n8n"
+    if not body.name.strip():
+        raise HTTPException(status_code=422, detail="El nombre es obligatorio")
+    if provider == "zapier":
+        if not body.webhook_url.strip().startswith("http"):
+            raise HTTPException(status_code=422, detail="Zapier requiere una webhook_url válida (https://hooks.zapier.com/…)")
+    elif not body.webhook_path.strip():
+        raise HTTPException(status_code=422, detail="n8n requiere webhook_path")
+    return provider
 
 
 @router.get("/recipes")
@@ -158,11 +194,12 @@ def create_recipe(
     tenant: Tenant = Depends(get_current_tenant),
     session: Session = Depends(get_session),
 ) -> dict:
-    if not body.name.strip() or not body.webhook_path.strip():
-        raise HTTPException(status_code=422, detail="Nombre y webhook_path son obligatorios")
+    provider = _validate_recipe(body)
     cat = body.category if body.category in ("db", "soap", "app", "custom") else "custom"
-    r = N8nRecipe(tenant_id=tenant.id, name=body.name.strip(), description=body.description.strip(),
-                  category=cat, webhook_path=body.webhook_path.strip().lstrip("/"),
+    r = N8nRecipe(tenant_id=tenant.id, provider=provider, name=body.name.strip(),
+                  description=body.description.strip(), category=cat,
+                  webhook_path=body.webhook_path.strip().lstrip("/"),
+                  webhook_url=body.webhook_url.strip(),
                   params=json.dumps([p.strip() for p in body.params if p.strip()]), enabled=body.enabled)
     session.add(r); session.commit(); session.refresh(r)
     return _recipe_out(r)
@@ -183,11 +220,13 @@ def update_recipe(
     session: Session = Depends(get_session),
 ) -> dict:
     r = _owned_recipe(session, tenant, rid)
+    provider = _validate_recipe(body)
+    r.provider = provider
     r.name = body.name.strip() or r.name
     r.description = body.description.strip()
     r.category = body.category if body.category in ("db", "soap", "app", "custom") else r.category
-    if body.webhook_path.strip():
-        r.webhook_path = body.webhook_path.strip().lstrip("/")
+    r.webhook_path = body.webhook_path.strip().lstrip("/")
+    r.webhook_url = body.webhook_url.strip()
     r.params = json.dumps([p.strip() for p in body.params if p.strip()])
     r.enabled = body.enabled
     session.add(r); session.commit(); session.refresh(r)
@@ -204,6 +243,20 @@ def delete_recipe(
     r = _owned_recipe(session, tenant, rid)
     session.delete(r); session.commit()
     return {"ok": True}
+
+
+@router.get("/zapier/status")
+def zapier_status(_: User = Depends(get_current_user)) -> dict:
+    """Estado de la integración Zapier. Webhooks/Zaps funcionan ya (recetas con
+    webhook_url). AI Actions (NLA) es la ruta nativa opcional, preparada."""
+    return {
+        "webhooks": {"available": True,
+                     "how": "Crea un Zap con trigger 'Catch Hook', copia la URL y créala como receta (provider=zapier)."},
+        "ai_actions": {"enabled": settings.zapier_nla_enabled,
+                       "configured": bool(settings.zapier_nla_api_key),
+                       "status": "preparado" if not settings.zapier_nla_api_key else "configurado",
+                       "how": "Requiere registrar la app en Zapier y `ZAPIER_NLA_API_KEY`. Catálogo dinámico de 8,000+ apps."},
+    }
 
 
 class RecipeRunIn(BaseModel):

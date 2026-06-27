@@ -3,6 +3,12 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Zapier Cloud (Zaps por webhook) + AI Actions preparado**: las recetas de
+  automatización ahora soportan **provider n8n o zapier**. Para Zapier se pega la URL
+  del *Catch Hook* del Zap (8,000+ apps); MaestroAI la dispara con payload y el agente
+  la usa como herramienta. La ruta nativa **AI Actions (NLA)** queda preparada
+  (`/workflows/zapier/status`, config `ZAPIER_NLA_*`). Columnas aditivas en
+  `n8n_recipes` (`provider`, `webhook_url`).
 - **Recetas n8n a la medida**: el cliente define sus propios flujos (DB, SOAP, apps
   internas) como webhooks de su n8n. CRUD `/workflows/recipes` (ADMIN/DEVOPS), ejecución
   `/workflows/recipes/{id}/run` con payload, y panel en *Integraciones*. El **agente** las

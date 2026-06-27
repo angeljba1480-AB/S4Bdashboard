@@ -229,17 +229,20 @@ class AgentPlaybook(SQLModel, table=True):
 
 
 class N8nRecipe(SQLModel, table=True):
-    """Receta n8n a la medida del cliente: un workflow propio (DB, SOAP, app interna)
-    expuesto como webhook en SU n8n. MaestroAI lo dispara con un payload y lo ofrece
-    al agente como herramienta. La gobernanza (clasificación/PII/auditoría) sigue en
-    la API; n8n solo recibe el payload parametrizado."""
+    """Receta de automatización a la medida: un workflow propio (DB, SOAP, app interna)
+    expuesto como webhook. Soporta **n8n** (webhook_path sobre el n8n del tenant) y
+    **Zapier** (webhook_url completo del Catch Hook del Zap). MaestroAI lo dispara con
+    un payload y lo ofrece al agente como herramienta. La gobernanza (clasificación/
+    PII/auditoría) sigue en la API; el motor solo recibe el payload parametrizado."""
     __tablename__ = "n8n_recipes"
     id: str = Field(default_factory=lambda: _uuid("rcp"), primary_key=True)
     tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    provider: str = "n8n"          # n8n | zapier
     name: str = ""
     description: str = ""
     category: str = "custom"       # db | soap | app | custom
-    webhook_path: str = ""        # ruta del webhook en n8n (p. ej. "erp-clientes")
+    webhook_path: str = ""        # n8n: ruta del webhook (p. ej. "erp-clientes")
+    webhook_url: str = ""         # zapier: URL completa del Catch Hook
     params: str = "[]"            # JSON list de nombres de parámetro esperados
     enabled: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
