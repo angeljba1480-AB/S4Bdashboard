@@ -130,11 +130,8 @@ export default function GeneratePage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {gallery.map((img) => (
                 <div key={img.id} className="group relative overflow-hidden rounded-xl border border-slate-200">
-                  {img.has_data ? (
-                    <AuthImage id={img.id} alt={img.prompt} className="aspect-square w-full object-cover" />
-                  ) : (
-                    <div className="flex aspect-square items-center justify-center bg-slate-100 text-xs text-slate-400">sin copia</div>
-                  )}
+                  <AuthImage id={img.id} alt={img.prompt} hasData={img.has_data}
+                    fallbackUrl={img.source_url} className="aspect-square w-full object-cover" />
                   <button onClick={() => remove(img.id)}
                     className="absolute right-1.5 top-1.5 rounded-md bg-white/90 p-1 text-slate-500 opacity-0 transition group-hover:opacity-100 hover:text-red-600">
                     <Trash2 className="h-4 w-4" />
