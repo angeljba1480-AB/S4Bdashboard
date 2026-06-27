@@ -1,4 +1,9 @@
-"""Documentación EXTENSA de MaestroAI → Word (.docx) y PowerPoint (.pptx)."""
+"""Documentación EXTENSA y profunda de MaestroAI → Word (.docx) y PowerPoint (.pptx).
+
+Uso:  OUT_DIR=docs/generados python scripts/gen_docs.py
+Estructura: por cada capacidad → Capacidad · Logro/valor · Caso de uso · Pasos a
+seguir. Incluye guías técnicas de configuración paso a paso y apéndices.
+"""
 from __future__ import annotations
 
 import os
@@ -6,105 +11,444 @@ import os
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.shared import Pt, RGBColor, Inches
+from docx.shared import Pt, RGBColor
 from pptx import Presentation
 from pptx.util import Inches as PInches, Pt as PPt
 from pptx.dml.color import RGBColor as PColor
 
 OUT = os.environ.get("OUT_DIR", ".")
-VIOLET = RGBColor(0x6D, 0x28, 0xD9)
-SLATE = RGBColor(0x33, 0x41, 0x55)
+VIOLET = RGBColor(0x6D, 0x28, 0xD9); SLATE = RGBColor(0x33, 0x41, 0x55)
 GREY = RGBColor(0x64, 0x74, 0x8B)
 PV = PColor(0x6D, 0x28, 0xD9); PW = PColor(0xFF, 0xFF, 0xFF)
 PS = PColor(0x33, 0x41, 0x55); PG = PColor(0x64, 0x74, 0x8B)
 
-# ============================================================ DATA (appendices)
-ENDPOINTS = {
-    "Autenticación / cuenta": ["POST /auth/login", "GET /me", "GET /account", "GET /auth/sso/config", "GET /auth/sso/callback"],
-    "Chat y casos": ["POST /chat", "POST /chat/preview", "GET/POST /recipes", "POST /recipes/{id}/start",
-                      "POST /recipes/runs/{id}/approve", "POST /recipes/runs/{id}/export", "POST /v1/cases/{recipe_id}/run"],
-    "Documentos y RAG": ["GET/POST /documents", "POST /documents/upload", "GET/POST /documents/categories",
-                          "DELETE /documents/{id}", "GET /drive/files", "POST /drive/import"],
-    "Notebooks / Memoria": ["GET/POST /notebooks", "POST /notebooks/{id}/ask", "POST /notebooks/{id}/generate/{kind}",
-                            "GET/POST /memory", "GET /memory/tags", "DELETE /memory/{id}"],
-    "Imágenes": ["GET /images/config", "POST /images/generate", "GET /images", "GET /images/{id}/data", "DELETE /images/{id}"],
-    "Acciones (toolkit)": ["GET /actions", "POST /actions/run", "GET /actions/requests",
-                           "POST /actions/requests/{id}/approve", "POST /actions/requests/{id}/reject", "GET/DELETE /actions/grants"],
-    "Integraciones": ["GET/POST /integrations/connectors", "POST /integrations/connectors/{id}/test",
-                      "GET /integrations/connectors/{id}/reveal", "GET/POST /integrations/webhooks",
-                      "GET/POST /datasources", "POST /datasources/import-csv", "POST /datasources/{id}/import",
-                      "GET /datasources/{id}/reveal", "POST /oauth/{provider}/authorize", "POST /oauth/imap"],
-    "Automatizaciones / workflows": ["GET/POST /automations", "POST /automations/from-template",
-                                     "POST /automations/{id}/run", "POST /automations/run-due", "GET /flowcharts"],
-    "Admin / gobierno": ["GET/PUT /admin/providers", "POST /admin/providers/{route}/test", "GET/PUT /admin/efficiency",
-                         "GET /admin/routes", "GET /admin/security", "GET/POST /admin/users", "GET /admin/tenants",
-                         "GET /admin/billing", "GET/POST /admin/api-keys", "GET /admin/n8n"],
-    "Auditoría / uso / salud": ["GET /audit", "GET /audit/export", "GET /audit/stats", "GET /usage", "GET /health",
-                                "POST /v1/events", "POST /v1/webhooks/{id}"],
-}
-
-ACTIONS = [
-    ("gmail.send", "Google", "Sí", "to, subject, body"),
-    ("gcal.create_event", "Google", "Sí", "summary, start, end, location"),
-    ("gsheets.append", "Google", "Sí", "spreadsheet_id, range, values"),
-    ("gsheets.read", "Google", "No", "spreadsheet_id, range"),
-    ("gcal.list", "Google", "No", "days"),
-    ("outlook.send", "Microsoft", "Sí", "to, subject, body"),
-    ("mscal.create_event", "Microsoft", "Sí", "summary, start, end, location"),
-    ("teams.post", "Microsoft", "Sí", "team_id, channel_id, message"),
-    ("excel.append", "Microsoft", "Sí", "item_id, table, values"),
-    ("mscal.list", "Microsoft", "No", "days"),
-    ("onedrive.list", "Microsoft", "No", "query"),
-    ("excel.read", "Microsoft", "No", "item_id, worksheet, range"),
-    ("sharepoint.search", "Microsoft", "No", "query"),
+# ============================================================ CAPACIDADES (deep)
+CAPS = [
+    {
+        "t": "Enrutador de Privacidad (Privacy Model Router)",
+        "cap": "Componente que, por CADA petición, clasifica la sensibilidad del dato "
+               "(Público/Interno/Confidencial/Restringido), detecta PII (RFC, CURP, CLABE, "
+               "tarjetas, correos, salud, secretos), minimiza y redacta el contexto, y decide "
+               "automáticamente la ruta del modelo: local, VPC, abierta (NaN), premium o BLOQUEO.",
+        "logro": "Permite usar IA potente sin exponer información sensible ni depender del criterio "
+                 "del usuario. Es el control que convierte «IA» en «IA gobernada»: soberanía de datos, "
+                 "cumplimiento (LFPDPPP) y trazabilidad por diseño.",
+        "caso": "Un analista pega un contrato con cláusula NDA y datos bancarios. El router lo clasifica "
+                "como Confidencial con PII, lo mantiene en la ruta privada (VPC/local), redacta los "
+                "identificadores y deja constancia auditable — sin que el analista decida nada.",
+        "pasos": [
+            "El usuario solo escribe su consulta o sube su documento; no elige modelo.",
+            "El sistema clasifica y muestra un banner con la clasificación y la ruta real usada.",
+            "Si el dato es Restringido, se procesa local y nunca sale; si es Confidencial, VPC o local.",
+            "Para revisar decisiones: Auditoría muestra ruta, modelo, tokens, costo y razón por evento.",
+        ],
+    },
+    {
+        "t": "RAG documental por área",
+        "cap": "Repositorio de documentos por área y categoría con tratamiento auto-detectado "
+               "(público/interno/confidencial/restringido) y editable. Trocea (chunking con solape), "
+               "calcula embeddings y cifra los fragmentos; la recuperación se acota por tenant, "
+               "categoría y áreas visibles del usuario, y responde citando la fuente.",
+        "logro": "Convierte el conocimiento disperso (propuestas, licitaciones, ISO, manuales) en respuestas "
+                 "confiables con cita y respetando permisos. Reduce el «inventar» del modelo y el riesgo de "
+                 "fuga entre áreas.",
+        "caso": "El área de Ventas pregunta «¿qué incluimos en la última propuesta a ACME?» y obtiene la "
+                "respuesta citando el documento exacto, sin ver documentos de RH o Finanzas.",
+        "pasos": [
+            "Documentos → Subir: asigna área y categoría; revisa el tratamiento detectado.",
+            "El contenido se cifra e indexa automáticamente en el RAG.",
+            "En Chat con fuentes elige el modo de contexto (todo / elegir documentos / sin contexto).",
+            "La respuesta cita el documento y el fragmento; los permisos por área se aplican siempre.",
+        ],
+    },
+    {
+        "t": "Reranking del RAG (precisión)",
+        "cap": "Tras recuperar candidatos por embeddings, los reordena por relevancia real query↔documento "
+               "con un cross-encoder (NaN Qwen3-Reranker, endpoint /rerank). Patrón embedding → rerank → LLM.",
+        "logro": "Sube notablemente la precisión de las respuestas con fuentes: el modelo recibe primero los "
+                 "fragmentos verdaderamente relevantes, no solo los «parecidos» por vector.",
+        "caso": "En una base de 10.000 fragmentos, la pregunta recupera 20 candidatos y el reranker deja los "
+                "4 más pertinentes arriba, mejorando la calidad de la cita y la respuesta.",
+        "pasos": [
+            "Admin → Eficiencia de tokens → activa «Reranking RAG».",
+            "Requiere el proveedor abierto (NaN) configurado (usa su Base URL + API key).",
+            "Si el reranker falla, el sistema cae limpio al orden por coseno (sin romperse).",
+        ],
+    },
+    {
+        "t": "Cascada NaN → premium y eficiencia de tokens",
+        "cap": "Empieza SIEMPRE con el modelo abierto (NaN), barato y rápido. Escala a premium solo a demanda "
+               "(«máxima precisión») o cuando la respuesta barata es insuficiente. Antes de pagar premium, "
+               "condensa el contexto grande con el modelo barato y aplica un tope de gasto por consulta.",
+        "logro": "Calidad cuando importa, costo bajo por defecto. Evita pagar premium en todo y reduce los "
+                 "tokens enviados (condensación), con ahorro acumulado visible.",
+        "caso": "Un PDF de 40 páginas se condensa con NaN a un extracto; si el usuario pide «máxima precisión», "
+                "premium recibe solo ese extracto y refina — pagando una fracción.",
+        "pasos": [
+            "No requiere acción del usuario para el flujo base (todo empieza en NaN).",
+            "Activa «Máxima precisión» en el chat para forzar el refinamiento premium.",
+            "Admin → Eficiencia: define umbral de condensación y tope de tokens por consulta.",
+            "Si no hay premium configurado, todo corre en NaN; sin NaN, modo demostración (mock).",
+        ],
+    },
+    {
+        "t": "Casos de uso (generación de entregables)",
+        "cap": "Plantillas que generan documentos profesionales (propuesta comercial, carta, reporte, "
+               "licitación, reporte por industria) con un paso universal objetivo/notas/formato y grounding "
+               "por categoría del RAG. Exporta a Word, PDF, Markdown, PPTX y XLSX.",
+        "logro": "Pasa de horas a minutos en entregables repetitivos, con marca de la empresa, estructura "
+                 "consistente y datos citados. «Elige qué lograr, da lo mínimo; tú solo apruebas.»",
+        "caso": "Un ejecutivo elige «Propuesta comercial», pone cliente/servicio/monto, revisa el borrador y "
+                "descarga un .docx con portada, secciones y pie confidencial.",
+        "pasos": [
+            "Casos de uso → elige la receta.",
+            "Llena los datos mínimos (objetivo, notas, formato de salida).",
+            "Revisa el borrador (vía router de privacidad) y pulsa «Aprobar y generar».",
+            "Descarga en Word/PDF/Markdown/PPTX/XLSX.",
+        ],
+    },
+    {
+        "t": "Agentes verticales",
+        "cap": "Agentes especializados por dominio (Document Intelligence, Cyber Diagnostic, Proposal/SOW, "
+               "Executive Copilot) con política de privacidad propia; cada respuesta pasa por el router y cita.",
+        "logro": "Experiencia experta lista para usar por área, sin construir prompts desde cero, con la misma "
+                 "gobernanza de privacidad.",
+        "caso": "El equipo de seguridad usa Cyber Diagnostic para un diagnóstico y roadmap citando las políticas "
+                "internas.",
+        "pasos": [
+            "Agentes → elige el agente y conversa.",
+            "Cada respuesta cita sus fuentes y respeta el ruteo de privacidad.",
+            "El Admin puede crear agentes personalizados por área.",
+        ],
+    },
+    {
+        "t": "Chat con fuentes",
+        "cap": "Chat con 3 modos de contexto (sin contexto / todo el RAG / elegir documentos), toggles de "
+               "«máxima precisión» (cascada) y «usar memoria», banner con clasificación y ruta real, exportable.",
+        "logro": "Una sola interfaz para preguntar con o sin documentos, con control de precisión y costo, y "
+                 "trazabilidad de cada respuesta.",
+        "caso": "Un usuario activa «elegir documentos», selecciona 3 archivos y pregunta; la respuesta se basa "
+                "solo en esos, con cita.",
+        "pasos": [
+            "Chat con fuentes → elige el modo de contexto.",
+            "Opcional: activa «Máxima precisión» y/o «Usar memoria».",
+            "Envía; revisa la ruta en el banner y exporta a PDF/Markdown si lo necesitas.",
+        ],
+    },
+    {
+        "t": "Notebooks (estilo NotebookLM privado)",
+        "cap": "Espacios con fuentes acotadas donde se pregunta con cita y se generan artefactos (resumen, "
+               "FAQ, guía, briefing, cronología) solo sobre esos documentos.",
+        "logro": "Estudio profundo de un conjunto de documentos sin que el modelo se «desvíe» a otros, con "
+                 "salidas reutilizables.",
+        "caso": "Para una licitación se crea un notebook con las bases y se genera una FAQ y una cronología.",
+        "pasos": [
+            "Notebooks → crea uno y añade fuentes del RAG.",
+            "Haz preguntas (responde citando) o genera un artefacto.",
+        ],
+    },
+    {
+        "t": "Memoria y etiquetas",
+        "cap": "Memoria persistente de trabajos con búsqueda semántica y por tags; auto-captura al completar "
+               "casos; recall en el chat respetando permisos por área.",
+        "logro": "El sistema «recuerda» trabajos previos («¿recuerdas el trabajo C?») y los reutiliza, evitando "
+                 "rehacer y perdiendo menos contexto entre sesiones.",
+        "caso": "Semanas después, el usuario pide continuar «la propuesta C» y el sistema recupera lo hecho.",
+        "pasos": [
+            "Guarda resultados con «Guardar en memoria» (o se auto-capturan al completar casos).",
+            "Organiza con etiquetas y busca por texto o tag en Memoria.",
+            "Activa «Usar memoria» en el chat para responder con base en trabajos previos.",
+        ],
+    },
+    {
+        "t": "Generar imágenes (texto → imagen)",
+        "cap": "Generación de imágenes por ruta estándar OpenAI (/images/generations) con relación de aspecto "
+               "y variantes; galería por área; el prompt se redacta de PII; todo auditado.",
+        "logro": "Material visual gobernado dentro de la plataforma, con copia propia y permisos por área.",
+        "caso": "Marketing genera variantes de una imagen para una campaña; quedan en la galería del área.",
+        "pasos": [
+            "Generar imágenes → escribe el prompt, elige aspecto y variantes.",
+            "Requiere un proveedor que exponga /images/generations (la API de NaN no lo expone hoy).",
+        ],
+    },
+    {
+        "t": "Toolkit de acciones (Google / Microsoft)",
+        "cap": "Ejecuta tareas reales en las herramientas del usuario vía su OAuth: enviar correo, crear "
+               "eventos, append a Sheets/Excel, publicar en Teams, buscar en SharePoint, listar OneDrive, "
+               "leer Sheets/Excel/Calendar. Lecturas inmediatas; escrituras con aprobación humana.",
+        "logro": "La IA no solo redacta: actúa, con un control de aprobación («tú apruebas») y «Permitir "
+                 "siempre» revocable, todo auditado.",
+        "caso": "Tras redactar un correo, el usuario pulsa enviar; queda como solicitud pendiente y, al aprobar, "
+                "se manda desde su cuenta Outlook.",
+        "pasos": [
+            "Configura scopes de escritura y reconecta (ver guía de configuración A/B).",
+            "Acciones → elige la acción y llena los datos.",
+            "Aprueba la escritura (o usa «Permitir siempre»).",
+        ],
+    },
+    {
+        "t": "Automatizaciones y n8n",
+        "cap": "Conecta un disparador (manual / programado / por evento) con una acción (workflow n8n, caso de "
+               "uso, conector o notificar). n8n gestionado se auto-provisiona por tenant (6 workflows base).",
+        "logro": "Procesos sin intervención: resúmenes diarios, cobranza semanal, alertas de documento sensible, "
+                 "reportes — orquestando los sistemas de la empresa.",
+        "caso": "Cada vez que se sube un documento confidencial, una automatización notifica a seguridad.",
+        "pasos": [
+            "Automatizaciones → Nueva (o usa una plantilla).",
+            "Elige disparador y acción («workflow» para n8n con su referencia).",
+            "Activa/desactiva o «Ejecutar ahora»; el resultado queda en Auditoría.",
+        ],
+    },
+    {
+        "t": "Conectores, webhooks y API pública",
+        "cap": "Conectores REST de salida (CRM/ERP/Delivery) con detalle y «ojito» de secretos (auditado); "
+               "webhooks entrantes firmados (HMAC-SHA256); API pública /v1 con X-API-Key.",
+        "logro": "Integración bidireccional gobernada con el ecosistema de la empresa, sin exponer secretos.",
+        "caso": "Un lead capturado en la plataforma se envía a HubSpot vía conector; un sistema externo notifica "
+                "eventos por webhook firmado.",
+        "pasos": [
+            "Integraciones → Conectores: plantilla, endpoint y token (cifrado); Probar.",
+            "Webhooks entrantes → crea uno y firma el cuerpo con el secreto.",
+            "API pública: genera una API key en Admin y llama /v1 con X-API-Key.",
+        ],
+    },
+    {
+        "t": "Fuentes de datos legadas (BD de solo lectura / CSV)",
+        "cap": "Importa al RAG desde una base de datos de solo lectura (DSN + SELECT, con denylist DML/CTE y "
+               "transacción read-only) o desde un CSV pegado (encabezados + delimitador). Solo ADMIN/DEVOPS.",
+        "logro": "Trae el conocimiento de sistemas sin API a la IA gobernada, sin exponer escritura ni romper "
+                 "el sistema legado.",
+        "caso": "Un ERP antiguo exporta clientes en CSV; se importan al RAG y el chat ya responde sobre ellos.",
+        "pasos": [
+            "Integraciones → Fuentes de datos: DSN + SELECT → Probar → Importar.",
+            "O «Importar CSV»: pega el contenido y el delimitador.",
+            "Usa el «ojito» para revelar el DSN (auditado).",
+        ],
+    },
+    {
+        "t": "Tableros, Trámites y App Studio",
+        "cap": "Tableros a la medida (describe qué medir → widgets en vivo + KPIs manuales); catálogo de "
+               "Trámites por país/estado/empresa (MCP) que aterriza respuestas; App Studio para mini-apps.",
+        "logro": "Medición y contexto público/privado curado, y la posibilidad de publicar mini-aplicaciones.",
+        "caso": "Un gerente arma un tablero de «costo por ruta de modelo» y casos por receta; convierte un "
+                "trámite estatal en una propuesta de caso de uso.",
+        "pasos": [
+            "Tableros → describe lo que quieres medir y agrega widgets.",
+            "Trámites y casos → filtra y convierte en propuesta.",
+        ],
+    },
+    {
+        "t": "Auditoría, gobernanza y multi-tenant",
+        "cap": "Auditoría navegable de cada evento (usuario, ruta, modelo, tokens, costo, sensibilidad, razón) "
+               "con export a SIEM (JSONL); permisos jerárquicos por área y licencia; super admin multi-tenant.",
+        "logro": "Evidencia y control para cumplimiento y seguridad; cada empresa aislada; cada usuario ve lo suyo.",
+        "caso": "Compliance revisa en Auditoría todas las salidas externas del mes y las exporta a su SIEM.",
+        "pasos": [
+            "Auditoría → filtra por tipo, riesgo, ruta o usuario; abre el detalle.",
+            "Export SIEM → descarga JSONL.",
+            "Admin → Usuarios: asigna rol y área a cada persona.",
+        ],
+    },
 ]
 
-ENVVARS = [
-    ("SECRET_KEY", "Núcleo", "Clave de firma JWT (32+ caracteres)."),
-    ("DATABASE_URL", "Núcleo", "Postgres (Supabase Session Pooler). Sin ella, SQLite efímero."),
-    ("CORS_ORIGINS / CORS_ORIGIN_REGEX", "Núcleo", "Orígenes permitidos del portal."),
-    ("APP_ENV", "Núcleo", "production / development."),
-    ("OPEN_ENABLED / OPEN_API_KEY / OPEN_BASE_URL / OPEN_MODEL", "Modelos", "Ruta abierta — NaN Builders."),
-    ("PREMIUM_ENABLED / PREMIUM_API_KEY / PREMIUM_BASE_URL / PREMIUM_MODEL", "Modelos", "Ruta premium (OpenAI/Claude/Gemini compatible)."),
-    ("LOCAL_ENABLED / LOCAL_BASE_URL / LOCAL_MODEL", "Modelos", "Ruta local (Ollama)."),
-    ("VPC_ENABLED / VPC_BASE_URL / VPC_API_KEY / VPC_MODEL", "Modelos", "Ruta VPC (vLLM/TGI)."),
-    ("ALLOW_CLOUD_FALLBACK", "Modelos", "Permite subir a nube si la ruta privada no tiene modelo real (opt-in)."),
-    ("CONDENSE_ENABLED / CONDENSE_THRESHOLD_CHARS / MAX_TOKENS_PER_REQUEST", "Eficiencia", "Condensación + tope de gasto."),
-    ("RERANK_ENABLED / RERANK_MODEL / RERANK_CANDIDATES", "Eficiencia", "Reranking del RAG (NaN)."),
-    ("ENCRYPTION_ENABLED / MASTER_KMS_KEY / KMS_KEY_VERSION", "Seguridad", "Cifrado en reposo AES-256-GCM."),
-    ("VECTOR_STORE / QDRANT_URL / QDRANT_API_KEY", "RAG", "inprocess (default) o qdrant."),
-    ("EMBEDDINGS_PROVIDER / EMBEDDINGS_MODEL / EMBEDDINGS_DIM", "RAG", "Fuente de embeddings."),
-    ("N8N_ENABLED / N8N_WEBHOOK_BASE_URL / N8N_API_BASE_URL / N8N_API_KEY / N8N_AUTO_PROVISION", "Workflows", "Integración n8n gestionada."),
-    ("MICROSOFT_* / GOOGLE_*", "OAuth", "Client id/secret/redirect + scopes de correo y acciones."),
-    ("SSO_ENABLED / OIDC_*", "SSO", "Inicio de sesión federado opcional."),
-    ("NEXT_PUBLIC_API_BASE_URL", "Frontend (Vercel)", "URL pública del backend (sin / final)."),
+# ============================================================ GUÍAS DE CONFIG
+GUIDES = [
+    {
+        "t": "A. Microsoft 365 / Outlook (OAuth + acciones)",
+        "intro": "Habilita el resumen de correo/agenda y el toolkit de acciones de Microsoft. Requiere "
+                 "registrar una app en Azure (Entra ID).",
+        "pasos": [
+            "portal.azure.com → Microsoft Entra ID → App registrations → New registration. Nombre: MaestroAI.",
+            "Supported account types: «Accounts in any organizational directory and personal Microsoft accounts».",
+            "Redirect URI (Web): https://<tu-api>/oauth/microsoft/callback (la URL real del backend en Render).",
+            "API permissions → Microsoft Graph → Delegated → lectura: User.Read, Mail.Read, Calendars.Read, offline_access.",
+            "Acciones (escritura): Mail.Send, Calendars.ReadWrite, ChannelMessage.Send, Files.ReadWrite.All, Sites.Read.All.",
+            "(Empresa) Grant admin consent.",
+            "Certificates & secrets → New client secret → copia el Value (solo se ve una vez) y el Application (client) ID.",
+            "Configura las variables MICROSOFT_* en Render → Save, rebuild & deploy.",
+            "Cada usuario Reconecta una vez (Integraciones → Conectar correo) para otorgar los nuevos permisos.",
+        ],
+        "env": [
+            "MICROSOFT_OAUTH_ENABLED = true",
+            "MICROSOFT_CLIENT_ID     = <Application (client) ID>",
+            "MICROSOFT_CLIENT_SECRET = <el Value del secreto>",
+            "MICROSOFT_TENANT        = common",
+            "MICROSOFT_REDIRECT_URI  = https://<tu-api>/oauth/microsoft/callback",
+            "APP_PUBLIC_URL          = https://plataforma.maestroai.mx",
+        ],
+        "nota": "La REDIRECT_URI en Render debe coincidir EXACTAMENTE con la registrada en Azure. Los tokens se "
+                "guardan cifrados (AES-256-GCM) y se refrescan solos.",
+    },
+    {
+        "t": "B. Google Workspace / Gmail (OAuth + acciones)",
+        "intro": "Habilita Gmail/Calendar/Drive/Sheets para resumen, contexto y acciones.",
+        "pasos": [
+            "console.cloud.google.com → crea proyecto → APIs & Services.",
+            "Habilita: Gmail API, Google Calendar API, Google Drive API, Google Sheets API.",
+            "OAuth consent screen: External; agrega tu correo como test user mientras esté en pruebas.",
+            "Scopes: gmail.readonly, calendar.events, drive.readonly y (acciones) gmail.send, spreadsheets.",
+            "Credentials → Create credentials → OAuth client ID → Web application.",
+            "Authorized redirect URI: https://<tu-api>/oauth/google/callback.",
+            "Configura GOOGLE_* en Render y reconecta desde el portal.",
+        ],
+        "env": [
+            "GOOGLE_OAUTH_ENABLED = true",
+            "GOOGLE_CLIENT_ID     = <client id>.apps.googleusercontent.com",
+            "GOOGLE_CLIENT_SECRET = <client secret>",
+            "GOOGLE_REDIRECT_URI  = https://<tu-api>/oauth/google/callback",
+        ],
+        "nota": "Gmail/Outlook ya no aceptan contraseña normal por IMAP; por eso usan OAuth.",
+    },
+    {
+        "t": "C. Cualquier otro correo — IMAP",
+        "intro": "Yahoo, iCloud, Zoho, hosting o correo de empresa. No requiere registrar ninguna app.",
+        "pasos": [
+            "Integraciones → Conectar correo → «Otro correo (IMAP)».",
+            "Elige el proveedor (preset) o escribe host/puerto.",
+            "Escribe el correo + contraseña (muchos exigen «contraseña de aplicación» con 2FA activado).",
+            "Queda conectado; la contraseña se guarda cifrada y se usa solo para leer la bandeja.",
+        ],
+        "env": [],
+        "nota": "IMAP trae correo (no calendario; eso solo Outlook/Gmail por OAuth).",
+    },
+    {
+        "t": "D. Proveedor abierto — NaN Builders (ruta open)",
+        "intro": "Modelo barato/rápido y base de la cascada, el rerank y la condensación. API compatible OpenAI.",
+        "pasos": [
+            "Obtén tu API key de NaN (nan.builders/docs/getting-started).",
+            "UI: Admin → Modelos externos → Abierto → Base URL + modelo + API key → Guardar → Probar conexión.",
+            "O configura OPEN_* en Render.",
+            "Modelo recomendado: qwen3.6 (principal). Para razonamiento largo: deepseek-v4-flash.",
+        ],
+        "env": [
+            "OPEN_ENABLED  = true",
+            "OPEN_API_KEY  = sk-...",
+            "OPEN_BASE_URL = https://api.nan.builders/v1",
+            "OPEN_MODEL    = qwen3.6",
+        ],
+        "nota": "Límites NaN: 60 rpm, 3 en paralelo, 1.5M tpm por modelo de chat. Enterprise (Helmcode): "
+                "api.helmcode.com/v1.",
+    },
+    {
+        "t": "E. Proveedor premium (OpenAI / Claude / Gemini compatible)",
+        "intro": "Refinamiento de máxima precisión en la cascada. Solo se usa como escalada.",
+        "pasos": [
+            "Admin → Modelos externos → Premium → Base URL + modelo + API key → Guardar.",
+            "Pulsa «Probar conexión» para validar (latencia + muestra, o el error).",
+            "O configura PREMIUM_* en Render.",
+        ],
+        "env": [
+            "PREMIUM_ENABLED  = true",
+            "PREMIUM_API_KEY  = <api key>",
+            "PREMIUM_BASE_URL = https://api.openai.com/v1   # o el endpoint compatible de tu proveedor",
+            "PREMIUM_MODEL    = gpt-4o   # o claude-..., gemini-...",
+        ],
+        "nota": "Si no se configura, la cascada se queda en NaN (no se promete premium).",
+    },
+    {
+        "t": "F. Ollama — ruta local privada (datos confidenciales)",
+        "intro": "Procesa lo Confidencial/Restringido en tu propia máquina/servidor; nunca sale a la nube.",
+        "pasos": [
+            "Instala Ollama (ollama.com/download o brew install ollama) y arráncalo (ollama serve).",
+            "Descarga un modelo: ollama pull llama3.1 (o qwen2.5:3b para CPU). El nombre exacto = LOCAL_MODEL.",
+            "Exponlo con URL pública (prueba: cloudflared tunnel --url http://localhost:11434; prod: servidor HTTPS).",
+            "Configura LOCAL_* en Render con la URL del túnel/servidor + /v1.",
+            "Mientras no haya local, ALLOW_CLOUD_FALLBACK=true hace que lo sensible use NaN real en vez del simulador.",
+        ],
+        "env": [
+            "LOCAL_ENABLED  = true",
+            "LOCAL_BASE_URL = https://<tu-tunel-o-servidor>/v1",
+            "LOCAL_MODEL    = llama3.1",
+        ],
+        "nota": "Al conectar Ollama, lo sensible vuelve a la ruta local automáticamente (puedes apagar el fallback).",
+    },
+    {
+        "t": "G. n8n (workflows / automatización)",
+        "intro": "Gestionado por defecto (cero config). BYO opcional para usar tu propio n8n.",
+        "pasos": [
+            "Admin → n8n: Webhook Base URL + API key → Guardar (verás el motor y el origen).",
+            "O configura N8N_* en Render. N8N_AUTO_PROVISION crea los workflows por tenant.",
+            "En Automatizaciones usa acción «workflow» con el nombre del workflow como referencia.",
+        ],
+        "env": [
+            "N8N_ENABLED          = true",
+            "N8N_WEBHOOK_BASE_URL = https://<tu-n8n>/webhook",
+            "N8N_API_BASE_URL     = https://<tu-n8n>/api/v1",
+            "N8N_API_KEY          = <api key de n8n>",
+            "N8N_AUTO_PROVISION   = true",
+        ],
+        "nota": "Regla de integración: webhooks para eventos, REST (conectores) para comandos, n8n para el resto.",
+    },
+    {
+        "t": "H. Reranking del RAG",
+        "intro": "Mejora la precisión reordenando los candidatos recuperados.",
+        "pasos": [
+            "Configura primero el proveedor abierto (NaN) — guía D.",
+            "Admin → Eficiencia de tokens → activa «Reranking RAG».",
+            "O configura RERANK_* en Render.",
+        ],
+        "env": [
+            "RERANK_ENABLED    = true",
+            "RERANK_MODEL      = rerank",
+            "RERANK_CANDIDATES = 20",
+        ],
+        "nota": "Si el reranker falla, se usa el orden por coseno (sin romperse).",
+    },
+    {
+        "t": "I. Proteger ramas (GitHub) — gobernanza del código",
+        "intro": "Evita pushes directos a producción; exige PR + CI verde. Requiere admin del repo.",
+        "pasos": [
+            "Repo → Settings → Branches → Add branch ruleset (o Add branch protection rule).",
+            "Aplica a main y qa.",
+            "Activa: Require a pull request before merging.",
+            "Activa: Require status checks to pass → selecciona «API · pytest» y «Web · build».",
+            "(Opcional) Require branches to be up to date before merging. Guarda.",
+        ],
+        "env": [],
+        "nota": "Con esto, nadie mete código a qa/main sin PR + CI en verde — el flujo dev → qa → main.",
+    },
+    {
+        "t": "J. Núcleo (Render) + Portal (Vercel) + Base de datos",
+        "intro": "Variables base del backend y del portal, y la base de datos persistente.",
+        "pasos": [
+            "Render → Environment: SECRET_KEY (32+), DATABASE_URL (Supabase Session Pooler), CORS_ORIGINS, APP_ENV=production.",
+            "Vercel → NEXT_PUBLIC_API_BASE_URL = URL del backend (sin / final); Root Directory apps/web; Production Branch main.",
+            "Supabase: usa la cadena Session Pooler (IPv4); el backend crea tablas y siembra el tenant demo al primer arranque.",
+            "Plan Render Starter para que el backend no se «duerma»; salud en /health.",
+        ],
+        "env": [
+            "SECRET_KEY        = <32+ caracteres>",
+            "DATABASE_URL      = postgresql://...supabase... (Session Pooler)",
+            "CORS_ORIGINS      = https://plataforma.maestroai.mx",
+            "APP_ENV           = production",
+            "NEXT_PUBLIC_API_BASE_URL = https://<tu-api>   # en Vercel",
+        ],
+        "nota": "Cada entorno (dev/qa/prod) usa sus propias variables y BD; las llaves de prod no se reutilizan en QA.",
+    },
 ]
 
 NAN_MODELS = [
     ("qwen3.6", "MoE 35B/3B", "256K", "Chat, tools, visión, reasoning — principal"),
     ("deepseek-v4-flash", "MoE 284B/21B", "1M", "Chat, tools, reasoning (reasoning_effort)"),
-    ("mimo-v2.5", "MoE 310B/15B", "1M", "Omnimodal (texto+imagen+audio), tools, reasoning"),
+    ("mimo-v2.5", "MoE 310B/15B", "1M", "Omnimodal (texto+imagen+audio)"),
     ("gemma4", "MoE 26B/4B", "256K", "Chat, visión, reasoning (opt-in)"),
     ("qwen3-embedding", "8B", "—", "Embeddings 4096-dim, 100+ idiomas"),
     ("rerank", "Qwen3-Reranker-8B", "—", "Reranking RAG (/rerank)"),
     ("kokoro", "TTS 82M", "—", "Text-to-speech, voces ES"),
     ("whisper", "large-v3", "—", "Speech-to-text, 99+ idiomas"),
 ]
-
-MODULES = [
-    ("Casos de uso (recetas)", "Genera entregables (propuestas, cartas, reportes, licitaciones) con un paso universal objetivo/notas/formato y grounding por categoría. Borrador → aprobar → exportar a Word/PDF/Markdown/PPTX/XLSX. Reporte por industria con plantillas por sector."),
-    ("Agentes verticales", "Agentes especializados (Document Intelligence, Cyber Diagnostic, Proposal/SOW, Executive Copilot) configurables por área; cada respuesta pasa por el router de privacidad y cita fuentes."),
-    ("Chat con fuentes", "3 modos de contexto (sin contexto / todo el RAG / elegir documentos), toggles de máxima precisión (cascada) y memoria; banner con clasificación y ruta real; exportable."),
-    ("Notebooks", "Estilo NotebookLM privado: fuentes + preguntas citadas + artefactos (resumen, FAQ, guía, briefing, cronología) acotados a esos documentos."),
-    ("Documentos y RAG", "Repositorio por área + catálogo de categorías; tratamiento auto-detectado (público/interno/confidencial/restringido) y editable; borrar y re-etiquetar; Drive como contexto; índice cifrado."),
-    ("Memoria y etiquetas", "Memoria persistente de trabajos con búsqueda semántica + por tags; recall en el chat ('¿recuerdas el trabajo C?'); auto-captura al completar casos."),
-    ("Generar imágenes", "Texto→imagen (ruta estándar OpenAI), relación de aspecto y variantes; galería por área; PII redactada; auditada."),
-    ("Flujogramas", "La lógica del producto navegable: los flujos base del blueprint + flujo de caso + diseño libre."),
-    ("Tableros", "Dashboards a la medida: describe qué medir, agrega KPIs y gráficas en vivo (tokens por fuente, casos por receta, costo por ruta) + KPIs manuales."),
-    ("Trámites y casos (MCP)", "Catálogo curado por país/estado/empresa por ejes de desarrollo; convierte un trámite en propuesta de caso; aterriza (grounding) las respuestas."),
-    ("App Studio", "Construye mini-apps con IA y publícalas (pago por despliegue)."),
-    ("Automatizaciones", "Disparador (manual/programado/evento) → acción (workflow n8n / caso / conector / notificar), con plantillas y ejecución manual."),
-]
+ENDPOINTS = {
+    "Autenticación / cuenta": ["POST /auth/login", "GET /me", "GET /account"],
+    "Chat y casos": ["POST /chat", "POST /chat/preview", "GET/POST /recipes", "POST /recipes/{id}/start", "POST /v1/cases/{recipe_id}/run"],
+    "Documentos y RAG": ["GET/POST /documents", "POST /documents/upload", "GET/POST /documents/categories", "GET /drive/files", "POST /drive/import"],
+    "Notebooks / Memoria": ["GET/POST /notebooks", "POST /notebooks/{id}/ask", "GET/POST /memory", "GET /memory/tags"],
+    "Imágenes": ["GET /images/config", "POST /images/generate", "GET /images", "GET /images/{id}/data"],
+    "Acciones": ["GET /actions", "POST /actions/run", "POST /actions/requests/{id}/approve", "GET/DELETE /actions/grants"],
+    "Integraciones": ["GET/POST /integrations/connectors", "POST /integrations/connectors/{id}/test", "GET /integrations/connectors/{id}/reveal", "GET/POST /datasources", "POST /datasources/import-csv", "POST /oauth/{provider}/authorize"],
+    "Automatizaciones": ["GET/POST /automations", "POST /automations/from-template", "POST /automations/{id}/run", "POST /automations/run-due"],
+    "Admin": ["GET/PUT /admin/providers", "POST /admin/providers/{route}/test", "GET/PUT /admin/efficiency", "GET/POST /admin/users", "GET /admin/n8n"],
+    "Auditoría / salud": ["GET /audit", "GET /audit/export", "GET /usage", "GET /health", "POST /v1/webhooks/{id}"],
+}
 
 
 # ===================================================================== WORD
@@ -118,13 +462,19 @@ def build_docx(path: str) -> None:
         p = doc.add_paragraph(); r = p.add_run(text); r.bold = bold; r.italic = italic
         r.font.color.rgb = color; r.font.size = Pt(size); return p
 
-    def bullets(items):
+    def label(lbl, text):
+        p = doc.add_paragraph(); r = p.add_run(lbl + ": "); r.bold = True; r.font.color.rgb = VIOLET
+        r.font.size = Pt(10.5); rr = p.add_run(text); rr.font.color.rgb = SLATE; rr.font.size = Pt(10.5)
+
+    def steps(items, numbered=True):
+        style = "List Number" if numbered else "List Bullet"
         for it in items:
-            p = doc.add_paragraph(style="List Bullet")
-            if isinstance(it, tuple):
-                r = p.add_run(it[0] + ": "); r.bold = True; p.add_run(it[1])
-            else:
-                p.add_run(it)
+            p = doc.add_paragraph(style=style); p.add_run(it)
+
+    def code(lines):
+        for ln in lines:
+            p = doc.add_paragraph(); r = p.add_run(ln); r.font.name = "Consolas"; r.font.size = Pt(9)
+            r.font.color.rgb = SLATE
 
     def table(headers, rows):
         t = doc.add_table(rows=1, cols=len(headers)); t.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -137,149 +487,89 @@ def build_docx(path: str) -> None:
                 rp = cells[i].paragraphs[0].add_run(str(v)); rp.font.size = Pt(9)
         doc.add_paragraph()
 
-    # ---- Cover
-    sp = doc.add_paragraph(); sp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for _ in range(4):
+    for _ in range(5):
         doc.add_paragraph()
-    title = doc.add_paragraph(); title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = title.add_run("MaestroAI"); r.bold = True; r.font.size = Pt(46); r.font.color.rgb = VIOLET
-    st = doc.add_paragraph(); st.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = st.add_run("Documentación técnica y funcional"); r.font.size = Pt(20); r.font.color.rgb = SLATE
-    su = doc.add_paragraph(); su.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = su.add_run("Plataforma de IA privada y gobernada (Private AI Gateway + agentes verticales)")
-    r.font.size = Pt(12); r.font.color.rgb = GREY
-    dt = doc.add_paragraph(); dt.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    dt.add_run("Versión 2026 · Documento confidencial").italic = True
+    c = doc.add_paragraph(); c.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = c.add_run("MaestroAI"); r.bold = True; r.font.size = Pt(46); r.font.color.rgb = VIOLET
+    c2 = doc.add_paragraph(); c2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = c2.add_run("Documentación técnica y funcional — Manual completo"); r.font.size = Pt(19); r.font.color.rgb = SLATE
+    c3 = doc.add_paragraph(); c3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = c3.add_run("Capacidades, casos de uso, pasos y guías de configuración"); r.font.size = Pt(12); r.font.color.rgb = GREY
+    c4 = doc.add_paragraph(); c4.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    c4.add_run("Versión 2026 · Documento confidencial").italic = True
     doc.add_page_break()
 
-    # ---- 1. Introducción
     doc.add_heading("1. Introducción y propuesta de valor", level=1)
-    para("MaestroAI no es «otro ChatGPT»: es una capa privada y gobernada sobre la IA, "
-         "pensada para empresas de LATAM que necesitan aprovechar modelos de lenguaje sin "
-         "exponer datos sensibles ni perder control ni trazabilidad. El diferenciador central "
-         "es el Enrutador de Privacidad (Privacy Model Router): por cada dato que se procesa, la "
-         "plataforma clasifica su sensibilidad, detecta PII, minimiza y redacta, y decide "
-         "automáticamente la ruta del modelo (local, VPC, abierto o premium) o lo bloquea — todo auditado.")
-    para("Sobre esa base corren capacidades verticales: RAG documental por área, casos de uso que "
-         "generan entregables, agentes especializados, notebooks, automatizaciones e integraciones "
-         "con las herramientas que la empresa ya usa (Google Workspace, Microsoft 365, CRM/ERP, n8n).")
-    doc.add_heading("Principios de diseño", level=2)
-    bullets([
-        ("Privacidad por defecto", "el usuario nunca elige el modelo; lo decide la política."),
-        ("Trazabilidad total", "cada acción y ruteo queda auditado con su razón."),
-        ("Costo bajo control", "NaN-primero, condensación de contexto y tope de gasto."),
-        ("Gobernanza por área y licencia", "cada quien ve solo lo que le corresponde."),
-        ("Extensible", "API pública, conectores, webhooks y n8n para todo lo demás."),
+    para("MaestroAI es una capa privada y gobernada sobre la IA para empresas de LATAM. A diferencia de un "
+         "asistente genérico, cada dato que se procesa pasa por el Enrutador de Privacidad: se clasifica, se "
+         "detecta PII, se minimiza y redacta, y se decide automáticamente la ruta del modelo o se bloquea — "
+         "todo auditado. Sobre esa base corren capacidades verticales (RAG, casos, agentes, notebooks, "
+         "automatizaciones) e integraciones con las herramientas de la empresa.")
+    para("Cómo leer este documento", bold=True)
+    para("La sección 4 describe cada capacidad con cuatro vistas: qué hace (Capacidad), qué se logra "
+         "(Logro/valor), un ejemplo (Caso de uso) y el cómo (Pasos a seguir). La sección 6 contiene las guías "
+         "técnicas de configuración paso a paso. Los apéndices listan endpoints, modelos y acciones.")
+
+    doc.add_heading("2. Arquitectura general", level=1)
+    steps([
+        "Portal (Next.js 15 + Tailwind) en Vercel; instalable como PWA.",
+        "API (FastAPI + SQLModel) en Render (Docker); Postgres (Supabase) en producción.",
+        "RAG con almacén vectorial in-process (o Qdrant); embeddings y fragmentos cifrados.",
+        "Modelos: local (Ollama), VPC (vLLM/TGI), abierto (NaN), premium (OpenAI/Claude/Gemini).",
+        "Workflows con n8n gestionado; conectores y webhooks para el ecosistema.",
+        "CI/CD con GitHub Actions y promoción dev → qa → main.",
+    ], numbered=False)
+    doc.add_heading("Flujo de una petición", level=2)
+    steps([
+        "El portal envía el prompt + selección de contexto a la API.",
+        "El RAG recupera fragmentos por embeddings y, si está activo, los reordena (rerank).",
+        "El router clasifica sensibilidad + PII, minimiza y redacta, y decide la ruta.",
+        "Se genera la respuesta (con fallback seguro si el proveedor falla).",
+        "Cascada opcional: refina con premium a demanda o si la respuesta es insuficiente.",
+        "Se persiste el mensaje, se cita la fuente y se registra el evento de auditoría.",
     ])
 
-    # ---- 2. Glosario
-    doc.add_heading("2. Glosario", level=1)
-    table(["Término", "Definición"], [
-        ["Tenant", "Una empresa/organización aislada dentro de la plataforma (multi-tenant)."],
-        ["Router de privacidad", "Componente que clasifica y decide la ruta del modelo por cada petición."],
-        ["RAG", "Retrieval-Augmented Generation: recuperar fragmentos relevantes y responder citándolos."],
-        ["Rerank", "Reordenar candidatos del RAG por relevancia real con un cross-encoder."],
-        ["Cascada", "Borrador con modelo barato (NaN) y refinamiento premium a demanda."],
-        ["PII", "Información personal identificable (RFC, CURP, CLABE, tarjetas, correos, salud…)."],
-        ["Ruta", "Destino de inferencia: local / VPC / open (NaN) / premium / bloqueado."],
-        ["Área / Licencia", "Dimensiones de permisos: qué documentos y contexto ve cada usuario."],
-    ])
-
-    # ---- 3. Arquitectura
-    doc.add_heading("3. Arquitectura general", level=1)
-    para("La plataforma es un monorepo con dos despliegues independientes:")
-    bullets([
-        ("Portal (Next.js 15 + Tailwind)", "alojado en Vercel; PWA instalable."),
-        ("API (FastAPI + SQLModel)", "alojada en Render (Docker); Postgres (Supabase) en producción."),
-        ("Almacén vectorial", "in-process (por defecto) o Qdrant gestionado."),
-        ("Modelos", "NaN (open), Ollama (local), vLLM/TGI (VPC), OpenAI/Claude/Gemini (premium)."),
-        ("Workflows", "n8n gestionado (auto-provisión por tenant)."),
-    ])
-    doc.add_heading("Flujo de una petición (chat / caso)", level=2)
-    bullets([
-        "1. El portal envía el prompt + selección de contexto a la API.",
-        "2. El RAG recupera fragmentos por embeddings (y los reordena con rerank si está activo).",
-        "3. El router clasifica sensibilidad + PII y decide la ruta; minimiza y redacta el contexto.",
-        "4. Se genera la respuesta en la ruta elegida (con fallback seguro si el proveedor falla).",
-        "5. Cascada opcional: refina con premium a demanda o si la respuesta es insuficiente.",
-        "6. Se persiste el mensaje, se cita la fuente y se registra el evento de auditoría.",
-    ])
-
-    # ---- 4. Privacidad y ruteo
-    doc.add_heading("4. Modelo de privacidad y enrutamiento", level=1)
-    para("El router implementa un árbol de decisión que prioriza la privacidad sobre el costo y la "
-         "conveniencia. El usuario no interviene en la elección.")
+    doc.add_heading("3. Modelo de privacidad y enrutamiento", level=1)
     table(["Situación del dato", "Ruta", "Notas"], [
         ["Restringido", "Local", "Nunca sale de la infraestructura."],
         ["Confidencial", "VPC (o Local)", "VPC privada con auditoría; local si no hay VPC."],
         ["PII sin alta sensibilidad", "VPC / Local", "No sale a externo por defecto."],
         ["Interno / Público", "Open (NaN)", "Empieza en NaN; premium solo a demanda/insuficiencia."],
-        ["Inyección / exfiltración", "Bloqueado", "Política de seguridad; se audita el intento."],
-    ])
-    para("NaN-primero: los datos no sensibles SIEMPRE empiezan con el modelo abierto (NaN). Premium "
-         "no es ruta base; es una escalada que ocurre solo cuando el usuario pide «máxima precisión» o "
-         "cuando la respuesta del modelo barato resulta insuficiente. Si no hay premium configurado, "
-         "todo se resuelve en NaN; si tampoco hay NaN, la plataforma responde en modo demostración (mock) "
-         "e invita a configurar un proveedor real. Datos sensibles nunca escalan a la nube sin aprobación.")
-
-    # ---- 5. RAG
-    doc.add_heading("5. RAG: ingesta, recuperación y citaciones", level=1)
-    bullets([
-        ("Ingesta", "el documento se clasifica (sensibilidad + PII), se trocea (chunking con solape) y se cifra."),
-        ("Embeddings", "se calculan sobre texto plano; los fragmentos se almacenan cifrados (AES-256-GCM)."),
-        ("Recuperación", "búsqueda vectorial acotada por tenant, categoría y áreas visibles del usuario."),
-        ("Reranking", "opcional, reordena los candidatos por relevancia real (NaN Qwen3-Reranker)."),
-        ("Citaciones", "cada respuesta indica documento, fragmento y score; respeta permisos por área."),
+        ["Inyección / exfiltración", "Bloqueado", "Se audita el intento."],
     ])
 
-    # ---- 6. Cascada y eficiencia
-    doc.add_heading("6. Cascada de modelos y eficiencia de tokens", level=1)
-    para("Para controlar costo sin sacrificar calidad, la plataforma combina un modelo barato (NaN) con "
-         "uno premium bajo demanda y reduce el tamaño de lo que se envía:")
-    bullets([
-        ("Condensación", "antes de pagar premium, el contexto grande se condensa con el modelo barato."),
-        ("Tope de gasto", "MAX_TOKENS_PER_REQUEST limita los tokens por consulta (0 = sin tope)."),
-        ("Escalada por insuficiencia", "si el borrador barato es pobre, se sube a premium automáticamente."),
-        ("Ahorro acumulado", "el panel de Eficiencia muestra los tokens ahorrados."),
-    ])
+    doc.add_heading("4. Capacidades, logros, casos de uso y pasos", level=1)
+    para("Cada capacidad se describe en cuatro vistas para separar el «qué/por qué» del «cómo».", italic=True, color=GREY)
+    for cap in CAPS:
+        doc.add_heading(cap["t"], level=2)
+        label("Capacidad", cap["cap"])
+        label("Logro / valor", cap["logro"])
+        label("Caso de uso", cap["caso"])
+        para("Pasos a seguir:", bold=True, color=VIOLET)
+        steps(cap["pasos"])
 
-    # ---- 7. Módulos
-    doc.add_heading("7. Módulos funcionales", level=1)
-    for name, desc in MODULES:
-        doc.add_heading(name, level=3)
-        para(desc)
-
-    # ---- 8. Integraciones
-    doc.add_heading("8. Integraciones", level=1)
-    bullets([
-        ("Correo", "OAuth Outlook/Gmail + IMAP (Yahoo, iCloud, Zoho, hosting); varias cuentas por proveedor."),
-        ("Google Drive", "importar archivos al RAG como contexto (scope drive.readonly)."),
-        ("Conectores de salida", "CRM/ERP/Delivery (HubSpot, Salesforce, Shopify, Rappi, genérico) con detalle y «ojito» de secretos (auditado)."),
-        ("Webhooks entrantes", "firmados con HMAC-SHA256 (X-Signature) para recibir eventos."),
-        ("Fuentes de datos legadas", "BD de solo lectura (DSN + SELECT) y CSV → repositorio + RAG."),
-        ("n8n", "puente universal gestionado; automatizaciones con acción «workflow»."),
-        ("API pública /v1", "sistemas externos llaman con X-API-Key."),
-    ])
-
-    # ---- 9. Toolkit de acciones
-    doc.add_heading("9. Toolkit de acciones (Google / Microsoft)", level=1)
-    para("Las lecturas corren al instante; las escrituras requieren aprobación humana (o «Permitir "
-         "siempre», revocable). Todo se audita.")
-    table(["Acción", "Proveedor", "Escritura", "Parámetros"], [list(a) for a in ACTIONS])
-
-    # ---- 10. Modelos y proveedores
-    doc.add_heading("10. Modelos y proveedores", level=1)
-    para("Rutas: local (Ollama), VPC (vLLM/TGI), open (NaN Builders), premium (OpenAI/Claude/Gemini "
-         "compatible). Todas usan endpoints compatibles con OpenAI. El proveedor abierto por defecto es "
-         "NaN Builders (API compatible OpenAI en https://api.nan.builders/v1).")
-    doc.add_heading("Modelos publicados de NaN", level=2)
+    doc.add_heading("5. Modelos y proveedores", level=1)
+    para("Todas las rutas usan endpoints compatibles con OpenAI. El proveedor abierto por defecto es NaN "
+         "Builders (https://api.nan.builders/v1). Modelos publicados de NaN:")
     table(["Modelo", "Tipo", "Contexto", "Capacidades"], [list(m) for m in NAN_MODELS])
-    para("Nota: la API documentada de NaN no expone generación de imágenes (es una función de su web). "
-         "La sección «Generar imágenes» usa la ruta estándar de OpenAI y funciona con cualquier proveedor "
-         "que la exponga.", italic=True, color=GREY)
+    para("Nota: la API de NaN no expone generación de imágenes (es función de su web); la sección de imágenes "
+         "usa la ruta estándar OpenAI con cualquier proveedor que la exponga.", italic=True, color=GREY)
 
-    # ---- 11. Roles y permisos
-    doc.add_heading("11. Roles, permisos y multi-tenant", level=1)
+    doc.add_heading("6. Guías técnicas de configuración (paso a paso)", level=1)
+    para("Cubren exactamente lo que hay que configurar para activar cada capacidad. Las variables van en "
+         "Render (backend) salvo NEXT_PUBLIC_API_BASE_URL (Vercel).", italic=True, color=GREY)
+    for g in GUIDES:
+        doc.add_heading(g["t"], level=2)
+        para(g["intro"])
+        para("Pasos:", bold=True, color=VIOLET)
+        steps(g["pasos"])
+        if g["env"]:
+            para("Variables:", bold=True, color=VIOLET)
+            code(g["env"])
+        if g.get("nota"):
+            para("Nota: " + g["nota"], italic=True, color=GREY)
+
+    doc.add_heading("7. Roles, permisos y multi-tenant", level=1)
     table(["Rol", "Puede"], [
         ["super_admin", "Todo, a través de todos los tenants."],
         ["admin", "Configuración del tenant: marca, facturación, usuarios, modelos, integraciones."],
@@ -287,79 +577,45 @@ def build_docx(path: str) -> None:
         ["security", "Auditoría, políticas y revisión de eventos."],
         ["devops", "Conectores e integraciones técnicas (fuentes de datos)."],
     ])
-    para("Los permisos son jerárquicos por área y licencia: el rol y el área deciden qué documentos y "
-         "contexto ve cada quien. General/sin área es visible para todos; Admin, Security y Super Admin "
-         "ven todas las áreas. La autenticación es JWT (Bearer); SSO/OIDC es opcional.")
+    para("Permisos jerárquicos por área y licencia: el rol y el área deciden qué documentos y contexto ve "
+         "cada quien. General/sin área es visible para todos; Admin, Security y Super Admin ven todas las áreas.")
 
-    # ---- 12. Seguridad
-    doc.add_heading("12. Seguridad, privacidad y cumplimiento", level=1)
-    bullets([
-        ("Cifrado en reposo", "AES-256-GCM por tenant (documentos, fragmentos, credenciales)."),
-        ("Redacción de PII", "antes de cualquier salida externa."),
-        ("Minimización de contexto", "solo se envía lo necesario, nunca documentos completos sin autorización."),
-        ("Auditoría", "cada evento registra usuario, ruta, modelo, tokens, costo, sensibilidad y razón; export a SIEM (JSONL)."),
-        ("Endurecimiento", "denylist DML/CTE en fuentes de datos, escapado OData en Graph, authz de config solo super admin."),
-        ("Cumplimiento de referencia", "LFPDPPP, OWASP Top 10 for LLM Apps 2025, NIST AI RMF."),
-    ])
+    doc.add_heading("8. Seguridad, privacidad y cumplimiento", level=1)
+    steps([
+        "Cifrado en reposo AES-256-GCM por tenant (documentos, fragmentos, credenciales).",
+        "Redacción de PII antes de cualquier salida externa; minimización de contexto.",
+        "Auditoría total con export a SIEM (JSONL).",
+        "Endurecimiento: denylist DML/CTE en fuentes de datos, escapado OData en Graph, config solo super admin.",
+        "Cumplimiento de referencia: LFPDPPP, OWASP Top 10 for LLM Apps 2025, NIST AI RMF.",
+    ], numbered=False)
 
-    # ---- 13. Entornos / CI-CD
-    doc.add_heading("13. Entornos, CI/CD y flujo Git", level=1)
-    para("Promoción dev → qa → main (producción) mediante Pull Requests con CI obligatorio "
-         "(pytest de la API + build del portal). Cada push a main despliega el portal (Vercel) y la "
-         "API (Render). Las migraciones son aditivas e idempotentes para no perder datos. Se recomienda "
-         "proteger las ramas main y qa (requerir PR + checks en verde).")
+    doc.add_heading("9. Entornos, CI/CD y operación", level=1)
+    para("Promoción dev → qa → main con PR y CI obligatorio (pytest + build). Cada push a main despliega "
+         "portal (Vercel) y API (Render). Migraciones aditivas e idempotentes. Cada entorno usa sus propias "
+         "variables y base de datos. Ayuda in-app en español + ayuda contextual (popup) por sección.")
 
-    # ---- 14. Configuración (env vars)
-    doc.add_heading("14. Configuración y despliegue", level=1)
-    para("Variables de entorno principales (Backend en Render salvo la última, que es del portal):")
-    table(["Variable(s)", "Grupo", "Descripción"], [[a, b, c] for a, b, c in ENVVARS])
-    doc.add_heading("Checklist de puesta a punto", level=2)
-    bullets([
-        "SECRET_KEY, DATABASE_URL (Supabase), CORS_ORIGINS.",
-        "NEXT_PUBLIC_API_BASE_URL en Vercel.",
-        "NaN: OPEN_ENABLED/_API_KEY/_BASE_URL/_MODEL (+ ALLOW_CLOUD_FALLBACK si aplica).",
-        "Premium: PREMIUM_* (opcional) + Probar conexión en Admin → Modelos externos.",
-        "Microsoft/Google: client id/secret/redirect + reconectar para scopes de acciones.",
-        "n8n: N8N_ENABLED/_WEBHOOK_BASE_URL/_API_BASE_URL/_API_KEY.",
-        "Marca (white-label), plan/asientos, dominio + SSL.",
-        "Proteger ramas main/qa en GitHub.",
-    ])
+    doc.add_heading("10. Roadmap y pendientes", level=1)
+    steps([
+        "Catálogos de configuración empresarial (en definición con el cliente).",
+        "TTS (kokoro) y STT (whisper) de NaN: voz y transcripción hacia el RAG.",
+        "SFTP para sistemas legados (requiere paramiko).",
+        "Pendientes del cliente: proteger ramas, reconectar Microsoft con scopes, configurar premium/NaN.",
+    ], numbered=False)
 
-    # ---- 15. Operación y soporte
-    doc.add_heading("15. Operación y soporte", level=1)
-    bullets([
-        ("Ayuda in-app", "guías paso a paso en español + ayuda contextual (popup) por sección."),
-        ("Salud", "el backend expone /health; Render Starter evita que el backend se «duerma»."),
-        ("Primer acceso lento", "si el plan duerme por inactividad, el primer request lo despierta (~50 s)."),
-        ("Contenido genérico (mock)", "indica que la ruta no tiene modelo real conectado: configúralo en Admin."),
-    ])
-
-    # ---- 16. Planes
-    doc.add_heading("16. Planes y licenciamiento", level=1)
-    para("Planes (MXN) por asiento con setup + anual: Emprende / Negocio / Empresa / Gobierno. "
-         "El alta de usuarios respeta el número de asientos licenciados (enforcement) y el estado de la "
-         "suscripción. El panel de Admin incluye un estimador de costo.")
-
-    # ---- 17. Roadmap
-    doc.add_heading("17. Roadmap y pendientes", level=1)
-    bullets([
-        ("Catálogos de configuración empresarial", "en definición con el cliente."),
-        ("TTS/STT (NaN kokoro/whisper)", "voz y transcripción de audio hacia el RAG."),
-        ("SFTP", "conector para sistemas legados (requiere paramiko)."),
-        ("Pendientes del cliente", "proteger ramas, reconectar Microsoft con scopes nuevos, configurar premium/NaN."),
-    ])
-
-    # ---- Appendices
     doc.add_page_break()
-    doc.add_heading("Apéndice A · Catálogo de endpoints de la API", level=1)
-    para(f"La API expone {sum(len(v) for v in ENDPOINTS.values())}+ rutas (selección agrupada de 131 totales):", color=GREY)
-    for group, eps in ENDPOINTS.items():
-        doc.add_heading(group, level=3)
-        bullets(eps)
-
-    doc.add_heading("Apéndice B · Variables de entorno (detalle)", level=1)
-    table(["Variable(s)", "Grupo", "Descripción"], [[a, b, c] for a, b, c in ENVVARS])
-
+    doc.add_heading("Apéndice A · Endpoints de la API (selección de 131)", level=1)
+    for grp, eps in ENDPOINTS.items():
+        doc.add_heading(grp, level=3); steps(eps, numbered=False)
+    doc.add_heading("Apéndice B · Catálogo de acciones del toolkit", level=1)
+    table(["Acción", "Proveedor", "Escritura", "Parámetros"], [
+        ["gmail.send / outlook.send", "Google / Microsoft", "Sí", "to, subject, body"],
+        ["gcal/mscal.create_event", "Google / Microsoft", "Sí", "summary, start, end, location"],
+        ["gsheets.append / excel.append", "Google / Microsoft", "Sí", "id, range/table, values"],
+        ["teams.post", "Microsoft", "Sí", "team_id, channel_id, message"],
+        ["gsheets.read / excel.read", "Google / Microsoft", "No", "id, range/worksheet"],
+        ["gcal.list / mscal.list", "Google / Microsoft", "No", "days"],
+        ["onedrive.list / sharepoint.search", "Microsoft", "No", "query"],
+    ])
     doc.save(path)
 
 
@@ -368,102 +624,56 @@ def build_pptx(path: str) -> None:
     prs = Presentation(); prs.slide_width = PInches(13.333); prs.slide_height = PInches(7.5)
     blank = prs.slide_layouts[6]
 
-    def slide(title, bullets=None, subtitle=None, cover=False, rows=None):
+    def slide(title, bullets=None, subtitle=None, cover=False):
         s = prs.slides.add_slide(blank)
         if cover:
             f = s.background.fill; f.solid(); f.fore_color.rgb = PV
         tb = s.shapes.add_textbox(PInches(0.7), PInches(2.6 if cover else 0.45), PInches(12), PInches(1.2))
         p = tb.text_frame.paragraphs[0]; p.word_wrap = True
-        r = p.add_run(); r.text = title; r.font.size = PPt(38 if cover else 28); r.font.bold = True
+        r = p.add_run(); r.text = title; r.font.size = PPt(36 if cover else 26); r.font.bold = True
         r.font.color.rgb = PW if cover else PV
         if subtitle:
-            sb = s.shapes.add_textbox(PInches(0.7), PInches(3.9 if cover else 1.45), PInches(12), PInches(1))
+            sb = s.shapes.add_textbox(PInches(0.7), PInches(3.9 if cover else 1.4), PInches(12), PInches(1))
             sp = sb.text_frame.paragraphs[0]; sp.word_wrap = True
-            rr = sp.add_run(); rr.text = subtitle; rr.font.size = PPt(16); rr.font.color.rgb = PW if cover else PG
+            rr = sp.add_run(); rr.text = subtitle; rr.font.size = PPt(15); rr.font.color.rgb = PW if cover else PG
         if bullets:
             body = s.shapes.add_textbox(PInches(0.8), PInches(1.7), PInches(11.7), PInches(5.3))
             bf = body.text_frame; bf.word_wrap = True
             for i, b in enumerate(bullets):
-                para = bf.paragraphs[0] if i == 0 else bf.add_paragraph()
+                pa = bf.paragraphs[0] if i == 0 else bf.add_paragraph()
                 if isinstance(b, tuple):
-                    r1 = para.add_run(); r1.text = b[0] + ": "; r1.font.bold = True; r1.font.size = PPt(15); r1.font.color.rgb = PS
-                    r2 = para.add_run(); r2.text = b[1]; r2.font.size = PPt(13); r2.font.color.rgb = PG
+                    r1 = pa.add_run(); r1.text = b[0] + ": "; r1.font.bold = True; r1.font.size = PPt(14); r1.font.color.rgb = PS
+                    r2 = pa.add_run(); r2.text = b[1]; r2.font.size = PPt(12); r2.font.color.rgb = PG
                 else:
-                    r = para.add_run(); r.text = "• " + b; r.font.size = PPt(15); r.font.color.rgb = PS
-                para.space_after = PPt(6)
-        if rows:
-            tbl = s.shapes.add_table(len(rows) + 1, len(rows[0]), PInches(0.8), PInches(1.8),
-                                     PInches(11.7), PInches(0.4 * (len(rows) + 1))).table
-            for j, h in enumerate(rows[0] if False else []):
-                pass
+                    r = pa.add_run(); r.text = "• " + b; r.font.size = PPt(14); r.font.color.rgb = PS
+                pa.space_after = PPt(5)
         return s
 
     slide("MaestroAI", subtitle="Documentación técnica y funcional · 2026", cover=True)
-    slide("El problema", [
-        "Las empresas quieren IA pero no pueden exponer datos sensibles ni perder control.",
-        "Los asistentes genéricos no clasifican, no auditan y no respetan políticas por área.",
-        "Falta trazabilidad, gobierno de costo y soberanía de datos (LFPDPPP).",
-    ], subtitle="Por qué MaestroAI y no «otro ChatGPT».")
-    slide("La propuesta", [
+    slide("Propuesta de valor", [
         ("Capa privada y gobernada", "sobre cualquier modelo."),
-        ("Enrutador de Privacidad", "clasifica, redacta y decide la ruta por cada dato."),
-        ("RAG por área", "respuestas con fuentes citadas y permisos."),
-        ("Integraciones", "Google/Microsoft, CRM/ERP, n8n, BD/CSV."),
+        ("Enrutador de Privacidad", "clasifica, redacta y decide por cada dato."),
+        ("RAG por área + rerank", "respuestas con fuentes y permisos."),
+        ("Actúa, no solo redacta", "toolkit con aprobación humana."),
     ])
-    slide("Arquitectura", [
-        ("Portal", "Next.js 15 + Tailwind en Vercel (PWA)."),
-        ("API", "FastAPI + SQLModel en Render; Postgres (Supabase)."),
-        ("RAG", "embeddings cifrados + reranking + citas."),
-        ("Modelos", "local (Ollama) · VPC (vLLM) · open (NaN) · premium."),
-        ("CI/CD", "dev → qa → main con pytest + build."),
-    ])
-    slide("Enrutador de Privacidad", [
-        ("Restringido", "Local, nunca sale."),
-        ("Confidencial / PII", "VPC o local."),
-        ("Interno / Público", "NaN (open); premium a demanda."),
-        ("Inyección/exfiltración", "Bloqueado y auditado."),
-    ], subtitle="El usuario nunca elige el modelo: lo decide la política.")
-    slide("NaN-primero + cascada", [
-        ("Inicio", "datos no sensibles empiezan en NaN (barato/rápido)."),
-        ("Escalada", "premium solo con «máxima precisión» o si la respuesta es insuficiente."),
-        ("Sin premium", "todo en NaN; sin NaN, modo demostración."),
-        ("Eficiencia", "condensación + tope de gasto + rerank."),
-    ])
-    slide("Módulos funcionales (1/2)", [(m[0], m[1]) for m in MODULES[:6]])
-    slide("Módulos funcionales (2/2)", [(m[0], m[1]) for m in MODULES[6:]])
-    slide("Integraciones", [
-        ("Correo", "Outlook/Gmail/IMAP, multi-cuenta."),
-        ("Acciones", "Gmail/Outlook, Calendar, Sheets/Excel, Teams, SharePoint."),
-        ("Conectores/Webhooks", "CRM/ERP + HMAC entrante."),
-        ("Legados", "BD solo lectura y CSV → RAG; n8n para el resto."),
-    ])
-    slide("Modelos de NaN", [
-        ("qwen3.6", "principal (chat, tools, visión, reasoning)."),
-        ("deepseek-v4-flash / mimo-v2.5", "1M tokens; mimo omnimodal."),
-        ("qwen3-embedding / rerank", "stack RAG."),
-        ("kokoro / whisper", "TTS / STT."),
-    ])
+    slide("Cómo decide la ruta", [
+        ("Restringido", "local, nunca sale."), ("Confidencial/PII", "VPC o local."),
+        ("Interno/Público", "NaN; premium a demanda."), ("Inyección", "bloqueado y auditado."),
+    ], subtitle="El usuario nunca elige el modelo.")
+    for cap in CAPS:
+        slide(cap["t"], [("Logro", cap["logro"]), ("Caso de uso", cap["caso"]),
+                         ("Cómo", cap["pasos"][0] + (" …" if len(cap["pasos"]) > 1 else ""))])
+    slide("Configuración — lo que se conecta", [
+        ("Correo", "OAuth Microsoft/Google + IMAP."),
+        ("Modelos", "NaN (open), premium, Ollama (local)."),
+        ("Automatización", "n8n + conectores + webhooks."),
+        ("Gobierno", "rerank, eficiencia, proteger ramas."),
+    ], subtitle="Guías paso a paso en la sección 6 del documento.")
     slide("Seguridad y cumplimiento", [
-        "Cifrado en reposo AES-256-GCM por tenant.",
-        "Redacción de PII y minimización de contexto.",
-        "Auditoría total + export a SIEM.",
+        "Cifrado AES-256-GCM por tenant.",
+        "Redacción de PII + minimización.",
+        "Auditoría total + export SIEM.",
         "LFPDPPP · OWASP LLM 2025 · NIST AI RMF.",
-    ])
-    slide("Roles y gobierno", [
-        ("super_admin / admin", "multi-tenant / configuración del tenant."),
-        ("user / security / devops", "uso / auditoría / integraciones."),
-        ("Permisos por área y licencia", "cada quien ve lo suyo."),
-    ])
-    slide("Entornos y operación", [
-        "dev → qa → main con CI obligatorio.",
-        "Despliegue: Vercel (portal) + Render (API).",
-        "Ayuda in-app + contextual (popup) por sección.",
-        "Auditoría navegable de cada acción.",
-    ])
-    slide("Roadmap", [
-        ("Catálogos de configuración empresarial", "en definición."),
-        ("TTS/STT (NaN)", "voz y transcripción."),
-        ("SFTP", "conector legado."),
     ])
     slide("Gracias", subtitle="MaestroAI · Documentación 2026", cover=True)
 
