@@ -668,3 +668,27 @@ class FineTuneJob(SQLModel, table=True):
     metrics: str = "{}"            # JSON de métricas/evals
     reason: str = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class MailDigestConfig(SQLModel, table=True):
+    """Configuración (por usuario) del resumen de correo automatizado: cada día clasifica
+    el buzón conectado (categoría/prioridad, descarta propaganda, detecta pendientes) y lo
+    entrega por los canales elegidos (pop-up / correo / WhatsApp). Inspirado en el patrón
+    Apps Script, pero genérico y configurable. Aprende un perfil de remitentes con el tiempo."""
+    __tablename__ = "mail_digest_configs"
+    id: str = Field(default_factory=lambda: _uuid("mdg"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    enabled: bool = False
+    account_id: str = ""           # OAuthToken id ("" = la cuenta conectada más reciente)
+    schedule: str = "daily"        # daily | weekdays
+    channels: str = '["popup"]'    # JSON: popup | email | whatsapp
+    email_to: str = ""             # destinatarios (coma); vacío = la propia cuenta
+    language: str = "es"           # es | bilingue
+    notes: str = ""                # contexto configurable (reemplaza el "NOTAS_FAMILIA")
+    discard_propaganda: bool = True
+    pending_enabled: bool = True
+    pending_days: int = 2
+    sender_profile: str = "{}"     # JSON {email: {categoria, propaganda}} aprendido
+    last_run_at: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)

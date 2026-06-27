@@ -3,6 +3,15 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Resumen de correo automatizado (genérico y configurable)**: nueva sección *Resumen de
+  correo*. Configura cuenta, frecuencia (diario/días hábiles), canales (**pop-up / correo /
+  WhatsApp**), idioma (español o **bilingüe ES/EN**), notas de contexto y umbral de pendientes.
+  La plataforma **clasifica el buzón** (categoría + prioridad), **descarta propaganda**,
+  **detecta pendientes por responder** y **aprende un perfil de remitentes** que mejora la
+  clasificación. Entrega por los canales elegidos. Cron-friendly (`POST /mail-digest/run`),
+  sin servidor propio — inspirado en el patrón Apps Script, pero dentro de MaestroAI y sin
+  datos hardcodeados. `GET/PUT /mail-digest/config`, `/preview`, `/run-now`
+  (`app/mailsummary.py`). El correo se envía con la cuenta conectada (Gmail/Outlook).
 - **WhatsApp (CallMeBot) — enviar resultados y recibir alertas por WhatsApp**: configura una
   vez tu número + apikey de CallMeBot (cifrada) en *Alertas → WhatsApp*. Ahora el resultado de
   cualquier **caso de uso** tiene botón **«Enviar a WhatsApp»**, y el **canal WhatsApp de

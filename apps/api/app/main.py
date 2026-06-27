@@ -26,6 +26,7 @@ from .routers import (
     finetune,
     flowcharts,
     images,
+    mail_digest,
     memory,
     notebooks,
     integrations,
@@ -120,6 +121,7 @@ app.include_router(alerts.router)
 app.include_router(search.router)
 app.include_router(runbooks.router)
 app.include_router(whatsapp.router)
+app.include_router(mail_digest.router)
 
 
 @app.get("/health", tags=["meta"])
