@@ -92,6 +92,46 @@ class OpenAICompatAdapter(ModelAdapter):
         content = resp.json()["choices"][0]["message"]["content"]
         return ModelResponse(content=content, model=self.model_name, provider=self.base_url)
 
+    def generate_tools(self, system: str, prompt: str, tools: list[dict]) -> list[dict]:  # pragma: no cover - network
+        """Tool-calling completion (OpenAI function calling). Devuelve la lista de
+        llamadas a herramientas: [{name, arguments(dict)}]. Vacío si el modelo no
+        invocó ninguna. Usado por el agente de acciones con modelos como qwen3.6."""
+        import json as _json
+
+        import httpx
+
+        timeout = (
+            settings.local_request_timeout
+            if self.route in (ModelRoute.LOCAL, ModelRoute.VPC)
+            else settings.model_request_timeout
+        )
+        resp = httpx.post(
+            f"{self.base_url}/chat/completions",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={
+                "model": self.model_name,
+                "messages": [
+                    {"role": "system", "content": system or "Eres un planificador de acciones."},
+                    {"role": "user", "content": prompt},
+                ],
+                "tools": tools,
+                "tool_choice": "auto",
+                "temperature": 0.1,
+            },
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        msg = resp.json()["choices"][0]["message"]
+        calls: list[dict] = []
+        for tc in (msg.get("tool_calls") or []):
+            fn = tc.get("function", {})
+            try:
+                args = _json.loads(fn.get("arguments") or "{}")
+            except (ValueError, TypeError):
+                args = {}
+            calls.append({"name": fn.get("name", ""), "arguments": args if isinstance(args, dict) else {}})
+        return calls
+
 
 # Runtime overrides set from the admin UI (global), take precedence over env.
 # Shape: {route_value: {"enabled","base_url","model","api_key"}}

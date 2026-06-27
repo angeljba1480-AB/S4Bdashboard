@@ -90,7 +90,8 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
   aprobación). `POST /actions/agent` + panel *Asistente* (planner modelo + heurística).
   Puede **disparar workflows n8n** y **encadenar pasos** (`{{stepN}}`: la salida de uno
   alimenta al siguiente). **Previsualización (dry-run)** antes de ejecutar y **recetas
-  guardadas** (playbooks) re-ejecutables.
+  guardadas** (playbooks) re-ejecutables. Con NaN (qwen3.6) usa **function-calling
+  nativo**; sin modelo, cae a heurística.
 
 ### Ayuda
 - ✅ **Ayuda in-app en español**: guías paso a paso (n8n, correo, RAG, acciones,
@@ -124,7 +125,7 @@ Para activar lo que depende de credenciales/permisos:
 
 ## 4. Calidad
 
-- ✅ **219 pruebas** automatizadas en verde (API).
+- ✅ **222 pruebas** automatizadas en verde (API).
 - Migraciones aditivas idempotentes (sin pérdida de datos).
 - Credenciales cifradas (AES-256-GCM); todo auditado.
 
