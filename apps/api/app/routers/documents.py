@@ -132,6 +132,18 @@ async def upload(
         raw = await file.read()
         name = file.filename or filename or "documento.txt"
         mime = file.content_type or "text/plain"
+        # Antivirus + tope de tamaño antes de procesar (blueprint: upload → antivirus).
+        from ..security.antivirus import scan
+        verdict = scan(raw, name)
+        if not verdict.ok:
+            session.add(AuditEvent(
+                tenant_id=tenant.id, user_id=user.id, event_type="security", object_type="document",
+                object_id=name, risk_level="high",
+                reason=f"upload bloqueado por antivirus ({verdict.engine}): {verdict.reason}"
+                       + (f" [{verdict.threat}]" if verdict.threat else ""),
+            ))
+            session.commit()
+            raise HTTPException(status_code=422, detail=f"Archivo rechazado: {verdict.reason}.")
         # Extrae texto según el tipo (PDF/DOCX/texto/CSV) — OCR opcional si hay binario.
         from ..ingest import extract_text
         content = extract_text(raw, name, mime)
