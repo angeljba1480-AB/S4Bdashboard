@@ -62,14 +62,12 @@ def extract_text(raw: bytes, filename: str = "", mime: str = "") -> str:
     name = (filename or "").lower()
     mime = (mime or "").lower()
 
+    # Para binarios (PDF/DOCX) NUNCA caemos a decodificar los bytes crudos: si no
+    # se pudo extraer texto, devolvemos cadena vacía (mejor "sin texto" que basura).
     if name.endswith(".pdf") or "application/pdf" in mime:
-        text = _pdf_text(raw)
-        if text:
-            return text
-    elif name.endswith(".docx") or "wordprocessingml" in mime:
-        text = _docx_text(raw)
-        if text:
-            return text
+        return _pdf_text(raw)
+    if name.endswith(".docx") or "wordprocessingml" in mime:
+        return _docx_text(raw)
 
-    # Texto plano, CSV, Markdown, JSON… o fallback.
+    # Texto plano, CSV, Markdown, JSON…
     return raw.decode("utf-8", errors="ignore")
