@@ -238,7 +238,25 @@ export default function ChatPage() {
                       <CostMeter tokens={t.meta.token_count} cost={t.meta.cost_estimate} />
                     </div>
                   )}
-                  <div className="whitespace-pre-wrap">{t.role === "assistant" ? cleanMarkdown(t.content) : t.content}</div>
+                  {t.role === "assistant" ? (
+                    <div className="space-y-2">
+                      {t.content.split("```").map((part, k) => {
+                        if (k % 2 === 1) {
+                          const nl = part.indexOf("\n");
+                          const code = (nl >= 0 ? part.slice(nl + 1) : part).replace(/\n$/, "");
+                          return (
+                            <pre key={k} className="overflow-x-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100">
+                              <code>{code}</code>
+                            </pre>
+                          );
+                        }
+                        const clean = cleanMarkdown(part);
+                        return clean ? <div key={k} className="whitespace-pre-wrap">{clean}</div> : null;
+                      })}
+                    </div>
+                  ) : (
+                    <div className="whitespace-pre-wrap">{t.content}</div>
+                  )}
                   {t.meta?.escalated && (
                     <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
                       <Sparkles className="h-3 w-3" /> Refinado con premium

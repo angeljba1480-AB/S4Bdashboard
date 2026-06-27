@@ -3,6 +3,13 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Chat · texto plano + código + anti-alucinación + autoconocimiento**: el modelo recibe
+  reglas de la casa — responder en **texto plano** (sin markdown de énfasis) usando
+  **bloques de código** solo para código; **no alucinar** (ceñirse al contexto/capacidades,
+  decir "no tengo esa información" en vez de inventar); y un **resumen de capacidades de la
+  plataforma** para responder "¿en qué me puede ayudar?" y ofrecer ejecutar tareas. La UI
+  del chat **renderiza los bloques de código** (monospace, scroll) y limpia el resto.
+  (`app/ai/platform_kb.py`).
 - **Voz · narración con pausa (sin solaparse)**: el botón *Narrar* del chat ahora es
   **toggle** (Narrar/Detener), reproduce **un solo audio a la vez** (corta el anterior)
   y se detiene al cambiar de agente o salir del chat. Adiós a los clics que encimaban audios.
