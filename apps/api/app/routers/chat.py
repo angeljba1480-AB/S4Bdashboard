@@ -151,7 +151,8 @@ def chat(
         tokens = estimate_tokens(body.prompt)
         cost = 0.0
     else:
-        gen = generate_with_fallback(decision.route, agent.system_prompt, body.prompt, decision.context)
+        from ..ai.platform_kb import build_system
+        gen = generate_with_fallback(decision.route, build_system(agent.system_prompt), body.prompt, decision.context)
         used_route = gen.route
         if gen.route == ModelRoute.BLOCKED:
             content = f"⛔ Sin proveedor disponible (fallback agotado): {gen.error}"
