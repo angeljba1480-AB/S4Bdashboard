@@ -154,7 +154,8 @@ def create_job(body: JobIn, user: User = Depends(require_roles(Role.ADMIN, Role.
     base = body.base_model.strip() or d.base_model or settings.finetune_default_base_model
     job = FineTuneJob(tenant_id=tenant.id, dataset_id=d.id, base_model=base)
     session.add(job); session.commit(); session.refresh(job)
-    out = ft.dispatch_training(job.id, base, ft.to_jsonl(examples))
+    ollama_name = ft.suggest_ollama_name(d.name, d.version)
+    out = ft.dispatch_training(job.id, base, examples, ollama_name=ollama_name)
     job.status = out["status"]; job.reason = out.get("reason", "")
     session.add(job)
     session.add(AuditEvent(tenant_id=tenant.id, user_id=user.id, event_type="finetune", object_type="finetune_job",

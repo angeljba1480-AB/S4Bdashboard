@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     finetune_trainer_url: str = ""          # endpoint que ejecuta el entrenamiento LoRA
     finetune_trainer_key: str = ""          # header de auth opcional para el trainer
     finetune_default_base_model: str = "llama3.1"
+    # Hiperparámetros LoRA por defecto (mapeados a las env vars de train-lora.sh:
+    # ITERS/BATCH/LR/NUM_LAYERS). Sobreescribibles por el wrapper del trainer.
+    finetune_iters: int = 600
+    finetune_batch: int = 4
+    finetune_learning_rate: str = "1e-5"
+    finetune_num_layers: int = 16
 
     # Provider resilience: fallback order tried when a route's adapter fails.
     fallback_order: str = "vpc,open,local"
