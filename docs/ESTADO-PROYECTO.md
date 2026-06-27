@@ -89,7 +89,8 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
   pasos del toolkit y los **ejecuta por detrás** (lecturas al momento; escrituras con
   aprobación). `POST /actions/agent` + panel *Asistente* (planner modelo + heurística).
   Puede **disparar workflows n8n** y **encadenar pasos** (`{{stepN}}`: la salida de uno
-  alimenta al siguiente).
+  alimenta al siguiente). **Previsualización (dry-run)** antes de ejecutar y **recetas
+  guardadas** (playbooks) re-ejecutables.
 
 ### Ayuda
 - ✅ **Ayuda in-app en español**: guías paso a paso (n8n, correo, RAG, acciones,
@@ -123,7 +124,7 @@ Para activar lo que depende de credenciales/permisos:
 
 ## 4. Calidad
 
-- ✅ **217 pruebas** automatizadas en verde (API).
+- ✅ **219 pruebas** automatizadas en verde (API).
 - Migraciones aditivas idempotentes (sin pérdida de datos).
 - Credenciales cifradas (AES-256-GCM); todo auditado.
 

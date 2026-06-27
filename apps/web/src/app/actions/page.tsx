@@ -3,11 +3,12 @@
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
 import type { ActionRequestItem } from "@shared/types";
-import { CheckCircle2, Loader2, ShieldCheck, Sparkles, Wand2, X } from "lucide-react";
+import { BookMarked, CheckCircle2, Eye, Loader2, Play, ShieldCheck, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Action = { id: string; provider: string; label: string; write: boolean; params: string[]; connected: boolean; granted: boolean };
 type AgentStep = ActionRequestItem & { step_status: string; reason: string };
+type Playbook = { id: string; name: string; instruction: string; auto_approve: boolean; created_at: string };
 
 export default function ActionsPage() {
   const [actions, setActions] = useState<Action[]>([]);
@@ -22,11 +23,14 @@ export default function ActionsPage() {
   const [running, setRunning] = useState(false);
   const [agentSteps, setAgentSteps] = useState<AgentStep[] | null>(null);
   const [agentNote, setAgentNote] = useState("");
+  const [isPreview, setIsPreview] = useState(false);
+  const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
 
   function load() {
     api.actions().then(setActions).catch(() => {});
     api.actionRequests().then(setRequests).catch(() => {});
     api.actionGrants().then(setGrants).catch(() => {});
+    api.playbooks().then(setPlaybooks).catch(() => {});
   }
   useEffect(load, []);
 
@@ -43,18 +47,45 @@ export default function ActionsPage() {
     } catch (e) { setMsg(e instanceof Error ? e.message : "Error"); }
   }
 
-  async function runAgent() {
+  async function runAgent(dryRun: boolean) {
     if (!instruction.trim()) return;
-    setRunning(true); setAgentSteps(null); setAgentNote("");
+    setRunning(true); setAgentSteps(null); setAgentNote(""); setIsPreview(dryRun);
     try {
-      const r = await api.agentRun(instruction.trim(), autoApprove);
+      const r = await api.agentRun(instruction.trim(), autoApprove, dryRun);
       setAgentSteps(r.steps);
       setAgentNote(r.steps.length === 0
         ? (r.note || "No identifiqué acciones para esa instrucción.")
-        : `Plan generado por ${r.source}.`);
-      load();
+        : dryRun ? `Previsualización (${r.source}) — nada se ejecutó todavía.` : `Plan ejecutado (${r.source}).`);
+      if (!dryRun) load();
     } catch (e) { setAgentNote(e instanceof Error ? e.message : "Error"); }
     finally { setRunning(false); }
+  }
+
+  async function savePlaybook() {
+    if (!instruction.trim()) return;
+    const name = window.prompt("Nombre de la receta:", instruction.trim().slice(0, 40));
+    if (!name) return;
+    try {
+      await api.createPlaybook({ name, instruction: instruction.trim(), auto_approve: autoApprove });
+      api.playbooks().then(setPlaybooks).catch(() => {});
+      setAgentNote(`Receta «${name}» guardada.`);
+    } catch (e) { setAgentNote(e instanceof Error ? e.message : "Error"); }
+  }
+
+  async function runPlaybook(pb: Playbook, dryRun: boolean) {
+    setRunning(true); setAgentSteps(null); setAgentNote(""); setIsPreview(dryRun); setInstruction(pb.instruction);
+    try {
+      const r = await api.runPlaybook(pb.id, dryRun);
+      setAgentSteps(r.steps);
+      setAgentNote(`«${pb.name}» — ${dryRun ? "previsualización" : "ejecutada"} (${r.source}).`);
+      if (!dryRun) load();
+    } catch (e) { setAgentNote(e instanceof Error ? e.message : "Error"); }
+    finally { setRunning(false); }
+  }
+
+  async function removePlaybook(id: string) {
+    await api.deletePlaybook(id);
+    api.playbooks().then(setPlaybooks).catch(() => {});
   }
 
   async function approve(id: string, always: boolean) { await api.approveAction(id, always); load(); }
@@ -104,35 +135,74 @@ export default function ActionsPage() {
             <textarea value={instruction} onChange={(e) => setInstruction(e.target.value)} rows={2}
               placeholder="Ej.: muéstrame mis próximos eventos y envía un correo de seguimiento a Juan"
               className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-            <div className="flex flex-wrap items-center gap-3">
-              <button onClick={runAgent} disabled={running || !instruction.trim()}
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={() => runAgent(true)} disabled={running || !instruction.trim()}
+                className="flex items-center gap-1.5 rounded-lg border border-violet-300 bg-white px-3 py-2 text-sm font-semibold text-violet-700 disabled:opacity-40">
+                <Eye className="h-4 w-4" /> Previsualizar
+              </button>
+              <button onClick={() => runAgent(false)} disabled={running || !instruction.trim()}
                 className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
                 {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {running ? "Ejecutando…" : "Ejecutar"}
+                {running ? "Trabajando…" : "Ejecutar"}
+              </button>
+              <button onClick={savePlaybook} disabled={!instruction.trim()}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40">
+                <BookMarked className="h-4 w-4" /> Guardar receta
               </button>
               <label className="flex items-center gap-1.5 text-xs text-slate-600">
                 <input type="checkbox" checked={autoApprove} onChange={(e) => setAutoApprove(e.target.checked)} />
-                Ejecutar también escrituras sin aprobación
+                Escrituras sin aprobación
               </label>
             </div>
             {agentNote && <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">{agentNote}</div>}
             {agentSteps && agentSteps.length > 0 && (
               <ol className="mt-3 space-y-2">
-                {agentSteps.map((s, i) => (
-                  <li key={s.id} className="rounded-lg border border-slate-100 bg-white p-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-slate-700">{i + 1}. {s.label}</span>
-                      <span className={`flex shrink-0 items-center gap-1 text-xs ${s.step_status === "ejecutado" ? "text-emerald-600" : "text-amber-600"}`}>
-                        {s.step_status === "ejecutado" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-                        {s.step_status === "ejecutado" ? "ejecutado" : "pendiente de aprobación"}
-                      </span>
-                    </div>
-                    {s.reason && <div className="mt-0.5 text-xs text-slate-500">{s.reason}</div>}
-                  </li>
-                ))}
+                {agentSteps.map((s, i) => {
+                  const done = s.step_status === "ejecutado";
+                  const proposed = isPreview;
+                  return (
+                    <li key={s.id || `${s.action}-${i}`} className="rounded-lg border border-slate-100 bg-white p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-slate-700">{i + 1}. {s.label}</span>
+                        <span className={`flex shrink-0 items-center gap-1 text-xs ${done ? "text-emerald-600" : proposed ? "text-violet-600" : "text-amber-600"}`}>
+                          {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : proposed ? <Eye className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                          {s.step_status.replace("_", " ")}
+                        </span>
+                      </div>
+                      {s.reason && <div className="mt-0.5 text-xs text-slate-500">{s.reason}</div>}
+                    </li>
+                  );
+                })}
               </ol>
             )}
           </div>
+
+          {/* Recetas guardadas (playbooks) */}
+          {playbooks.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="mb-3 flex items-center gap-1.5 font-semibold text-slate-800">
+                <BookMarked className="h-4 w-4 text-violet-600" /> Recetas guardadas
+              </h2>
+              <div className="space-y-2">
+                {playbooks.map((pb) => (
+                  <div key={pb.id} className="rounded-lg border border-slate-100 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-slate-700">{pb.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => runPlaybook(pb, true)} title="Previsualizar"
+                          className="rounded-md border border-slate-300 p-1 text-slate-500"><Eye className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => runPlaybook(pb, false)} title="Ejecutar"
+                          className="rounded-md bg-violet-600 p-1 text-white"><Play className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => removePlaybook(pb.id)} title="Eliminar"
+                          className="rounded-md border border-slate-300 p-1 text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    </div>
+                    <div className="mt-0.5 truncate text-xs text-slate-500">{pb.instruction}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <Group title="Google Workspace" items={google} />
           <Group title="Microsoft 365" items={ms} />
