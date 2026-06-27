@@ -535,7 +535,7 @@ export const api = {
     request<{ currency: string; plans: { id: string; name: string; audience: string; setup_fee: number | null; annual_per_seat: number | null; seats_range: string; prod_deploy_price: number | null; includes: string[]; recommended_for: string[] }[] }>("/admin/plans"),
   workflows: () => request<{ id: string; name: string; steps: string }[]>("/workflows"),
   runWorkflow: (id: string) =>
-    request<{ run_id: string; status: string; engine: string; detail: string; steps: string }>(
+    request<{ run_id: string; status: string; engine: string; source: string; detail: string; steps: string; response: Record<string, unknown> | null }>(
       `/workflows/${id}/run`,
       { method: "POST" },
     ),

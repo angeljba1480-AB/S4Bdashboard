@@ -3,6 +3,15 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Imágenes · error legible + `response_format`**: si NaN responde 4xx, ahora se muestra
+  el **motivo real** (message/code/param) en vez de un “400” opaco; se envía
+  `response_format=url` explícito. Ayuda a diagnosticar (p. ej. tier *community* sin imágenes).
+- **Workflows · resultado visible**: la página de *Workflows* ahora muestra la **respuesta
+  de n8n** (si el flujo termina con *Respond to Webhook*) y explica dónde queda la salida
+  cuando el flujo es asíncrono (documento/correo/hoja…). Estado simulado señalado.
+- **Documento `docs/CONFIGURACION-CLIENTE.md`**: guía paso a paso de todo lo que configura
+  el cliente (NaN, embeddings, imágenes/voz, premium, Google/MS, n8n, Zapier, SFTP,
+  fine-tuning, seguridad) + resumen de variables.
 - **Más acciones nativas del toolkit**: **Gmail borrador**, **subir a Google Drive**,
   **crear Google Doc**, **Outlook borrador** y **subir a OneDrive**. Aparecen en el
   catálogo de *Acciones* y el **agente** las puede invocar (escrituras con aprobación).
