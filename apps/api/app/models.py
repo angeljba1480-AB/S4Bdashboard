@@ -228,6 +228,23 @@ class AgentPlaybook(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class N8nRecipe(SQLModel, table=True):
+    """Receta n8n a la medida del cliente: un workflow propio (DB, SOAP, app interna)
+    expuesto como webhook en SU n8n. MaestroAI lo dispara con un payload y lo ofrece
+    al agente como herramienta. La gobernanza (clasificación/PII/auditoría) sigue en
+    la API; n8n solo recibe el payload parametrizado."""
+    __tablename__ = "n8n_recipes"
+    id: str = Field(default_factory=lambda: _uuid("rcp"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    name: str = ""
+    description: str = ""
+    category: str = "custom"       # db | soap | app | custom
+    webhook_path: str = ""        # ruta del webhook en n8n (p. ej. "erp-clientes")
+    params: str = "[]"            # JSON list de nombres de parámetro esperados
+    enabled: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class DataSource(SQLModel, table=True):
     """Conector a sistemas a la medida sin API: una fuente de datos (hoy base de
     datos de SOLO LECTURA). Guarda una consulta SELECT y, al importar, vuelca el

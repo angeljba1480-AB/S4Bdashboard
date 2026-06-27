@@ -125,7 +125,7 @@ Para activar lo que depende de credenciales/permisos:
 
 ## 4. Calidad
 
-- ✅ **232 pruebas** automatizadas en verde (API).
+- ✅ **235 pruebas** automatizadas en verde (API).
 - Migraciones aditivas idempotentes (sin pérdida de datos).
 - Credenciales cifradas (AES-256-GCM); todo auditado.
 
@@ -136,11 +136,11 @@ Para activar lo que depende de credenciales/permisos:
 ### Candidatas (producto)
 - [ ] **Catálogos de configuración empresarial** — *diferido*, a la espera de detalles.
 - [ ] **SFTP** para sistemas legados (requiere `paramiko`).
-- [ ] **Recetas n8n a medida** (catálogo: DB, SOAP, apps propias del cliente).
 - [ ] **Perfil de trainer GPU/CUDA** para fine-tuning (NaN no entrena; sería nube/servidor).
 - [ ] Más acciones en el toolkit (subir a Drive, Google Docs, Slack), alertas programadas.
 
 ### Hecho recientemente (en prod)
+- ✅ **Recetas n8n a la medida** (DB/SOAP/apps propias) + integración con el agente.
 - ✅ **Embeddings con NaN** (`qwen3-embedding`) + re-index del RAG.
 - ✅ **Voz**: TTS (kokoro) + STT (whisper) en el chat.
 - ✅ **Edición de imágenes** (image-to-image, flux-2-klein) + generación (flux-2-klein).

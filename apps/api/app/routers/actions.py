@@ -20,7 +20,8 @@ from ..db import get_session
 from ..integrations import actions_exec, token_store
 from ..models import (ActionGrant, ActionRequest, AgentPlaybook, AuditEvent,
                       ModelRoute, Tenant, User)
-from .workflows import CATALOG as WORKFLOW_CATALOG, trigger_catalog_workflow
+from .workflows import (CATALOG as WORKFLOW_CATALOG, list_recipe_rows,
+                       trigger_workflow_or_recipe)
 
 router = APIRouter(prefix="/actions", tags=["actions"])
 
@@ -72,7 +73,7 @@ def _execute(session: Session, tenant: Tenant, user: User, req: ActionRequest) -
     try:
         if req.provider == "n8n":
             wid = req.action.split(":", 1)[1]
-            res = trigger_catalog_workflow(session, tenant, user, wid, json.loads(req.params or "{}"))
+            res = trigger_workflow_or_recipe(session, tenant, user, wid, json.loads(req.params or "{}"))
             req.result = f"workflow {res['status']} ({res['source']}) · {res['detail']}"[:240]
             req.status = "executed"
         else:
@@ -138,6 +139,9 @@ def _run_agent(session: Session, tenant: Tenant, user: User, instruction: str,
     connected = {c.provider for c in token_store.list_connections(session, tenant.id, user.id)}
     allowed = [a for a in catalog.list_actions() if a["provider"] in connected]
     workflows = [{"id": w["id"], "name": w["name"], "steps": w["steps"]} for w in WORKFLOW_CATALOG]
+    # Recetas n8n a la medida del tenant: el agente también las puede disparar.
+    workflows += [{"id": r.id, "name": r.name, "steps": r.description or r.category}
+                  for r in list_recipe_rows(session, tenant.id, only_enabled=True)]
     if not allowed and not workflows:
         raise HTTPException(status_code=400, detail="Conecta Google o Microsoft en Integraciones primero.")
 
