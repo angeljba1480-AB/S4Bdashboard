@@ -67,6 +67,12 @@ class Settings(BaseSettings):
     stt_model: str = "whisper"
     default_voice: str = "ef_dora"   # español (femenina)
 
+    # Zapier AI Actions (NLA) — ruta nativa (preparada, opcional). Webhooks/Zaps no
+    # necesitan esto; son recetas con webhook_url. NLA da catálogo dinámico de apps.
+    zapier_nla_enabled: bool = False
+    zapier_nla_base_url: str = "https://actions.zapier.com/api/v1"
+    zapier_nla_api_key: str = ""
+
     # Vector store: "inprocess" (default) or "qdrant"
     vector_store: str = "inprocess"
     qdrant_url: str = "http://localhost:6333"

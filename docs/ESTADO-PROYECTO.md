@@ -125,7 +125,7 @@ Para activar lo que depende de credenciales/permisos:
 
 ## 4. Calidad
 
-- ✅ **235 pruebas** automatizadas en verde (API).
+- ✅ **237 pruebas** automatizadas en verde (API).
 - Migraciones aditivas idempotentes (sin pérdida de datos).
 - Credenciales cifradas (AES-256-GCM); todo auditado.
 
@@ -140,7 +140,8 @@ Para activar lo que depende de credenciales/permisos:
 - [ ] Más acciones en el toolkit (subir a Drive, Google Docs, Slack), alertas programadas.
 
 ### Hecho recientemente (en prod)
-- ✅ **Recetas n8n a la medida** (DB/SOAP/apps propias) + integración con el agente.
+- ✅ **Recetas de automatización a la medida** (n8n **y Zapier**, DB/SOAP/apps) +
+  integración con el agente. AI Actions (NLA) de Zapier preparado.
 - ✅ **Embeddings con NaN** (`qwen3-embedding`) + re-index del RAG.
 - ✅ **Voz**: TTS (kokoro) + STT (whisper) en el chat.
 - ✅ **Edición de imágenes** (image-to-image, flux-2-klein) + generación (flux-2-klein).

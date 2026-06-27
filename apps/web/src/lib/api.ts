@@ -412,10 +412,10 @@ export const api = {
     request<{ documents: number; chunks: number }>("/documents/reindex", { method: "POST" }),
   // Recetas n8n a la medida (DB / SOAP / apps propias)
   n8nRecipes: () =>
-    request<{ id: string; name: string; description: string; category: string; webhook_path: string; params: string[]; enabled: boolean; created_at: string }[]>("/workflows/recipes"),
-  createN8nRecipe: (body: { name: string; description?: string; category?: string; webhook_path: string; params?: string[]; enabled?: boolean }) =>
+    request<{ id: string; provider: string; name: string; description: string; category: string; webhook_path: string; webhook_url: string; params: string[]; enabled: boolean; created_at: string }[]>("/workflows/recipes"),
+  createN8nRecipe: (body: { name: string; provider?: string; description?: string; category?: string; webhook_path?: string; webhook_url?: string; params?: string[]; enabled?: boolean }) =>
     request<{ id: string; name: string }>("/workflows/recipes", { method: "POST", body: JSON.stringify(body) }),
-  updateN8nRecipe: (id: string, body: { name: string; description?: string; category?: string; webhook_path: string; params?: string[]; enabled?: boolean }) =>
+  updateN8nRecipe: (id: string, body: { name: string; provider?: string; description?: string; category?: string; webhook_path?: string; webhook_url?: string; params?: string[]; enabled?: boolean }) =>
     request<{ id: string }>(`/workflows/recipes/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteN8nRecipe: (id: string) =>
     request<{ ok: boolean }>(`/workflows/recipes/${id}`, { method: "DELETE" }),
