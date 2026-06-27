@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import base64
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlmodel import Session, select
@@ -77,6 +77,55 @@ def generate_images(
         object_id=saved[0].id if saved else "", risk_level="low",
         reason=f"generó {len(saved)} imagen(es) ({size}) con prompt: {prompt[:60]}",
     ))
+    session.commit()
+    for img in saved:
+        session.refresh(img)
+    return {"images": [_out(i) for i in saved]}
+
+
+@router.post("/edit", status_code=201)
+def edit_images(
+    prompt: str = Form(...),
+    aspect_ratio: str = Form("1:1"),
+    variants: int = Form(1),
+    files: list[UploadFile] = File(...),
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Image-to-image: edita/transforma con hasta 4 imágenes de referencia."""
+    prompt = (prompt or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=422, detail="Escribe qué edición aplicar (prompt).")
+    refs: list[tuple[str, bytes]] = []
+    for f in files[:4]:
+        raw = f.file.read()
+        if raw:
+            if len(raw) > 25 * 1024 * 1024:
+                raise HTTPException(status_code=422, detail="Cada imagen debe pesar < 25 MB.")
+            refs.append((f.filename or "ref.png", raw))
+    if not refs:
+        raise HTTPException(status_code=422, detail="Sube al menos una imagen de referencia.")
+    size = imagegen.ASPECT_SIZES.get(aspect_ratio, imagegen.ASPECT_SIZES["1:1"])
+    n = max(1, min(int(variants or 1), 4))
+    try:
+        results = imagegen.edit(prompt, refs, n=n, size=size)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"No se pudo editar: {exc}")
+
+    saved = []
+    for g in results:
+        img = GeneratedImage(
+            tenant_id=tenant.id, owner_id=user.id, prompt=prompt, model="",
+            size=size, provider="open", source_url=g.url, data_b64=g.data_b64,
+            mime_type=g.mime_type, area=user.area or "",
+        )
+        session.add(img)
+        saved.append(img)
+    session.add(AuditEvent(
+        tenant_id=tenant.id, user_id=user.id, event_type="generate", object_type="image",
+        object_id=saved[0].id if saved else "", risk_level="low",
+        reason=f"editó {len(saved)} imagen(es) desde {len(refs)} ref(s): {prompt[:50]}"))
     session.commit()
     for img in saved:
         session.refresh(img)

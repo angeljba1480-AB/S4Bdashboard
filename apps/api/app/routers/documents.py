@@ -13,9 +13,10 @@ from sqlmodel import Session, select
 
 from .. import doc_categories
 from ..ai.rag import index_document
-from ..auth import get_current_tenant, get_current_user
+from ..auth import get_current_tenant, get_current_user, require_roles
 from ..db import get_session
-from ..models import AuditEvent, Document, DocumentCategory, DocumentChunk, Sensitivity, Tenant, User
+from ..models import (AuditEvent, Document, DocumentCategory, DocumentChunk, Role,
+                      Sensitivity, Tenant, User)
 from ..permissions import can_view_area
 from ..schemas import DocumentCategoryCreate, DocumentCategoryOut, DocumentOut, DocumentUpdate
 from ..security.classifier import classify_data
@@ -46,6 +47,30 @@ def _parse_sensitivity(value: str | None) -> Sensitivity | None:
         return Sensitivity(value.strip().lower())
     except ValueError:
         return None
+
+
+@router.post("/reindex")
+def reindex_all(
+    user: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Reconstruye chunks + embeddings de TODOS los documentos del tenant. Necesario
+    tras cambiar de proveedor de embeddings (p. ej. local→NaN, que cambia la dimensión
+    del vector). Solo ADMIN/DEVOPS."""
+    docs = session.exec(select(Document).where(Document.tenant_id == tenant.id)).all()
+    n_docs = n_chunks = 0
+    for d in docs:
+        try:
+            n_chunks += index_document(session, d)
+            n_docs += 1
+        except Exception:
+            continue
+    session.add(AuditEvent(
+        tenant_id=tenant.id, user_id=user.id, event_type="reindex", object_type="documents",
+        object_id="all", risk_level="low", reason=f"reindex {n_docs} docs / {n_chunks} chunks"))
+    session.commit()
+    return {"documents": n_docs, "chunks": n_chunks}
 
 
 # --- categories catalog -----------------------------------------------------

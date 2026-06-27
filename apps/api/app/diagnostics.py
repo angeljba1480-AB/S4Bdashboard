@@ -83,6 +83,16 @@ def run_checks(session, tenant, user) -> dict:
                             "Importa los flujos de `integrations/n8n/` si aplica."],
                            help="webhooks", link="/integrations"))
 
+    # 4b. Embeddings del RAG — local (hashing) vs NaN (qwen3-embedding).
+    if settings.embeddings_provider in ("open", "nan", "nanbuilders"):
+        checks.append(_ok("embeddings", "Embeddings del RAG", f"Vía proveedor abierto ({settings.embeddings_model})."))
+    else:
+        checks.append(_gap("embeddings", "Embeddings del RAG", "warn",
+                           "El RAG usa un embebedor local (hashing): recuperación de menor precisión.",
+                           ["Pon `EMBEDDINGS_PROVIDER=open`, `EMBEDDINGS_MODEL=qwen3-embedding`, `EMBEDDINGS_DIM=4096`.",
+                            "**Re-indexa** los documentos (botón *Re-indexar* en Documentos o `POST /documents/reindex`) para reconstruir los vectores con la nueva dimensión."],
+                           help="modelos", link="/documents"))
+
     # 5. Toolkit de acciones — proveedor conectado (Google/Microsoft).
     connected = {c.provider for c in token_store.list_connections(session, tenant.id, user.id)}
     if connected:

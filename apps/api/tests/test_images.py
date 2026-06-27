@@ -37,7 +37,11 @@ def _mock_gen(monkeypatch):
     def fake_generate(prompt, *, n=1, size="1024x1024", model=None, store=True):
         return [imagegen.GenImage(data_b64=_PNG_B64, url="https://nan/img.png") for _ in range(n)]
 
+    def fake_edit(prompt, images, *, n=1, size="1024x1024", model=None, store=True):
+        return [imagegen.GenImage(data_b64=_PNG_B64, url="https://nan/edit.png") for _ in range(n)]
+
     monkeypatch.setattr(imagegen, "generate", fake_generate)
+    monkeypatch.setattr(imagegen, "edit", fake_edit)
     monkeypatch.setattr(imagegen, "is_configured", lambda: True)
 
 
@@ -72,6 +76,23 @@ def test_variants_capped_at_4(client):
     h = _auth(client)
     r = client.post("/images/generate", headers=h, json={"prompt": "gatos", "variants": 9}).json()
     assert len(r["images"]) == 4
+
+
+def test_edit_image_from_reference(client):
+    h = _auth(client)
+    png = base64.b64decode(_PNG_B64)
+    r = client.post("/images/edit", headers=h,
+                    data={"prompt": "ponlo en invierno con nieve", "aspect_ratio": "1:1", "variants": "2"},
+                    files=[("files", ("ref.png", png, "image/png"))])
+    body = r.json()
+    assert r.status_code == 201 and len(body["images"]) == 2
+    assert body["images"][0]["has_data"] is True
+
+
+def test_edit_requires_reference(client):
+    h = _auth(client)
+    r = client.post("/images/edit", headers=h, data={"prompt": "algo"}, files=[])
+    assert r.status_code == 422
 
 
 def test_delete_image(client):
