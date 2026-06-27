@@ -111,6 +111,38 @@ def test_agent_without_connection_skips_provider_actions(client, monkeypatch):
     assert not [s for s in r["steps"] if s["action"].startswith(("gmail", "outlook"))]
 
 
+def test_agent_dry_run_does_not_execute(client, _google_connected):
+    h = _auth(client)
+    before = len(client.get("/actions/requests", headers=h).json())
+    r = client.post("/actions/agent", headers=h, json={
+        "instruction": "muéstrame mis próximos eventos", "dry_run": True}).json()
+    assert r["dry_run"] is True
+    assert r["steps"] and all(s["status"] == "preview" for s in r["steps"])
+    assert all(s["step_status"] in ("ejecutaría", "pediría_aprobación") for s in r["steps"])
+    # No se crearon solicitudes (no hay efectos).
+    after = len(client.get("/actions/requests", headers=h).json())
+    assert after == before
+
+
+def test_playbook_create_run_delete(client, _google_connected):
+    h = _auth(client)
+    pb = client.post("/actions/playbooks", headers=h, json={
+        "name": "Agenda del día", "instruction": "muéstrame mis próximos eventos"}).json()
+    assert pb["id"] and pb["name"] == "Agenda del día"
+    assert any(p["id"] == pb["id"] for p in client.get("/actions/playbooks", headers=h).json())
+
+    # Ejecutar la receta corre el agente (lectura → ejecutada).
+    run = client.post(f"/actions/playbooks/{pb['id']}/run", headers=h).json()
+    assert [s for s in run["steps"] if s["action"] == "gcal.list"]
+
+    # Previsualizar la receta no ejecuta.
+    prev = client.post(f"/actions/playbooks/{pb['id']}/run?dry_run=true", headers=h).json()
+    assert prev["dry_run"] is True
+
+    assert client.delete(f"/actions/playbooks/{pb['id']}", headers=h).json()["ok"] is True
+    assert not any(p["id"] == pb["id"] for p in client.get("/actions/playbooks", headers=h).json())
+
+
 def test_agent_triggers_workflow(client, _google_connected):
     h = _auth(client)
     # "ingesta" → workflow:ingesta (escritura → requiere auto_approve para correr).

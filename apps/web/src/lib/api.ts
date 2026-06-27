@@ -354,9 +354,18 @@ export const api = {
   revokeGrant: (action: string) => request<{ ok: boolean }>(`/actions/grants/${action}`, { method: "DELETE" }),
   readiness: () =>
     request<{ summary: Record<string, number>; checks: { key: string; label: string; status: "ok" | "warn" | "missing"; detail: string; fix: { steps: string[]; help?: string | null; link?: string | null } | null }[] }>("/admin/readiness"),
-  agentRun: (instruction: string, autoApprove = false) =>
-    request<{ instruction: string; source: string; note: string; steps: (ActionRequestItem & { step_status: string; reason: string })[] }>(
-      "/actions/agent", { method: "POST", body: JSON.stringify({ instruction, auto_approve: autoApprove }) }),
+  agentRun: (instruction: string, autoApprove = false, dryRun = false) =>
+    request<{ instruction: string; source: string; note: string; dry_run: boolean; steps: (ActionRequestItem & { step_status: string; reason: string })[] }>(
+      "/actions/agent", { method: "POST", body: JSON.stringify({ instruction, auto_approve: autoApprove, dry_run: dryRun }) }),
+  playbooks: () =>
+    request<{ id: string; name: string; instruction: string; auto_approve: boolean; created_at: string }[]>("/actions/playbooks"),
+  createPlaybook: (body: { name: string; instruction: string; auto_approve?: boolean }) =>
+    request<{ id: string; name: string }>("/actions/playbooks", { method: "POST", body: JSON.stringify(body) }),
+  runPlaybook: (id: string, dryRun = false) =>
+    request<{ instruction: string; source: string; note: string; dry_run: boolean; steps: (ActionRequestItem & { step_status: string; reason: string })[] }>(
+      `/actions/playbooks/${id}/run${dryRun ? "?dry_run=true" : ""}`, { method: "POST" }),
+  deletePlaybook: (id: string) =>
+    request<{ ok: boolean }>(`/actions/playbooks/${id}`, { method: "DELETE" }),
   flowcharts: () => request<FlowchartSummary[]>("/flowcharts"),
   flowchart: (id: string) => request<Flowchart>(`/flowcharts/${id}`),
   // Data sources (legacy connectors: read-only DB → RAG)
