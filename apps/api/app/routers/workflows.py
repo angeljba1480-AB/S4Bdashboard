@@ -40,13 +40,10 @@ def list_workflows() -> list[dict]:
     return CATALOG
 
 
-@router.post("/{workflow_id}/run")
-def run_workflow(
-    workflow_id: str,
-    tenant: Tenant = Depends(get_current_tenant),
-    user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-) -> dict:
+def trigger_catalog_workflow(session: Session, tenant: Tenant, user: User,
+                             workflow_id: str, payload: dict | None = None) -> dict:
+    """Dispara un workflow del catálogo en n8n (con auto-provisión y auditoría).
+    Reutilizable desde el endpoint /workflows y desde el agente de acciones."""
     wf = next((w for w in CATALOG if w["id"] == workflow_id), None)
     if not wf:
         raise HTTPException(status_code=404, detail="Workflow no encontrado")
@@ -65,7 +62,7 @@ def run_workflow(
 
     run = trigger_workflow(cfg, workflow_id, {
         "run_id": run_id, "workflow_id": workflow_id, "workflow": wf["name"],
-        "tenant_id": tenant.id, "user_id": user.id,
+        "tenant_id": tenant.id, "user_id": user.id, **(payload or {}),
     })
 
     session.add(AuditEvent(
@@ -78,3 +75,13 @@ def run_workflow(
     return {"run_id": run_id, "workflow": wf["name"], "status": run.status,
             "engine": "n8n" if run.triggered else "simulado", "source": run.source,
             "detail": run.detail, "response": run.response, "steps": wf["steps"]}
+
+
+@router.post("/{workflow_id}/run")
+def run_workflow(
+    workflow_id: str,
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    return trigger_catalog_workflow(session, tenant, user, workflow_id)

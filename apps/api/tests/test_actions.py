@@ -103,11 +103,22 @@ def _google_connected(monkeypatch):
     monkeypatch.setattr(token_store, "list_connections", lambda *a, **k: [_Conn("google")])
 
 
-def test_agent_requires_connection(client, monkeypatch):
+def test_agent_without_connection_skips_provider_actions(client, monkeypatch):
+    # Sin proveedor conectado, no hay pasos de correo (pero los workflows siguen).
     from app.integrations import token_store
     monkeypatch.setattr(token_store, "list_connections", lambda *a, **k: [])
-    r = client.post("/actions/agent", headers=_auth(client), json={"instruction": "envía un correo"})
-    assert r.status_code == 400
+    r = client.post("/actions/agent", headers=_auth(client), json={"instruction": "envía un correo a Juan"}).json()
+    assert not [s for s in r["steps"] if s["action"].startswith(("gmail", "outlook"))]
+
+
+def test_agent_triggers_workflow(client, _google_connected):
+    h = _auth(client)
+    # "ingesta" → workflow:ingesta (escritura → requiere auto_approve para correr).
+    r = client.post("/actions/agent", headers=h, json={
+        "instruction": "haz la ingesta documental", "auto_approve": True}).json()
+    wf = [s for s in r["steps"] if s["action"] == "workflow:ingesta"]
+    assert wf and wf[0]["step_status"] == "ejecutado"
+    assert wf[0]["label"].startswith("Workflow ·")
 
 
 def test_agent_runs_reads_and_queues_writes(client, _google_connected):

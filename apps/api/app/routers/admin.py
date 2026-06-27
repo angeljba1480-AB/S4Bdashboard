@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from ..auth import get_current_tenant, require_roles
+from ..auth import get_current_tenant, get_current_user, require_roles
 from ..config import settings
 from ..db import get_session
 from ..integrations.n8n import resolve_n8n
@@ -341,6 +341,18 @@ class ProviderIn(BaseModel):
 # Rutas configurables desde la UI. Incluye on-prem (local/Ollama, VPC) además de
 # las externas (open/NaN, premium). El orden = de más privado a menos privado.
 _PROVIDER_ROUTES = ("local", "vpc", "open", "premium")
+
+
+@router.get("/readiness")
+def readiness(
+    user: User = Depends(require_roles(Role.SUPER_ADMIN, Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Autochequeo: revisa qué está configurado y, por cada hueco, una guía de cómo
+    resolverlo. Solo ADMIN/DEVOPS/SUPER_ADMIN."""
+    from ..diagnostics import run_checks
+    return run_checks(session, tenant, user)
 
 
 @router.get("/providers")
