@@ -421,6 +421,17 @@ export const api = {
     request<{ ok: boolean }>(`/workflows/recipes/${id}`, { method: "DELETE" }),
   runN8nRecipe: (id: string, payload: Record<string, unknown> = {}) =>
     request<{ status: string; engine: string; detail: string }>(`/workflows/recipes/${id}/run`, { method: "POST", body: JSON.stringify({ payload }) }),
+  // Conector SFTP (solo lectura) → import al RAG
+  sftpSources: () =>
+    request<{ id: string; name: string; host: string; port: number; username: string; auth_type: string; remote_path: string; area: string; category: string; created_at: string }[]>("/datasources/sftp"),
+  createSftp: (body: { name: string; host: string; port?: number; username: string; auth_type: string; secret: string; remote_path: string; area?: string; category?: string }) =>
+    request<{ id: string }>("/datasources/sftp", { method: "POST", body: JSON.stringify(body) }),
+  testSftp: (id: string) =>
+    request<{ ok: boolean; files: { name: string; size: number }[]; count: number }>(`/datasources/sftp/${id}/test`, { method: "POST" }),
+  importSftp: (id: string) =>
+    request<{ imported: number; documents: { id: string; filename: string }[] }>(`/datasources/sftp/${id}/import`, { method: "POST" }),
+  deleteSftp: (id: string) =>
+    request<{ ok: boolean }>(`/datasources/sftp/${id}`, { method: "DELETE" }),
   // Fine-tuning ligero (LoRA)
   ftBaseModels: () =>
     request<{ name: string; mlx_model: string; family: string }[]>("/finetune/base-models"),

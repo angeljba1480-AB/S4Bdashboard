@@ -19,9 +19,11 @@ from sqlmodel import Session, select
 
 from .. import doc_categories
 from ..ai.rag import index_document
-from ..auth import get_current_tenant, require_roles
+from ..auth import get_current_tenant, get_current_user, require_roles
 from ..db import get_session
-from ..models import AuditEvent, DataSource, Document, Role, Tenant, User
+from ..integrations import sftp as sftp_conn
+from ..ingest import extract_text
+from ..models import AuditEvent, DataSource, Document, Role, SftpConnector, Tenant, User
 from ..security.crypto import decrypt, encrypt
 
 router = APIRouter(prefix="/datasources", tags=["datasources"])
@@ -228,6 +230,136 @@ def import_csv(
         session, tenant, user, name=name, content=_as_text(cols, rows),
         area=body.area.strip(), category=body.category.strip(), storage_uri="csv://import",
         rows=len(rows), source_label=f"CSV '{name}'")
+
+
+# --- conector SFTP (solo lectura) -------------------------------------------
+def _sftp_out(s: SftpConnector) -> dict:
+    return {"id": s.id, "name": s.name, "host": s.host, "port": s.port, "username": s.username,
+            "auth_type": s.auth_type, "remote_path": s.remote_path, "area": s.area or "",
+            "category": s.category or "", "created_at": s.created_at.isoformat()}
+
+
+class SftpIn(BaseModel):
+    name: str
+    host: str
+    port: int = 22
+    username: str
+    auth_type: str = "password"   # password | key
+    secret: str = ""             # password o llave privada PEM
+    remote_path: str
+    area: str = ""
+    category: str = ""
+
+
+def _owned_sftp(session, tenant, sid) -> SftpConnector:
+    s = session.get(SftpConnector, sid)
+    if not s or s.tenant_id != tenant.id:
+        raise HTTPException(status_code=404, detail="Conector SFTP no encontrado")
+    return s
+
+
+@router.get("/sftp")
+def list_sftp(
+    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    rows = session.exec(select(SftpConnector).where(SftpConnector.tenant_id == tenant.id)).all()
+    return [_sftp_out(s) for s in rows]
+
+
+@router.post("/sftp", status_code=201)
+def create_sftp(
+    body: SftpIn,
+    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    if not body.host.strip() or not body.username.strip() or not body.remote_path.strip():
+        raise HTTPException(status_code=422, detail="host, username y remote_path son obligatorios")
+    if body.auth_type not in ("password", "key"):
+        raise HTTPException(status_code=422, detail="auth_type debe ser 'password' o 'key'")
+    if not body.secret.strip():
+        raise HTTPException(status_code=422, detail="Falta la credencial (password o llave privada)")
+    s = SftpConnector(
+        tenant_id=tenant.id, name=body.name.strip() or "SFTP", host=body.host.strip(),
+        port=int(body.port or 22), username=body.username.strip(), auth_type=body.auth_type,
+        secret_enc=encrypt(body.secret, tenant.kms_key_id), remote_path=body.remote_path.strip(),
+        area=body.area.strip(), category=body.category.strip())
+    session.add(s); session.commit(); session.refresh(s)
+    return _sftp_out(s)
+
+
+@router.post("/sftp/{sid}/test")
+def test_sftp(
+    sid: str,
+    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    s = _owned_sftp(session, tenant, sid)
+    try:
+        files = sftp_conn.list_files(s.host, s.port, s.username, s.auth_type,
+                                     decrypt(s.secret_enc, tenant.kms_key_id), s.remote_path)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"No se pudo conectar: {exc}")
+    return {"ok": True, "files": files[:20], "count": len(files)}
+
+
+@router.post("/sftp/{sid}/import", status_code=201)
+def import_sftp(
+    sid: str,
+    user: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    s = _owned_sftp(session, tenant, sid)
+    try:
+        files = sftp_conn.fetch(s.host, s.port, s.username, s.auth_type,
+                                decrypt(s.secret_enc, tenant.kms_key_id), s.remote_path)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"No se pudo descargar: {exc}")
+    if not files:
+        raise HTTPException(status_code=422, detail="No se encontraron archivos soportados en la ruta.")
+    imported = []
+    for filename, raw in files:
+        text = extract_text(raw, filename, "")
+        if not (text or "").strip():
+            continue
+        imported.append(_import_as_document(
+            session, tenant, user, name=filename, content=text,
+            area=s.area or "", category=s.category or "", storage_uri=f"sftp://{s.id}/{filename}",
+            rows=0, source_label=f"SFTP '{s.name}' ({filename})"))
+    return {"imported": len(imported), "documents": imported}
+
+
+@router.get("/sftp/{sid}/reveal")
+def reveal_sftp(
+    sid: str,
+    user: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    s = _owned_sftp(session, tenant, sid)
+    secret = decrypt(s.secret_enc, tenant.kms_key_id) if s.secret_enc else ""
+    session.add(AuditEvent(
+        tenant_id=tenant.id, user_id=user.id, event_type="reveal", object_type="sftp",
+        object_id=s.id, risk_level="med", reason=f"reveló la credencial SFTP de '{s.name}'"))
+    session.commit()
+    return {"host": s.host, "port": s.port, "username": s.username,
+            "auth_type": s.auth_type, "secret": secret}
+
+
+@router.delete("/sftp/{sid}")
+def delete_sftp(
+    sid: str,
+    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    s = _owned_sftp(session, tenant, sid)
+    session.delete(s); session.commit()
+    return {"ok": True}
 
 
 @router.get("/{ds_id}/reveal")

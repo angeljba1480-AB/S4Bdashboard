@@ -264,6 +264,25 @@ class DataSource(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class SftpConnector(SQLModel, table=True):
+    """Conector SFTP (solo lectura) para sistemas legados sin API: trae archivos de un
+    servidor SFTP (un archivo o un directorio), extrae su texto (PDF/DOCX/CSV/txt) y los
+    importa al repositorio + índice RAG. Credenciales (password o llave privada) cifradas."""
+    __tablename__ = "sftp_connectors"
+    id: str = Field(default_factory=lambda: _uuid("sftp"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    name: str = ""
+    host: str = ""
+    port: int = 22
+    username: str = ""
+    auth_type: str = "password"    # password | key
+    secret_enc: str = ""          # password o llave privada PEM, cifrada
+    remote_path: str = ""         # archivo o directorio remoto
+    area: str = ""
+    category: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class GeneratedImage(SQLModel, table=True):
     """Imagen generada de texto (text-to-image) vía el proveedor abierto (NaN/FLUX).
     Se guarda una copia en la plataforma (b64) para gobernanza y para que la galería
