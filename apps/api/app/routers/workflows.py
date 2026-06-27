@@ -74,6 +74,10 @@ def trigger_catalog_workflow(session: Session, tenant: Tenant, user: User,
         reason=f"{wf['name']} (run {run_id}) · {run.status} · n8n:{run.source} · {run.detail}",
     ))
     session.commit()
+    from .. import alerts as _alerts
+    _alerts.dispatch(session, tenant.id, "workflow", f"Workflow: {wf['name']}",
+                     f"Ejecución {run.status} (run {run_id}).",
+                     level="error" if run.status == "failed" else "info")
     return {"run_id": run_id, "workflow": wf["name"], "status": run.status,
             "engine": "n8n" if run.triggered else "simulado", "source": run.source,
             "detail": run.detail, "response": run.response, "steps": wf["steps"]}
@@ -138,6 +142,10 @@ def trigger_recipe(session: Session, tenant: Tenant, user: User, recipe: N8nReci
         object_id=recipe.id, risk_level="med" if status == "failed" else "low",
         reason=f"receta {recipe.name} ({provider}, run {run_id}) · {status} · {detail}"))
     session.commit()
+    from .. import alerts as _alerts
+    _alerts.dispatch(session, tenant.id, "recipe", f"Receta: {recipe.name}",
+                     f"Ejecución {status} ({provider}).",
+                     level="error" if status == "failed" else "info")
     return {"run_id": run_id, "recipe": recipe.name, "provider": provider, "status": status,
             "engine": engine, "source": source, "detail": detail, "response": response}
 

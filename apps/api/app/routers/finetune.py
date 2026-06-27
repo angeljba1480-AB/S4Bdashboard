@@ -200,4 +200,8 @@ def job_callback(job_id: str, body: CallbackIn, user: User = Depends(require_rol
     session.add(AuditEvent(tenant_id=tenant.id, user_id=user.id, event_type="finetune", object_type="finetune_job",
                            object_id=j.id, risk_level="low", reason=f"callback: {j.status}"))
     session.commit(); session.refresh(j)
+    from .. import alerts as _alerts
+    _alerts.dispatch(session, tenant.id, "finetune", f"Fine-tuning: {j.status}",
+                     f"El job {j.id} ({j.base_model}) cambió a estado «{j.status}».",
+                     level="error" if j.status == "failed" else "info")
     return _job_out(j)
