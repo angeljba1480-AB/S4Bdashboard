@@ -90,6 +90,15 @@ class Settings(BaseSettings):
     clamav_socket: str = ""         # ej. /var/run/clamav/clamd.ctl (unix socket)
     max_upload_mb: int = 25         # tope de tamaño por archivo subido (0 = sin tope)
 
+    # Fine-tuning ligero (LoRA) — Fase 5 del blueprint. El andamiaje (datasets,
+    # anonimización, versionado, evals) es independiente de la GPU. El entrenamiento
+    # se despacha a un trainer externo (servidor con GPU, App de NaN o webhook n8n);
+    # si no hay backend, el job queda 'simulado' (modo laboratorio).
+    finetune_enabled: bool = False
+    finetune_trainer_url: str = ""          # endpoint que ejecuta el entrenamiento LoRA
+    finetune_trainer_key: str = ""          # header de auth opcional para el trainer
+    finetune_default_base_model: str = "llama3.1"
+
     # Provider resilience: fallback order tried when a route's adapter fails.
     fallback_order: str = "vpc,open,local"
 
