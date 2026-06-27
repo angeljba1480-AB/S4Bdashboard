@@ -24,7 +24,7 @@ def seed() -> None:
 
         users = [
             User(tenant_id=tenant.id, email="admin@maestroai.mx", name="Layla Delgadillo",
-                 role=Role.ADMIN, password_hash=hash_password(DEMO_PASSWORD), mfa_enabled=True),
+                 role=Role.ADMIN, password_hash=hash_password(DEMO_PASSWORD), mfa_enabled=False),
             User(tenant_id=tenant.id, email="user@maestroai.mx", name="Usuario Negocio",
                  role=Role.USER, password_hash=hash_password(DEMO_PASSWORD)),
             User(tenant_id=tenant.id, email="security@maestroai.mx", name="Roberto Silva",
