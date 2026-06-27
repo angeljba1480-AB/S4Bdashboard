@@ -97,6 +97,16 @@ curl -fsS -X POST "$CB" -H 'Content-Type: application/json' -d "$(jq -n \
 > `ai-local-lab-mac`, sección 4). El `mlx_model` por defecto (`llama3.2:3b` →
 > `mlx-community/Llama-3.2-3B-Instruct-4bit`) coincide con el default de `train-lora.sh`.
 
+## Dónde entrenar (dos perfiles)
+- **Apple Silicon / MLX** (`integrations/n8n/`): `train-lora.sh` + `fuse-lora.sh`. Usa
+  `mlx_model` del payload.
+- **GPU NVIDIA / CUDA** (`integrations/trainer-cuda/`): `train-lora-cuda.py` (PEFT/
+  transformers). Usa `hf_model` del payload (repo HuggingFace, ver `HF_MODEL_MAP`).
+  Sirve con Ollama (GGUF) o vLLM (`--enable-lora`).
+
+> El payload incluye **`mlx_model`** y **`hf_model`**; cada trainer toma el que necesita.
+> El callback es idéntico (adapter + `serve_base_url` + `served_model`).
+
 ## Privacidad
 - Los datasets se **anonimizan** antes de salir; el gate bloquea PII residual e inyección.
 - El entrenamiento corre en **tu** GPU; el dato sensible **no sale** a la nube.
