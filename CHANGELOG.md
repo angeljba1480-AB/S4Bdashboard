@@ -3,6 +3,17 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Autochequeo del sistema (readiness + guía de arreglo)**: `GET /admin/readiness`
+  revisa qué está configurado (modelo abierto/premium, on-prem, n8n, toolkit conectado,
+  antivirus, OCR, trainer de fine-tuning, MFA, cifrado) y, **por cada hueco, devuelve la
+  guía de cómo resolverlo ahí mismo** (pasos + enlace a la sección). Panel *Autochequeo
+  del sistema* arriba en *Admin* con estados (listo / por configurar / falta) y arreglo
+  expandible.
+- **Agente de acciones · workflows n8n + encadenamiento**: el agente ahora también puede
+  **disparar workflows de n8n** (`workflow:<id>` del catálogo) y **encadenar pasos** — la
+  salida de un paso alimenta al siguiente vía `{{stepN}}` (p. ej. *buscar en SharePoint →
+  resumir → publicar en Teams* en una sola orden). Triggers de workflow auditados y con
+  aprobación como las escrituras.
 - **Agente de acciones (el modelo ejecuta los pasos en las herramientas)**: nuevo
   `POST /actions/agent` + panel *Asistente de acciones* en la sección Acciones. Escribes
   una instrucción en lenguaje natural y el modelo la traduce a pasos del toolkit

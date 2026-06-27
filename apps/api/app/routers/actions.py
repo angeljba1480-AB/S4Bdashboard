@@ -14,11 +14,12 @@ from sqlmodel import Session, select
 
 from .. import actions as catalog
 from ..ai.adapters import get_adapter
-from ..ai.agent_planner import plan_steps
+from ..ai.agent_planner import plan_steps, resolve_refs
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
 from ..integrations import actions_exec, token_store
 from ..models import ActionGrant, ActionRequest, AuditEvent, ModelRoute, Tenant, User
+from .workflows import CATALOG as WORKFLOW_CATALOG, trigger_catalog_workflow
 
 router = APIRouter(prefix="/actions", tags=["actions"])
 
@@ -30,9 +31,16 @@ def _granted(session: Session, tenant_id: str, user_id: str, action: str) -> boo
     ).first() is not None
 
 
+def _label(action: str) -> str:
+    if action.startswith("workflow:"):
+        wid = action.split(":", 1)[1]
+        wf = next((w for w in WORKFLOW_CATALOG if w["id"] == wid), None)
+        return f"Workflow · {wf['name']}" if wf else action
+    return (catalog.get_action(action) or {}).get("label", action)
+
+
 def _req_out(r: ActionRequest) -> dict:
-    meta = catalog.get_action(r.action) or {}
-    return {"id": r.id, "action": r.action, "label": meta.get("label", r.action),
+    return {"id": r.id, "action": r.action, "label": _label(r.action),
             "provider": r.provider, "params": json.loads(r.params or "{}"),
             "status": r.status, "result": r.result, "created_at": r.created_at.isoformat()}
 
@@ -61,9 +69,15 @@ def _token(session: Session, tenant: Tenant, user: User, provider: str) -> str:
 
 def _execute(session: Session, tenant: Tenant, user: User, req: ActionRequest) -> ActionRequest:
     try:
-        token = _token(session, tenant, user, req.provider)
-        req.result = actions_exec.execute(req.action, token, json.loads(req.params or "{}"))
-        req.status = "executed"
+        if req.provider == "n8n":
+            wid = req.action.split(":", 1)[1]
+            res = trigger_catalog_workflow(session, tenant, user, wid, json.loads(req.params or "{}"))
+            req.result = f"workflow {res['status']} ({res['source']}) · {res['detail']}"[:240]
+            req.status = "executed"
+        else:
+            token = _token(session, tenant, user, req.provider)
+            req.result = actions_exec.execute(req.action, token, json.loads(req.params or "{}"))
+            req.status = "executed"
     except HTTPException:
         raise
     except Exception as exc:
@@ -124,28 +138,39 @@ def agent_run(
     """Agente de acciones: el modelo traduce una instrucción en pasos del toolkit y
     los ejecuta «por detrás». Lecturas y escrituras autorizadas corren al momento;
     el resto queda **pendiente de aprobación**. Todo auditado."""
-    # Solo se ofrecen acciones de proveedores conectados.
+    # Herramientas disponibles: acciones de proveedores conectados + workflows n8n.
     connected = {c.provider for c in token_store.list_connections(session, tenant.id, user.id)}
     allowed = [a for a in catalog.list_actions() if a["provider"] in connected]
-    if not allowed:
+    workflows = [{"id": w["id"], "name": w["name"], "steps": w["steps"]} for w in WORKFLOW_CATALOG]
+    if not allowed and not workflows:
         raise HTTPException(status_code=400, detail="Conecta Google o Microsoft en Integraciones primero.")
 
     # Planifica con el modelo (ruta abierta/NaN); cae a heurística si no hay modelo real.
     adapter = get_adapter(ModelRoute.OPEN)
-    plan = plan_steps(body.instruction, allowed, adapter=adapter)
+    plan = plan_steps(body.instruction, allowed, adapter=adapter, workflows=workflows)
 
     results: list[dict] = []
-    for step in plan["steps"]:
-        meta = catalog.get_action(step["action"])
-        if not meta:
-            continue
-        req = ActionRequest(tenant_id=tenant.id, user_id=user.id, provider=meta["provider"],
-                            action=step["action"], params=json.dumps(step.get("params", {})))
-        run_now = (not meta.get("write")) or body.auto_approve or _granted(session, tenant.id, user.id, step["action"])
+    outputs: dict[int, str] = {}   # salida (1-based) de pasos ejecutados, para encadenar
+    for i, step in enumerate(plan["steps"], start=1):
+        action = step["action"]
+        is_wf = action.startswith("workflow:")
+        if is_wf:
+            provider, write = "n8n", True
+        else:
+            meta = catalog.get_action(action)
+            if not meta:
+                continue
+            provider, write = meta["provider"], bool(meta.get("write"))
+        # Encadenamiento: sustituye {{stepN}} por la salida de pasos previos.
+        params = resolve_refs(step.get("params", {}), outputs)
+        req = ActionRequest(tenant_id=tenant.id, user_id=user.id, provider=provider,
+                            action=action, params=json.dumps(params))
+        run_now = (not write) or body.auto_approve or _granted(session, tenant.id, user.id, action)
         if run_now:
             session.add(req); session.commit(); session.refresh(req)
             out = _req_out(_execute(session, tenant, user, req))
             out["step_status"] = "ejecutado"
+            outputs[i] = str(out.get("result") or "")
         else:
             req.status = "pending"
             session.add(req); session.commit(); session.refresh(req)

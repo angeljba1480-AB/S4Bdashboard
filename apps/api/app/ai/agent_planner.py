@@ -30,10 +30,19 @@ _INTENTS: list[tuple[tuple[str, ...], str]] = [
     (("sharepoint",), "sharepoint.search"),
 ]
 
+# Pistas de intención → id de workflow n8n del catálogo.
+_WF_INTENTS: list[tuple[tuple[str, ...], str]] = [
+    (("ingesta", "ingestar", "indexa", "indexar"), "ingesta"),
+    (("sow", "propuesta", "cotización", "cotizacion"), "sow"),
+    (("cyber", "ciber", "ciberseguridad", "diagnóstico", "diagnostico"), "cyber"),
+    (("centro de mando", "kpi", "tablero", "indicadores"), "mando"),
+    (("fine-tuning", "fine tuning", "entrena", "entrenar"), "finetune"),
+]
 
-def _match_actions(instruction: str, actions: list[dict]) -> list[dict]:
+
+def _match_actions(instruction: str, actions: list[dict], workflows: list[dict] | None = None) -> list[dict]:
     """Heurística: devuelve pasos candidatos {action, params, reason} para las
-    acciones permitidas cuyo patrón aparece en la instrucción."""
+    acciones/workflows permitidos cuyo patrón aparece en la instrucción."""
     low = instruction.lower()
     ids = {a["id"] for a in actions}
     steps: list[dict] = []
@@ -48,7 +57,30 @@ def _match_actions(instruction: str, actions: list[dict]) -> list[dict]:
                 steps.append({"action": aid, "params": {},
                               "reason": f"Coincide con la intención «{keywords[0]}»."})
                 used.add(aid)
+    wf_ids = {w["id"] for w in (workflows or [])}
+    for keywords, wid in _WF_INTENTS:
+        if wid in wf_ids and any(k in low for k in keywords):
+            aid = f"workflow:{wid}"
+            if aid not in used:
+                steps.append({"action": aid, "params": {},
+                              "reason": f"Dispara el workflow «{wid}» ({keywords[0]})."})
+                used.add(aid)
     return steps
+
+
+_REF_RE = re.compile(r"\{\{\s*step(\d+)(?:\.result)?\s*\}\}", re.IGNORECASE)
+
+
+def resolve_refs(params: dict, outputs: dict) -> dict:
+    """Sustituye referencias {{stepN}} / {{stepN.result}} en los params por la
+    salida (1-based) de pasos previos ya ejecutados. Habilita el encadenamiento:
+    la salida de un paso alimenta al siguiente."""
+    out = {}
+    for k, v in (params or {}).items():
+        if isinstance(v, str):
+            v = _REF_RE.sub(lambda m: str(outputs.get(int(m.group(1)), m.group(0))), v)
+        out[k] = v
+    return out
 
 
 def _allowed_catalog_text(actions: list[dict]) -> str:
@@ -74,55 +106,69 @@ def _extract_json_array(text: str) -> list | None:
         return None
 
 
-def _validate(steps: list, actions: list[dict]) -> list[dict]:
-    """Filtra a pasos válidos: action en el catálogo permitido y params dict."""
+def _validate(steps: list, actions: list[dict], workflows: list[dict] | None = None) -> list[dict]:
+    """Filtra a pasos válidos: action en el catálogo permitido (acción o
+    workflow:<id>) y params dict (conserva referencias {{stepN}})."""
     by_id = {a["id"]: a for a in actions}
+    wf_ids = {w["id"] for w in (workflows or [])}
     out: list[dict] = []
     for s in steps:
         if not isinstance(s, dict):
             continue
         aid = str(s.get("action", "")).strip()
-        if aid not in by_id:
-            continue
         params = s.get("params") if isinstance(s.get("params"), dict) else {}
-        # Solo conserva params declarados por la acción.
-        allowed = set(by_id[aid].get("params", []))
-        params = {k: v for k, v in params.items() if k in allowed}
+        if aid.startswith("workflow:"):
+            if aid.split(":", 1)[1] not in wf_ids:
+                continue
+            params = {"payload": params.get("payload")} if "payload" in params else {}
+        elif aid in by_id:
+            allowed = set(by_id[aid].get("params", []))
+            params = {k: v for k, v in params.items() if k in allowed}
+        else:
+            continue
         out.append({"action": aid, "params": params,
                     "reason": str(s.get("reason", ""))[:200]})
     return out
 
 
-def plan_steps(instruction: str, actions: list[dict], adapter=None) -> dict:
+def plan_steps(instruction: str, actions: list[dict], adapter=None,
+               workflows: list[dict] | None = None) -> dict:
     """Devuelve {steps: [...], source: "modelo"|"heurística", note}. `actions` es el
-    catálogo YA filtrado a lo que el usuario puede ejecutar (proveedor conectado)."""
+    catálogo YA filtrado a lo que el usuario puede ejecutar (proveedor conectado);
+    `workflows` son los workflows n8n disponibles (acción `workflow:<id>`). Los pasos
+    pueden encadenarse con referencias {{stepN}} a la salida de pasos previos."""
     instruction = (instruction or "").strip()
-    if not instruction or not actions:
+    workflows = workflows or []
+    if not instruction or (not actions and not workflows):
         return {"steps": [], "source": "ninguna",
-                "note": "Sin instrucción o sin acciones disponibles (conecta un proveedor)."}
+                "note": "Sin instrucción o sin herramientas disponibles (conecta un proveedor)."}
 
     # 1) Camino del modelo (si hay adapter real).
     if adapter is not None and getattr(adapter, "model_name", "mock").startswith("mock") is False:
+        wf_text = "\n".join(f'- "workflow:{w["id"]}" ({w.get("name")}): {w.get("steps", "")}' for w in workflows)
         system = (
             "Eres un planificador de acciones. Convierte la instrucción del usuario en "
-            "una lista de pasos usando SOLO las acciones permitidas. Responde ÚNICAMENTE "
-            "con un arreglo JSON: [{\"action\": id, \"params\": {...}, \"reason\": texto}]. "
-            "No inventes acciones ni parámetros fuera de los declarados. Si falta un dato "
+            "una lista ORDENADA de pasos usando SOLO las herramientas permitidas. Responde "
+            "ÚNICAMENTE con un arreglo JSON: [{\"action\": id, \"params\": {...}, \"reason\": texto}]. "
+            "Puedes ENCADENAR: para usar la salida de un paso previo en otro, pon "
+            "\"{{stepN}}\" (N es el número de paso, 1-based) en el valor del parámetro. "
+            "No inventes herramientas ni parámetros fuera de los declarados. Si falta un dato "
             "para una escritura, incluye el paso con los params que tengas (se pedirá "
             "aprobación). No incluyas nada más que el JSON.\n\n"
-            f"Acciones permitidas:\n{_allowed_catalog_text(actions)}"
+            f"Acciones permitidas:\n{_allowed_catalog_text(actions)}\n\n"
+            f"Workflows n8n permitidos (úsalos como action \"workflow:<id>\", param opcional \"payload\"):\n{wf_text or '(ninguno)'}"
         )
         try:  # pragma: no cover - depende de modelo real
             resp = adapter.generate(system, instruction, [])
             parsed = _extract_json_array(resp.content)
             if parsed is not None:
-                steps = _validate(parsed, actions)
+                steps = _validate(parsed, actions, workflows)
                 if steps:
                     return {"steps": steps, "source": "modelo", "note": ""}
         except Exception:
             pass  # cae a heurística
 
     # 2) Heurística determinista (laboratorio / sin modelo).
-    steps = _match_actions(instruction, actions)
+    steps = _match_actions(instruction, actions, workflows)
     note = "" if steps else "No se identificó ninguna acción para esa instrucción."
     return {"steps": steps, "source": "heurística", "note": note}

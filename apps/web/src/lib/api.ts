@@ -352,6 +352,8 @@ export const api = {
     request<{ request: ActionRequestItem }>(`/actions/requests/${id}/reject`, { method: "POST" }),
   actionGrants: () => request<{ action: string; label: string }[]>("/actions/grants"),
   revokeGrant: (action: string) => request<{ ok: boolean }>(`/actions/grants/${action}`, { method: "DELETE" }),
+  readiness: () =>
+    request<{ summary: Record<string, number>; checks: { key: string; label: string; status: "ok" | "warn" | "missing"; detail: string; fix: { steps: string[]; help?: string | null; link?: string | null } | null }[] }>("/admin/readiness"),
   agentRun: (instruction: string, autoApprove = false) =>
     request<{ instruction: string; source: string; note: string; steps: (ActionRequestItem & { step_status: string; reason: string })[] }>(
       "/actions/agent", { method: "POST", body: JSON.stringify({ instruction, auto_approve: autoApprove }) }),
