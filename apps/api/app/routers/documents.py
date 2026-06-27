@@ -130,9 +130,11 @@ async def upload(
     """
     if file is not None:
         raw = await file.read()
-        content = raw.decode("utf-8", errors="ignore")
         name = file.filename or filename or "documento.txt"
         mime = file.content_type or "text/plain"
+        # Extrae texto según el tipo (PDF/DOCX/texto/CSV) — OCR opcional si hay binario.
+        from ..ingest import extract_text
+        content = extract_text(raw, name, mime)
     elif text is not None:
         content = text
         name = filename or "documento.txt"
