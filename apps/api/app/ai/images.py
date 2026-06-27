@@ -1,13 +1,14 @@
 """Text-to-image generation via the OpenAI-compatible images endpoint.
 
 Reuses the **open** provider configured in Admin → Modelos externos (admin runtime
-override) or env: POST to `{base_url}/images/generations` (OpenAI standard). The
-model defaults to FLUX.2 but is configurable. PII in the prompt is redacted before
-the external call.
+override) or env: POST to `{base_url}/images/generations` (OpenAI standard). PII in
+the prompt is redacted before the external call.
 
-NOTE: NaN Builders' *documented* API does NOT expose image generation today (their
-`cloud.nan.builders/generate` is a web-app feature, not an API endpoint). This module
-works with any provider that serves `/images/generations`; see docs/PROVEEDOR-NAN.md.
+NaN Builders expone hoy `/v1/images/generations` y `/v1/images/edits` con el modelo
+**`flux-2-klein`** (requiere membresía tier *inference*; cuota 100 req/mes, 1–4 por
+request, tamaños múltiplos de 16 entre 256–1536). El modelo de imagen es **distinto**
+del de chat (`open_model`): se usa `settings.image_model`, no se reutiliza qwen3.6.
+Ver docs/PROVEEDOR-NAN.md.
 """
 from __future__ import annotations
 
@@ -17,9 +18,10 @@ from dataclasses import dataclass
 from ..config import settings
 from ..models import ModelRoute
 
-# Aspect ratio (UI) → pixel size (provider). FLUX/SDXL-friendly sizes.
+# Aspect ratio (UI) → pixel size. Lados múltiplos de 16, entre 256 y 1536 (límites
+# de flux-2-klein).
 ASPECT_SIZES = {"1:1": "1024x1024", "16:9": "1344x768", "9:16": "768x1344"}
-DEFAULT_IMAGE_MODEL = "FLUX.2-klein"
+DEFAULT_IMAGE_MODEL = "flux-2-klein"
 TIMEOUT = 120
 
 
@@ -68,7 +70,9 @@ def generate(prompt: str, *, n: int = 1, size: str = "1024x1024",
     prov = _open_provider()
     if not prov:
         raise RuntimeError("No hay proveedor abierto (NaN) configurado para generar imágenes.")
-    use_model = (model or prov["model"] or DEFAULT_IMAGE_MODEL)
+    # El modelo de imagen es independiente del de chat: nunca reutilizar prov["model"]
+    # (qwen3.6) aquí, o el proveedor responde 404 model_not_found.
+    use_model = (model or settings.image_model or DEFAULT_IMAGE_MODEL)
     base = prov["base_url"].rstrip("/")
     resp = httpx.post(
         f"{base}/images/generations",

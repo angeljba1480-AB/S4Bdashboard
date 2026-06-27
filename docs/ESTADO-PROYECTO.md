@@ -57,8 +57,8 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
 - ✅ **Generar imágenes** vía la ruta estándar OpenAI `/images/generations` sobre el
   proveedor abierto. Prompt con redacción de PII, relación de aspecto y variantes.
   **Galería por área**, copia almacenada y auditada.
-  ⚠️ La **API de NaN no expone imágenes hoy** (su *Generate* es web) — la sección
-  queda lista para cualquier proveedor que exponga ese endpoint. Ver
+  ✅ **NaN ya expone imágenes** (`flux-2-klein`, tier *inference*): MaestroAI usa
+  `settings.image_model = flux-2-klein` (distinto del modelo de chat). Ver
   [`PROVEEDOR-NAN.md`](./PROVEEDOR-NAN.md).
 
 ### Modelos
