@@ -16,6 +16,7 @@ pytesseract==0.3.13
 pdf2image==1.17.0
 pyotp==2.9.0
 openpyxl==3.1.5
+paramiko==3.5.0
 psycopg2-binary==2.9.10
 APScheduler==3.10.4
 pytest==8.3.4
