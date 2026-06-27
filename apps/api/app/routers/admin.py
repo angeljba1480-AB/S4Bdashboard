@@ -338,7 +338,9 @@ class ProviderIn(BaseModel):
     api_key: str = ""          # write-only; stored encrypted, never returned
 
 
-_EXTERNAL_ROUTES = ("premium", "open")
+# Rutas configurables desde la UI. Incluye on-prem (local/Ollama, VPC) además de
+# las externas (open/NaN, premium). El orden = de más privado a menos privado.
+_PROVIDER_ROUTES = ("local", "vpc", "open", "premium")
 
 
 @router.get("/providers")
@@ -346,15 +348,16 @@ def list_providers(
     _: User = Depends(require_roles(Role.SUPER_ADMIN)),
     session: Session = Depends(get_session),
 ) -> list[dict]:
-    """External model providers (GPT/Claude/Llama…) configurable from the UI."""
+    """Proveedores de modelos configurables: on-prem (Ollama/VPC) + externos (NaN/premium)."""
     from ..models import ProviderSetting
 
     rows = {r.route: r for r in session.exec(select(ProviderSetting)).all()}
     out = []
-    for route in _EXTERNAL_ROUTES:
+    for route in _PROVIDER_ROUTES:
         r = rows.get(route)
         out.append({
             "route": route,
+            "onprem": route in ("local", "vpc"),
             "enabled": bool(r and r.enabled),
             "base_url": (r.base_url if r else ""),
             "model": (r.model if r else ""),
@@ -375,8 +378,8 @@ def update_provider(
     from ..ai.adapters import load_overrides
     from ..models import ProviderSetting
 
-    if route not in _EXTERNAL_ROUTES:
-        raise HTTPException(status_code=400, detail="Ruta externa inválida (usa premium u open)")
+    if route not in _PROVIDER_ROUTES:
+        raise HTTPException(status_code=400, detail="Ruta inválida (usa local, vpc, open o premium)")
     row = session.exec(select(ProviderSetting).where(ProviderSetting.route == route)).first()
     if not row:
         row = ProviderSetting(route=route)
@@ -405,8 +408,8 @@ def test_provider(
 
     from ..ai.adapters import MockAdapter, get_adapter
 
-    if route not in _EXTERNAL_ROUTES:
-        raise HTTPException(status_code=400, detail="Ruta externa inválida (usa premium u open)")
+    if route not in _PROVIDER_ROUTES:
+        raise HTTPException(status_code=400, detail="Ruta inválida (usa local, vpc, open o premium)")
     adapter = get_adapter(ModelRoute(route))
     if isinstance(adapter, MockAdapter):
         return {"ok": False, "mode": "mock", "model": adapter.model_name,

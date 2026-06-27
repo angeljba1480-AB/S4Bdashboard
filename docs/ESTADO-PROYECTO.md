@@ -67,6 +67,9 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
   más precisión (embedding → rerank → LLM). Toggle en *Admin → Eficiencia de tokens*.
 - ✅ **Modelos externos** (GPT/Claude/Llama/DeepSeek) configurables en la UI
   (cifrados; endpoints compatibles con OpenAI).
+- ✅ **Integración on-prem**: rutas **local (Ollama)** y **VPC** configurables como
+  conectores en la UI (Probar conexión) para usar la infra local del cliente. Ver
+  `ONPREM-LAB.md`.
 - ✅ **Cascada (NaN-primero)**: los datos no sensibles empiezan en NaN (open);
   premium es **escalada a demanda** («máxima precisión») o automática si la respuesta
   es insuficiente (aprobación para contenido sensible). Si no hay premium, se queda

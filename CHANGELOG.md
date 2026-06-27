@@ -3,6 +3,11 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Integración on-prem (modelos locales del cliente)**: las rutas **local (Ollama)** y
+  **VPC** ahora se configuran como conectores desde *Admin → Modelos y conectores* (Base
+  URL + modelo + key + **Probar conexión**), no solo por variables de entorno. Pensado para
+  conectar el laboratorio/infra local del cliente (Ollama/vLLM/Qdrant/n8n) vía túnel o
+  despliegue on-prem. Guía `docs/ONPREM-LAB.md` + ayuda contextual.
 - **Panel de Fine-tuning en la UI**: sección *Fine-tuning* que explica el beneficio de
   cada paso (reunir ejemplos → desde Memoria → gate calidad/red-team → entrenar LoRA →
   servir privado), con creación de datasets, ejemplos, import desde Memoria, gate, export

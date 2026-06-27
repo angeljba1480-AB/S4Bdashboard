@@ -76,3 +76,29 @@ def test_provider_error_is_reported(client, monkeypatch):
 
     r = client.post("/admin/providers/premium/test", headers=h).json()
     assert r["ok"] is False and r["mode"] == "real" and "401" in r["detail"]
+
+
+def test_providers_include_onprem_routes(client):
+    h = _auth(client)
+    provs = {p["route"]: p for p in client.get("/admin/providers", headers=h).json()}
+    assert {"local", "vpc", "open", "premium"} <= set(provs)
+    assert provs["local"]["onprem"] is True and provs["premium"]["onprem"] is False
+
+
+def test_configure_and_test_local_route(client, monkeypatch):
+    h = _auth(client)
+    r = client.put("/admin/providers/local", headers=h, json={
+        "enabled": True, "base_url": "https://tunnel.example/v1", "model": "llama3.2:3b", "api_key": "ollama"}).json()
+    assert r["route"] == "local" and r["enabled"] is True
+
+    from app.ai import adapters
+    from app.ai.adapters import ModelResponse
+    monkeypatch.setattr(adapters.OpenAICompatAdapter, "generate",
+                        lambda self, s, p, c: ModelResponse(content="OK", model=self.model_name, provider=self.base_url))
+    t = client.post("/admin/providers/local/test", headers=h).json()
+    assert t["ok"] is True and t["model"] == "llama3.2:3b"
+
+    # Limpieza: la BD/cache son compartidos entre módulos; deja la ruta local sin
+    # override real para no romper el ruteo de otras pruebas (PII → local/vpc).
+    client.put("/admin/providers/local", headers=h, json={
+        "enabled": False, "base_url": "", "model": "", "api_key": ""})
