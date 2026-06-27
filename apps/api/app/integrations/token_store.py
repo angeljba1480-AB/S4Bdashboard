@@ -123,12 +123,14 @@ def get_valid_access_token(session: Session, tenant: Tenant, user_id: str, provi
 
 
 def list_connections(session: Session, tenant_id: str, user_id: str) -> list[OAuthToken]:
+    """Cuentas conectadas activas, la más reciente primero: así el selector y la
+    resolución por defecto usan la cuenta que el usuario acaba de conectar."""
     return session.exec(
         select(OAuthToken).where(
             OAuthToken.tenant_id == tenant_id,
             OAuthToken.user_id == user_id,
             OAuthToken.status == "active",
-        )
+        ).order_by(OAuthToken.updated_at.desc())
     ).all()
 
 
