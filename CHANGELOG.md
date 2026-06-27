@@ -3,6 +3,12 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Agente · function-calling nativo (qwen3.6)**: cuando hay un proveedor con
+  *tool calling* (NaN qwen3.6), el planner deja de parsear JSON de prosa y usa
+  **functions** reales — el modelo elige la herramienta y rellena los argumentos de
+  forma fiable. Las acciones/workflows se exponen como `tools` (nombres saneados); el
+  encadenamiento `{{stepN}}` se conserva en los argumentos. Fallback a texto-JSON y a
+  heurística si el proveedor no soporta tools. `source: "modelo (tools)"`.
 - **Imágenes NaN reales (`flux-2-klein`)**: NaN ya expone `/v1/images/generations` y
   `/v1/images/edits`. Se corrige el id del modelo (`flux-2-klein`, antes `FLUX.2-klein`
   → 404) y se deja de reutilizar el modelo de chat (qwen3.6) para imágenes — ahora hay
