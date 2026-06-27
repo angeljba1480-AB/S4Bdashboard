@@ -7,7 +7,7 @@ import { HelpButton } from "@/components/HelpButton";
 import { SourceCitation } from "@/components/SourceCitation";
 import { api } from "@/lib/api";
 import type { Agent, ChatResponse, DocumentItem } from "@shared/types";
-import { Brain, Mic, Save, Send, Sparkles, Volume2, Zap } from "lucide-react";
+import { Brain, Mic, Pause, Save, Send, Sparkles, Volume2, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface Turn {
@@ -30,6 +30,8 @@ export default function ChatPage() {
   const [convId, setConvId] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof api.previewRoute>> | null>(null);
+  const [narrating, setNarrating] = useState<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,6 +45,11 @@ export default function ChatPage() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [turns]);
+
+  // Detener la narración al desmontar la página.
+  useEffect(() => () => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+  }, []);
 
   // Live route advisory: as the user types, preview classification + route.
   useEffect(() => {
@@ -92,11 +99,30 @@ export default function ChatPage() {
     }
   }
 
-  async function narrate(text: string) {
+  function stopAudio() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+    setNarrating(null);
+  }
+
+  async function narrate(text: string, idx: number) {
+    // Toggle: si ya está sonando ese mensaje, lo paramos.
+    if (narrating === idx) { stopAudio(); return; }
+    stopAudio();                       // corta cualquier audio previo
+    setNarrating(idx);
     try {
       const blob = await api.tts(text);
-      new Audio(URL.createObjectURL(blob)).play();
-    } catch (e) { alert(e instanceof Error ? e.message : "No se pudo narrar"); }
+      const audio = new Audio(URL.createObjectURL(blob));
+      audioRef.current = audio;
+      audio.onended = () => { audioRef.current = null; setNarrating((c) => (c === idx ? null : c)); };
+      await audio.play();
+    } catch (e) {
+      stopAudio();
+      alert(e instanceof Error ? e.message : "No se pudo narrar");
+    }
   }
 
   async function transcribe(file: File) {
@@ -147,6 +173,7 @@ export default function ChatPage() {
             <select
               value={agentId}
               onChange={(e) => {
+                stopAudio();
                 setAgentId(e.target.value);
                 setTurns([]);
                 setConvId(undefined);
@@ -230,9 +257,9 @@ export default function ChatPage() {
                       <div className="mt-2 flex items-center justify-between">
                         <span className="text-xs text-slate-400">Ruta: {t.meta.reason}</span>
                         <span className="flex items-center gap-3">
-                          <button onClick={() => narrate(t.content)}
+                          <button onClick={() => narrate(t.content, i)}
                             className="flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-800">
-                            <Volume2 className="h-3 w-3" /> Narrar
+                            {narrating === i ? <><Pause className="h-3 w-3" /> Detener</> : <><Volume2 className="h-3 w-3" /> Narrar</>}
                           </button>
                           <button onClick={() => saveToMemory(t.content)}
                             className="flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-800">
