@@ -85,6 +85,9 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
 - ✅ **Lecturas**: Google Sheets, Google/Outlook Calendar, OneDrive,
   **leer rango de Excel**, **buscar en SharePoint**.
 - ✅ **Aprobación humana** para escrituras + **“Permitir siempre”** (revocable).
+- ✅ **Agente de acciones**: el modelo traduce una instrucción en lenguaje natural a
+  pasos del toolkit y los **ejecuta por detrás** (lecturas al momento; escrituras con
+  aprobación). `POST /actions/agent` + panel *Asistente* (planner modelo + heurística).
 
 ### Ayuda
 - ✅ **Ayuda in-app en español**: guías paso a paso (n8n, correo, RAG, acciones,
@@ -115,7 +118,7 @@ Para activar lo que depende de credenciales/permisos:
 
 ## 4. Calidad
 
-- ✅ **151 pruebas** automatizadas en verde (API).
+- ✅ **210 pruebas** automatizadas en verde (API).
 - Migraciones aditivas idempotentes (sin pérdida de datos).
 - Credenciales cifradas (AES-256-GCM); todo auditado.
 

@@ -91,6 +91,47 @@ def test_read_actions_in_catalog(client):
     assert acts["excel.append"]["write"] is True
 
 
+# --- agente de acciones (el modelo ejecuta los pasos en las herramientas) ----
+class _Conn:
+    def __init__(self, provider):
+        self.provider = provider
+
+
+@pytest.fixture
+def _google_connected(monkeypatch):
+    from app.integrations import token_store
+    monkeypatch.setattr(token_store, "list_connections", lambda *a, **k: [_Conn("google")])
+
+
+def test_agent_requires_connection(client, monkeypatch):
+    from app.integrations import token_store
+    monkeypatch.setattr(token_store, "list_connections", lambda *a, **k: [])
+    r = client.post("/actions/agent", headers=_auth(client), json={"instruction": "envía un correo"})
+    assert r.status_code == 400
+
+
+def test_agent_runs_reads_and_queues_writes(client, _google_connected):
+    h = _auth(client)
+    # Lectura: "próximos eventos" → gcal.list se ejecuta al momento.
+    r = client.post("/actions/agent", headers=h, json={"instruction": "muéstrame mis próximos eventos"}).json()
+    assert r["source"] in ("heurística", "modelo")
+    read_steps = [s for s in r["steps"] if s["action"] == "gcal.list"]
+    assert read_steps and read_steps[0]["step_status"] == "ejecutado"
+
+    # Escritura: "envía un correo" → gmail.send queda pendiente de aprobación.
+    r2 = client.post("/actions/agent", headers=h, json={"instruction": "envía un correo a Juan"}).json()
+    send_steps = [s for s in r2["steps"] if s["action"] == "gmail.send"]
+    assert send_steps and send_steps[0]["step_status"] == "pendiente_aprobación"
+
+
+def test_agent_auto_approve_executes_writes(client, _google_connected):
+    h = _auth(client)
+    r = client.post("/actions/agent", headers=h, json={
+        "instruction": "envía un correo a Juan", "auto_approve": True}).json()
+    send_steps = [s for s in r["steps"] if s["action"] == "gmail.send"]
+    assert send_steps and send_steps[0]["step_status"] == "ejecutado"
+
+
 def test_unknown_action_404(client):
     h = _auth(client)
     assert client.post("/actions/run", headers=h, json={"action": "nope.x", "params": {}}).status_code == 404

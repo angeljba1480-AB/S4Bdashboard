@@ -31,7 +31,8 @@ export default function FineTunePage() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [sel, setSel] = useState<string>("");
-  const [nd, setNd] = useState({ name: "", base_model: "llama3.1" });
+  const [nd, setNd] = useState({ name: "", base_model: "llama3.2:3b" });
+  const [baseModels, setBaseModels] = useState<{ name: string; mlx_model: string; family: string }[]>([]);
   const [ex, setEx] = useState({ prompt: "", completion: "" });
   const [check, setCheck] = useState<Check | null>(null);
   const [msg, setMsg] = useState("");
@@ -40,13 +41,13 @@ export default function FineTunePage() {
     api.ftDatasets().then(setDatasets).catch(() => {});
     api.ftJobs().then(setJobs).catch(() => {});
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); api.ftBaseModels().then(setBaseModels).catch(() => {}); }, []);
   const current = datasets.find((d) => d.id === sel) || null;
 
   async function createDs() {
     if (!nd.name.trim()) { setMsg("Pon un nombre."); return; }
     const d = await api.ftCreateDataset(nd);
-    setNd({ name: "", base_model: "llama3.1" }); setSel(d.id); setCheck(null); load();
+    setNd({ name: "", base_model: nd.base_model }); setSel(d.id); setCheck(null); load();
   }
   async function addEx() {
     if (!sel || !ex.prompt.trim() || !ex.completion.trim()) { setMsg("Completa prompt y respuesta."); return; }
@@ -87,7 +88,20 @@ export default function FineTunePage() {
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="mb-2 font-semibold text-slate-800">Nuevo dataset</h2>
               <input value={nd.name} onChange={(e) => setNd({ ...nd, name: e.target.value })} placeholder="Nombre (ej. Tono comercial)" className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-              <input value={nd.base_model} onChange={(e) => setNd({ ...nd, base_model: e.target.value })} placeholder="Modelo base (ej. llama3.1)" className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              {baseModels.length > 0 ? (
+                <select value={nd.base_model} onChange={(e) => setNd({ ...nd, base_model: e.target.value })}
+                  className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                  {Array.from(new Set(baseModels.map((m) => m.family))).map((fam) => (
+                    <optgroup key={fam} label={fam}>
+                      {baseModels.filter((m) => m.family === fam).map((m) => (
+                        <option key={m.name} value={m.name}>{m.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              ) : (
+                <input value={nd.base_model} onChange={(e) => setNd({ ...nd, base_model: e.target.value })} placeholder="Modelo base (ej. llama3.2:3b)" className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              )}
               <button onClick={createDs} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Crear dataset</button>
             </div>
 
