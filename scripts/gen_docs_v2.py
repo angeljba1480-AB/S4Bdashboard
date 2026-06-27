@@ -153,8 +153,8 @@ SCORE = [
     ("Export DOCX/PDF · security tests (injection, exfil, PII, cross-tenant)", "Hecho"),
     ("Ingesta: extracción de texto de PDF/DOCX", "Hecho (v2)"),
     ("Ingesta: antivirus (EICAR + ClamAV opcional) + tope de tamaño", "Hecho (v2)"),
-    ("Ingesta: OCR de escaneados", "Parcial (opcional si hay binario)"),
-    ("MFA (multi-factor)", "Pendiente (campo listo, sin forzar)"),
+    ("Ingesta: OCR de escaneados (tesseract en la imagen)", "Hecho (v2)"),
+    ("MFA (TOTP) + códigos de respaldo, exigido en login", "Hecho (v2)"),
     ("Fine-tuning ligero (LoRA) real", "Pendiente (Fase 5)"),
     ("Confidential computing / TEE · mTLS / private endpoints", "Pendiente (infra)"),
 ]
@@ -171,18 +171,6 @@ EXTRAS = [
 ]
 
 PENDIENTES = [
-    {"t": "OCR de escaneados (completar ingesta avanzada)",
-     "que": "Aplicar OCR a PDFs escaneados sin capa de texto (el antivirus en la ingesta ya quedó hecho).",
-     "porque": "Completa «upload → antivirus → OCR si aplica → clasificación» del blueprint.",
-     "como": "pytesseract + pdf2image + binario tesseract (ya soportado de forma opcional en el código); "
-             "instalar el binario en el contenedor para activarlo.",
-     "dep": "tesseract-ocr, poppler, pytesseract, pdf2image."},
-    {"t": "MFA (multi-factor) — TOTP",
-     "que": "Segundo factor en el login (app autenticadora) con enrolamiento, verificación y códigos de respaldo.",
-     "porque": "El blueprint incluye «RBAC + MFA». El modelo ya tiene el campo mfa_enabled; falta el flujo.",
-     "como": "pyotp (TOTP) + QR de enrolamiento; reto de MFA tras la contraseña cuando mfa_enabled=true; "
-             "códigos de recuperación cifrados.",
-     "dep": "pyotp (software puro)."},
     {"t": "Fine-tuning ligero (LoRA)",
      "que": "Pipeline de dataset → anonimización → versionado → entrenamiento LoRA → evals → red team → despliegue.",
      "porque": "Fase 5 del blueprint para comportamiento/formato repetitivo (no para conocimiento, que va por RAG).",

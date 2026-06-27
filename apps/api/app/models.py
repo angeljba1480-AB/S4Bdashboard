@@ -104,6 +104,8 @@ class User(SQLModel, table=True):
     license: str = "basic"        # nivel de licencia (basic | pro | enterprise)
     password_hash: str = ""
     mfa_enabled: bool = False
+    mfa_secret_enc: str = ""        # secreto TOTP cifrado (pendiente hasta verificar)
+    mfa_backup_codes: str = ""      # hashes de códigos de respaldo (un solo uso)
     status: str = "active"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

@@ -12,6 +12,7 @@ from .models import ModelRoute, Role, Sensitivity
 class LoginRequest(BaseModel):
     email: str
     password: str
+    mfa_code: str | None = None   # requerido si el usuario tiene MFA activo
 
 
 class TokenResponse(BaseModel):

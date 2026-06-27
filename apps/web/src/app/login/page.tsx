@@ -12,6 +12,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [sso, setSso] = useState<{ enabled: boolean; authorize_url?: string }>({ enabled: false });
+  const [mfaNeeded, setMfaNeeded] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
 
   useEffect(() => {
     api.ssoConfig().then(setSso).catch(() => {});
@@ -22,10 +24,16 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await api.login(email, password);
+      await api.login(email, password, mfaNeeded ? mfaCode : undefined);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error de autenticación");
+      const msg = err instanceof Error ? err.message : "Error de autenticación";
+      if (msg.includes("MFA_REQUIRED")) {
+        setMfaNeeded(true);
+        setError("Ingresa el código de tu app de autenticación.");
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -61,6 +69,18 @@ export default function LoginPage() {
             className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
             type="password"
           />
+          {mfaNeeded && (
+            <>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Código MFA (6 dígitos o respaldo)</label>
+              <input
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+                placeholder="123456"
+                autoFocus
+                className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm tracking-widest focus:border-violet-500 focus:outline-none"
+              />
+            </>
+          )}
           {error && <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
           <button
             disabled={loading}
