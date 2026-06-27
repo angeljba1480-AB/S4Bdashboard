@@ -3,6 +3,15 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+
+## 2026-06-27 — promovido a prod (PR #35 → #36)
+- **Trainer LoRA alineado con el laboratorio MLX**: `dispatch_training` arma el payload
+  que consume el wrapper de `train-lora.sh` + `fuse-lora.sh` (Apple Silicon/MLX-LM):
+  `mlx_model` (vía `MLX_MODEL_MAP`: Llama-3.2-3B / Llama-3.1-8B / DeepSeek-R1-8B),
+  `train_jsonl`/`valid_jsonl` (MLX-LM exige ambos), `ollama_name` e `hyperparams`
+  (ITERS/BATCH/LR/NUM_LAYERS configurables). El callback reporta `serve_base_url`
+  (Ollama por túnel) + `metrics.served_model`. `docs/FINETUNING-SETUP.md` incluye el
+  payload y el wrapper bash que mapea a las env vars del lab.
 - **Integración on-prem (modelos locales del cliente)**: las rutas **local (Ollama)** y
   **VPC** ahora se configuran como conectores desde *Admin → Modelos y conectores* (Base
   URL + modelo + key + **Probar conexión**), no solo por variables de entorno. Pensado para

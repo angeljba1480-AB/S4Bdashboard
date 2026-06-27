@@ -115,7 +115,7 @@ Para activar lo que depende de credenciales/permisos:
 
 ## 4. Calidad
 
-- ✅ **151 pruebas** automatizadas en verde (API).
+- ✅ **206 pruebas** automatizadas en verde (API).
 - Migraciones aditivas idempotentes (sin pérdida de datos).
 - Credenciales cifradas (AES-256-GCM); todo auditado.
 
