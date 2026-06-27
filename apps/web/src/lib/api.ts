@@ -411,12 +411,20 @@ export const api = {
   alertEventTypes: () =>
     request<{ key: string; label: string }[]>("/alerts/event-types"),
   alertRules: () =>
-    request<{ id: string; name: string; event_type: string; channels: string[]; webhook_url: string; telegram_chat_id: string; has_telegram_token: boolean; enabled: boolean }[]>("/alerts/rules"),
-  createAlertRule: (body: { name: string; event_type: string; channels: string[]; webhook_url?: string; telegram_token?: string; telegram_chat_id?: string; enabled?: boolean }) =>
+    request<{ id: string; name: string; event_type: string; channels: string[]; webhook_url: string; telegram_chat_id: string; has_telegram_token: boolean; schedule: string; last_digest_at: string; enabled: boolean }[]>("/alerts/rules"),
+  createAlertRule: (body: { name: string; event_type: string; channels: string[]; webhook_url?: string; telegram_token?: string; telegram_chat_id?: string; schedule?: string; enabled?: boolean }) =>
     request<{ id: string }>("/alerts/rules", { method: "POST", body: JSON.stringify(body) }),
   deleteAlertRule: (id: string) =>
     request<{ ok: boolean }>(`/alerts/rules/${id}`, { method: "DELETE" }),
   testAlert: () => request<{ fired: number }>("/alerts/test", { method: "POST" }),
+  runDigests: (frequency: string) =>
+    request<{ frequency: string; sent: number }>(`/alerts/run-digests?frequency=${frequency}`, { method: "POST" }),
+  getAlertThreshold: () => request<{ spend_threshold_usd: number }>("/alerts/threshold"),
+  setAlertThreshold: (spend_threshold_usd: number) =>
+    request<{ spend_threshold_usd: number }>("/alerts/threshold", { method: "POST", body: JSON.stringify({ spend_threshold_usd }) }),
+  // Búsqueda global
+  search: (q: string) =>
+    request<{ query: string; total: number; results: { type: string; id: string; title: string; snippet: string; href: string; area?: string }[] }>(`/search?q=${encodeURIComponent(q)}`),
   notifications: (unread = false) =>
     request<{ id: string; title: string; body: string; level: string; event_type: string; read: boolean; created_at: string }[]>(`/notifications${unread ? "?unread=true" : ""}`),
   unreadCount: () => request<{ count: number }>("/notifications/unread-count"),

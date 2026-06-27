@@ -3,6 +3,18 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Búsqueda global**: nueva sección *Buscar* (y caja en la barra superior) que cruza en
+  una sola consulta documentos, memoria, notebooks, recetas del agente (playbooks),
+  recetas de automatización (n8n/Zapier), imágenes generadas y automatizaciones; resultados
+  tipados con enlace profundo a su sección. Respeta tenant y permisos por área.
+  `GET /search?q=` (`app/routers/search.py`).
+- **Alertas programadas + umbrales del sistema**: las reglas de alerta ahora admiten
+  **cadencia** (tiempo real / **resumen diario** / **resumen semanal**): las programadas
+  juntan la actividad del periodo (auditoría) en un solo digest y se envían por sus canales
+  (`POST /alerts/run-digests`, cron-friendly). Nuevo **umbral de gasto** diario (USD): si el
+  costo del día lo supera se dispara una alerta `threshold` (`/alerts/threshold` +
+  `/alerts/run-checks`). Más eventos reales enganchados: **antivirus** (archivo rechazado),
+  **ingesta** de documentos y **webhook entrante** (un POST externo puede levantar una alerta).
 - **Alertas configurables (pop-ups in-app + webhook/Telegram/WhatsApp)**: nueva sección
   *Alertas* donde cada usuario crea reglas por **evento** (fine-tuning, workflow, receta,
   acción, antivirus, ingesta, prueba) y elige uno o varios **canales**: **pop-up in-app**
