@@ -407,6 +407,21 @@ export const api = {
   },
   transcribe: (form: FormData) =>
     request<{ text: string; language: string }>("/voice/transcribe", { method: "POST", body: form }),
+  // Alertas configurables + notificaciones (pop-ups)
+  alertEventTypes: () =>
+    request<{ key: string; label: string }[]>("/alerts/event-types"),
+  alertRules: () =>
+    request<{ id: string; name: string; event_type: string; channels: string[]; webhook_url: string; telegram_chat_id: string; has_telegram_token: boolean; enabled: boolean }[]>("/alerts/rules"),
+  createAlertRule: (body: { name: string; event_type: string; channels: string[]; webhook_url?: string; telegram_token?: string; telegram_chat_id?: string; enabled?: boolean }) =>
+    request<{ id: string }>("/alerts/rules", { method: "POST", body: JSON.stringify(body) }),
+  deleteAlertRule: (id: string) =>
+    request<{ ok: boolean }>(`/alerts/rules/${id}`, { method: "DELETE" }),
+  testAlert: () => request<{ fired: number }>("/alerts/test", { method: "POST" }),
+  notifications: (unread = false) =>
+    request<{ id: string; title: string; body: string; level: string; event_type: string; read: boolean; created_at: string }[]>(`/notifications${unread ? "?unread=true" : ""}`),
+  unreadCount: () => request<{ count: number }>("/notifications/unread-count"),
+  markNotificationRead: (id: string) => request<{ ok: boolean }>(`/notifications/${id}/read`, { method: "POST" }),
+  markAllNotificationsRead: () => request<{ ok: boolean; marked: number }>("/notifications/read-all", { method: "POST" }),
   // RAG: re-indexar tras cambiar el proveedor de embeddings
   reindexDocuments: () =>
     request<{ documents: number; chunks: number }>("/documents/reindex", { method: "POST" }),

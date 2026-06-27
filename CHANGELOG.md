@@ -3,6 +3,15 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Alertas configurables (pop-ups in-app + webhook/Telegram/WhatsApp)**: nueva sección
+  *Alertas* donde cada usuario crea reglas por **evento** (fine-tuning, workflow, receta,
+  acción, antivirus, ingesta, prueba) y elige uno o varios **canales**: **pop-up in-app**
+  (campana con badge de no leídas, polling cada 30 s), **webhook** (Slack/Teams/etc.),
+  **Telegram** (Bot API, token + chat_id) y **WhatsApp** (vía webhook de tu proveedor o
+  Zapier). Motor `app/alerts.py::dispatch` (nunca lanza, registra notificación y entrega
+  por cada canal) enganchado en fine-tuning, workflows y recetas. CRUD `/alerts/rules`,
+  `/alerts/test` y `/notifications` (lista, no-leídas, marcar leído/todo). El token de
+  Telegram se guarda y nunca se devuelve (solo `has_telegram_token`).
 - **Chat · texto plano + código + anti-alucinación + autoconocimiento**: el modelo recibe
   reglas de la casa — responder en **texto plano** (sin markdown de énfasis) usando
   **bloques de código** solo para código; **no alucinar** (ceñirse al contexto/capacidades,
