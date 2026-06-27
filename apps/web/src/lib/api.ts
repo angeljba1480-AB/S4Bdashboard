@@ -416,6 +416,15 @@ export const api = {
   },
   installRunbook: (id: string) =>
     request<{ id: string; name: string; already_installed: boolean }>(`/runbooks/${id}/install`, { method: "POST" }),
+  // Resumen de correo automatizado
+  mailDigestConfig: () =>
+    request<{ id: string; enabled: boolean; account_id: string; schedule: string; channels: string[]; email_to: string; language: string; notes: string; discard_propaganda: boolean; pending_enabled: boolean; pending_days: number; last_run_at: string }>("/mail-digest/config"),
+  setMailDigestConfig: (body: { enabled: boolean; account_id: string; schedule: string; channels: string[]; email_to: string; language: string; notes: string; discard_propaganda: boolean; pending_enabled: boolean; pending_days: number }) =>
+    request<{ id: string }>("/mail-digest/config", { method: "PUT", body: JSON.stringify(body) }),
+  mailDigestPreview: () =>
+    request<{ ok: boolean; text: string; account: string; message: string; counts: { messages?: number } }>("/mail-digest/preview", { method: "POST" }),
+  mailDigestRunNow: () =>
+    request<{ ok: boolean; sent: Record<string, boolean>; account: string }>("/mail-digest/run-now", { method: "POST" }),
   // WhatsApp (CallMeBot)
   whatsappConfig: () => request<{ phone: string; configured: boolean }>("/whatsapp/config"),
   setWhatsappConfig: (phone: string, apikey: string) =>
