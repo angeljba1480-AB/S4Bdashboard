@@ -416,6 +416,13 @@ export const api = {
   },
   installRunbook: (id: string) =>
     request<{ id: string; name: string; already_installed: boolean }>(`/runbooks/${id}/install`, { method: "POST" }),
+  // WhatsApp (CallMeBot)
+  whatsappConfig: () => request<{ phone: string; configured: boolean }>("/whatsapp/config"),
+  setWhatsappConfig: (phone: string, apikey: string) =>
+    request<{ phone: string; configured: boolean }>("/whatsapp/config", { method: "POST", body: JSON.stringify({ phone, apikey }) }),
+  sendWhatsapp: (text: string) =>
+    request<{ ok: boolean; detail: string }>("/whatsapp/send", { method: "POST", body: JSON.stringify({ text }) }),
+  testWhatsapp: () => request<{ ok: boolean; detail: string }>("/whatsapp/test", { method: "POST" }),
   // Voz (NaN: kokoro TTS / whisper STT)
   voiceConfig: () =>
     request<{ configured: boolean; voices: { id: string; label: string }[] }>("/voice/config"),

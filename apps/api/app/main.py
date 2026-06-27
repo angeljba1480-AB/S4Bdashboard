@@ -40,6 +40,7 @@ from .routers import (
     tramites,
     usage,
     v1,
+    whatsapp,
     workflows,
 )
 
@@ -118,6 +119,7 @@ app.include_router(voice.router)
 app.include_router(alerts.router)
 app.include_router(search.router)
 app.include_router(runbooks.router)
+app.include_router(whatsapp.router)
 
 
 @app.get("/health", tags=["meta"])

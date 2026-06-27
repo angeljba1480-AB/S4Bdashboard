@@ -36,7 +36,8 @@ def _ensure_columns() -> None:
     tables = set(insp.get_table_names())
     plan: dict[str, dict[str, str]] = {
         "documents": {"area": "''", "category": "''"},
-        "users": {"area": "''", "license": "'basic'", "mfa_secret_enc": "''", "mfa_backup_codes": "''"},
+        "users": {"area": "''", "license": "'basic'", "mfa_secret_enc": "''", "mfa_backup_codes": "''",
+                  "callmebot_phone": "''", "callmebot_apikey_enc": "''"},
         "n8n_recipes": {"provider": "'n8n'", "webhook_url": "''"},
         "alert_rules": {"schedule": "''", "last_digest_at": "''"},
         "company_profiles": {"org_type": "'privada'", "gov_tramites": "''"},
