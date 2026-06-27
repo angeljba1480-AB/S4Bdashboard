@@ -79,6 +79,7 @@ def _r(**kw) -> dict:
     kw.setdefault("prompt", "")
     kw.setdefault("rag_category", "")   # document category this recipe grounds in
     kw.setdefault("advanced", False)    # auto-escalate to premium (cascade) when set
+    kw.setdefault("gov", False)         # contenido de gobierno: solo visible si el perfil lo habilita
     return kw
 
 
@@ -86,7 +87,7 @@ def _r(**kw) -> dict:
 RECIPES: list[dict] = [
     # ---- Custom-handler, high-value cases ---------------------------------
     _r(
-        id="licitacion", category="crecer", handler="licitacion", icon="file-check",
+        id="licitacion", category="crecer", handler="licitacion", icon="file-check", gov=True,
         name="Revisar licitación y pre-llenar respuesta",
         description="Sube la licitación; extraigo los requisitos y pre-lleno tu respuesta. Tú apruebas.",
         inputs=[

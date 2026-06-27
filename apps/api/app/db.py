@@ -39,6 +39,7 @@ def _ensure_columns() -> None:
         "users": {"area": "''", "license": "'basic'", "mfa_secret_enc": "''", "mfa_backup_codes": "''"},
         "n8n_recipes": {"provider": "'n8n'", "webhook_url": "''"},
         "alert_rules": {"schedule": "''", "last_digest_at": "''"},
+        "company_profiles": {"org_type": "'privada'", "gov_tramites": "''"},
     }
     with engine.begin() as conn:
         for table, cols in plan.items():

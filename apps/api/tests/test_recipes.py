@@ -25,10 +25,33 @@ def _auth(client) -> dict:
     return {"Authorization": f"Bearer {tok}"}
 
 
-def test_catalog_lists_two_use_cases(client):
+def test_catalog_lists_use_cases(client):
     r = client.get("/recipes", headers=_auth(client)).json()
     ids = {x["id"] for x in r}
-    assert {"licitacion", "correo_agenda"} <= ids
+    # recetas generales siempre visibles
+    assert "correo_agenda" in ids
+    # licitación es contenido de gobierno: oculto para perfil privado por defecto
+    assert "licitacion" not in ids
+
+
+def test_gov_content_gated_by_profile(client):
+    h = _auth(client)
+    # habilita trámites de gobierno (empresa IP que licita)
+    client.put("/company/profile", headers=h, json={
+        "industry": "construcción", "company_size": "mediana", "org_type": "privada",
+        "gov_tramites": True, "description": "Constructora", "value_prop": "x",
+        "goals": "y", "areas": [{"name": "Operaciones"}]})
+    me = client.get("/me", headers=h).json()
+    assert me["gov_enabled"] is True
+    ids = {x["id"] for x in client.get("/recipes", headers=h).json()}
+    assert "licitacion" in ids
+    # al desactivar, vuelve a ocultarse
+    client.put("/company/profile", headers=h, json={
+        "industry": "construcción", "company_size": "mediana", "org_type": "privada",
+        "gov_tramites": False, "description": "Constructora", "value_prop": "x",
+        "goals": "y", "areas": [{"name": "Operaciones"}]})
+    assert client.get("/me", headers=h).json()["gov_enabled"] is False
+    assert "licitacion" not in {x["id"] for x in client.get("/recipes", headers=h).json()}
 
 
 def test_licitacion_prefills_and_approves(client):

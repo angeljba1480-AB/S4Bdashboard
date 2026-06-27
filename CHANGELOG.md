@@ -3,6 +3,16 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Gobierno por perfil de empresa**: el contenido de gobierno (sección *Trámites y casos*
+  y recetas de giro público como *Licitación*) ahora **solo aplica si el perfil lo habilita**.
+  Nuevo campo **tipo de organización** (privada / gobierno) + switch **«participamos en
+  licitaciones/trámites de gobierno»** para empresas IP que sí licitan. Si es IP sin ese
+  opt-in, se oculta del menú y del catálogo. (`company_profiles.org_type`/`gov_tramites`,
+  `gov_enabled` en `/me`, filtro en `/recipes`).
+- **Imágenes · mensaje claro cuando el filtro de contenido rechaza el prompt**: si NaN
+  responde `content_policy_violation` (p. ej. «Hulk» u otra marca con derechos), en vez del
+  texto en inglés se explica en español la causa y cómo resolverlo (describir sin nombres
+  de marca).
 - **Búsqueda global**: nueva sección *Buscar* (y caja en la barra superior) que cruza en
   una sola consulta documentos, memoria, notebooks, recetas del agente (playbooks),
   recetas de automatización (n8n/Zapier), imágenes generadas y automatizaciones; resultados

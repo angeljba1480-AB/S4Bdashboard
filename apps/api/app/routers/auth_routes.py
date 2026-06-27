@@ -131,6 +131,8 @@ def account(user: User = Depends(get_current_user), session: Session = Depends(g
 @router.get("/me", response_model=MeResponse)
 def me(user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> MeResponse:
     tenant = session.get(Tenant, user.tenant_id)
+    from ..company_profile import get_or_create, gov_enabled
+    profile = get_or_create(session, user.tenant_id)
     return MeResponse(
         id=user.id, email=user.email, name=user.name, role=user.role,
         tenant_id=user.tenant_id, tenant_name=tenant.name if tenant else "",
@@ -141,4 +143,5 @@ def me(user: User = Depends(get_current_user), session: Session = Depends(get_se
         brand_tagline=tenant.brand_tagline if tenant else "",
         country=tenant.country if tenant else "MX",
         country_name=get_country(tenant.country if tenant else "MX")["name"],
+        gov_enabled=gov_enabled(profile),
     )

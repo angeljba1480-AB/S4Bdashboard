@@ -34,6 +34,7 @@ class MeResponse(BaseModel):
     brand_tagline: str = ""
     country: str = "MX"
     country_name: str = "México"
+    gov_enabled: bool = False      # ¿mostrar contenido de gobierno (Trámites/recetas públicas)?
 
 
 # --- Agents -----------------------------------------------------------------

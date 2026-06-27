@@ -56,6 +56,7 @@ def _raise_for_image_status(resp) -> None:
     if resp.status_code < 400:
         return
     detail = f"HTTP {resp.status_code}"
+    code = ""
     try:
         err = resp.json().get("error", {}) or {}
         msg = err.get("message") or ""
@@ -65,6 +66,14 @@ def _raise_for_image_status(resp) -> None:
                                         f"param={param}" if param else "") if x) or detail
     except Exception:
         detail = (resp.text or detail)[:300]
+    # El filtro de contenido del proveedor rechazó el prompt: mensaje claro en español
+    # con la causa más común (personajes/marcas con derechos) y cómo resolverlo.
+    if code == "content_policy_violation" or "safety system" in detail.lower():
+        raise RuntimeError(
+            "El proveedor rechazó el prompt por su política de contenido. La causa más común "
+            "son personajes, marcas o logotipos con derechos de autor (p. ej. «Hulk», «Mickey Mouse»). "
+            "Descríbelo sin nombres de marca —por ejemplo «un superhéroe musculoso de piel verde, "
+            "estilo cómic»— o evita contenido sensible.")
     raise RuntimeError(f"NaN /images respondió {resp.status_code}: {detail}")
 
 
