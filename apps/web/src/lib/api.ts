@@ -377,6 +377,22 @@ export const api = {
   images: () => request<GeneratedImageDto[]>("/images"),
   imageDataUrl: (id: string) => `${api.base}/images/${id}/data`,
   deleteImage: (id: string) => request<{ ok: boolean }>(`/images/${id}`, { method: "DELETE" }),
+  // Fine-tuning ligero (LoRA)
+  ftDatasets: () =>
+    request<{ id: string; name: string; area: string; base_model: string; status: string; version: number; examples: number; created_at: string }[]>("/finetune/datasets"),
+  ftCreateDataset: (body: { name: string; area?: string; base_model?: string }) =>
+    request<{ id: string; name: string; examples: number }>("/finetune/datasets", { method: "POST", body: JSON.stringify(body) }),
+  ftAddExample: (id: string, body: { prompt: string; completion: string }) =>
+    request<{ id: string; examples: number }>(`/finetune/datasets/${id}/examples`, { method: "POST", body: JSON.stringify(body) }),
+  ftFromMemory: (id: string, body: { tag?: string; limit?: number }) =>
+    request<{ added: number; examples: number }>(`/finetune/datasets/${id}/from-memory`, { method: "POST", body: JSON.stringify(body) }),
+  ftCheck: (id: string) =>
+    request<{ status: string; ok: boolean; issues: string[]; n: number; pii_leaks: number; injection_flags: number }>(`/finetune/datasets/${id}/check`, { method: "POST" }),
+  ftExportUrl: (id: string) => `${api.base}/finetune/datasets/${id}/export`,
+  ftJobs: () =>
+    request<{ id: string; dataset_id: string; base_model: string; status: string; adapter_uri: string; serve_base_url: string; metrics: Record<string, unknown>; reason: string; created_at: string }[]>("/finetune/jobs"),
+  ftCreateJob: (body: { dataset_id: string; base_model?: string }) =>
+    request<{ id: string; status: string; base_model: string; reason: string }>("/finetune/jobs", { method: "POST", body: JSON.stringify(body) }),
   // Notebooks (NotebookLM-style over the company RAG)
   notebooks: () => request<Notebook[]>("/notebooks"),
   createNotebook: (body: { name: string; document_ids: string[] }) =>
