@@ -2,6 +2,7 @@
 
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
+import { cleanMarkdown } from "@/lib/format";
 import type { CompanyProfile, DocumentItem, Recipe, RecipeRun } from "@shared/types";
 import { Building2, CheckCircle2, ChevronLeft, Download, FileText, Link2, Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -389,7 +390,7 @@ export default function RecipesPage() {
                     <div>
                       <div className="mb-1 text-xs font-semibold uppercase text-slate-400">Borrador generado (revisa)</div>
                       <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                        {run.draft.contenido as string}
+                        {cleanMarkdown(run.draft.contenido as string)}
                       </pre>
                     </div>
                   )}
@@ -440,7 +441,7 @@ export default function RecipesPage() {
                       <p className="mt-1 text-sm text-emerald-700">{run.result?.message}</p>
                       {run.result?.documento && (
                         <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-white p-3 text-xs text-slate-600">
-                          {run.result.documento as string}
+                          {cleanMarkdown(run.result.documento as string)}
                         </pre>
                       )}
                       <div className="mt-3 flex flex-wrap gap-2">
