@@ -535,3 +535,45 @@ class RecipeRun(SQLModel, table=True):
     cost_estimate: float = 0.0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class FineTuneDataset(SQLModel, table=True):
+    """Dataset versionado para fine-tuning ligero (LoRA) — comportamiento/formato,
+    no conocimiento (eso va por RAG). Los ejemplos se anonimizan antes de guardarse."""
+    __tablename__ = "finetune_datasets"
+    id: str = Field(default_factory=lambda: _uuid("ftd"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    name: str = ""
+    area: str = ""
+    base_model: str = ""
+    status: str = "draft"          # draft | ready (pasó el gate de calidad/red-team)
+    version: int = 1
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class FineTuneExample(SQLModel, table=True):
+    """Par (prompt, completion) de un dataset. Texto anonimizado (PII redactada)."""
+    __tablename__ = "finetune_examples"
+    id: str = Field(default_factory=lambda: _uuid("fte"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    dataset_id: str = Field(index=True, foreign_key="finetune_datasets.id")
+    prompt: str = ""
+    completion: str = ""
+    source: str = "manual"         # manual | memory | recipe
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class FineTuneJob(SQLModel, table=True):
+    """Trabajo de entrenamiento LoRA. Se despacha a un trainer externo (GPU/n8n) o
+    queda 'simulado' (laboratorio) si no hay backend configurado."""
+    __tablename__ = "finetune_jobs"
+    id: str = Field(default_factory=lambda: _uuid("ftj"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    dataset_id: str = Field(foreign_key="finetune_datasets.id")
+    base_model: str = ""
+    status: str = "queued"         # queued | running | completed | failed | simulado
+    adapter_uri: str = ""          # ubicación del adapter LoRA resultante
+    serve_base_url: str = ""       # endpoint OpenAI-compat donde se sirve (vLLM/Ollama)
+    metrics: str = "{}"            # JSON de métricas/evals
+    reason: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)

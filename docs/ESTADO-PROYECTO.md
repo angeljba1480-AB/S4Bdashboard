@@ -38,6 +38,8 @@ privacidad decide local / VPC / abierto / premium / bloqueo — todo auditado.
 - ✅ **Ingesta**: extrae texto de **PDF/DOCX** + **OCR** de escaneados (tesseract en la
   imagen) y **antivirus** en la subida (EICAR + ClamAV opcional + tope de tamaño).
 - ✅ **MFA (TOTP)**: verificación en dos pasos con códigos de respaldo; exigida en login.
+- ✅ **Fine-tuning LoRA (andamiaje)**: datasets anonimizados + gate de calidad/red-team +
+  export JSONL + jobs hacia un trainer con GPU (o `simulado`). Ver `FINETUNING-SETUP.md`.
 
 ### Casos de uso (recetas)
 - ✅ Paso universal **objetivo / notas / formato** de salida.

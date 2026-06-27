@@ -3,6 +3,11 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Fine-tuning ligero (LoRA) — andamiaje** (Fase 5 del blueprint): datasets versionados
+  con **anonimización** de PII, **gate de calidad/red-team**, export JSONL y **jobs** que
+  se despachan a un *trainer* externo con GPU (servidor / App NaN / webhook n8n) o quedan
+  `simulado` (modo laboratorio). Callback para reportar el adapter y servirlo como ruta
+  local/VPC (Ollama/vLLM). Guía: `docs/FINETUNING-SETUP.md`. Endpoints `/finetune/*`.
 - **MFA (verificación en dos pasos · TOTP)**: enrolamiento (app autenticadora) +
   **códigos de respaldo** de un solo uso; el login exige el código cuando MFA está
   activo. Secreto TOTP cifrado. Endpoints `/auth/mfa/setup|verify|disable`; UI en

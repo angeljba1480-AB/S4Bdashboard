@@ -155,7 +155,8 @@ SCORE = [
     ("Ingesta: antivirus (EICAR + ClamAV opcional) + tope de tamaño", "Hecho (v2)"),
     ("Ingesta: OCR de escaneados (tesseract en la imagen)", "Hecho (v2)"),
     ("MFA (TOTP) + códigos de respaldo, exigido en login", "Hecho (v2)"),
-    ("Fine-tuning ligero (LoRA) real", "Pendiente (Fase 5)"),
+    ("Fine-tuning LoRA: andamiaje (datasets/anonimización/gate/jobs)", "Hecho (v2)"),
+    ("Fine-tuning LoRA: entrenamiento real en GPU", "Parcial (trainer externo/lab)"),
     ("Confidential computing / TEE · mTLS / private endpoints", "Pendiente (infra)"),
 ]
 
@@ -171,11 +172,11 @@ EXTRAS = [
 ]
 
 PENDIENTES = [
-    {"t": "Fine-tuning ligero (LoRA)",
-     "que": "Pipeline de dataset → anonimización → versionado → entrenamiento LoRA → evals → red team → despliegue.",
-     "porque": "Fase 5 del blueprint para comportamiento/formato repetitivo (no para conocimiento, que va por RAG).",
-     "como": "Servicio de entrenamiento (GPU) con registro de datasets y evaluaciones; integración como ruta de modelo.",
-     "dep": "Infraestructura GPU + framework de fine-tuning."},
+    {"t": "Fine-tuning LoRA — entrenamiento real en GPU",
+     "que": "Conectar el andamiaje (ya hecho: datasets/anonimización/gate/jobs) a un trainer con GPU que entrene el adapter y lo sirva.",
+     "porque": "El software ya está; falta el backend de cómputo (GPU) y servir el adapter (Ollama/vLLM).",
+     "como": "Trainer (servidor GPU / App NaN / webhook n8n) que recibe el JSONL, entrena PEFT/LoRA y hace callback; servir como ruta local/VPC. Ver docs/FINETUNING-SETUP.md.",
+     "dep": "GPU (local o NaN) + PEFT/transformers; Ollama/vLLM para servir."},
     {"t": "Endurecimiento enterprise — TEE / mTLS / private endpoints",
      "que": "Confidential computing (TEE) para clientes regulados, mTLS entre servicios y endpoints privados.",
      "porque": "Fase 5: clientes regulados y VPC dedicada.",
