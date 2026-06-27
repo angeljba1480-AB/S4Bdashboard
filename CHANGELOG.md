@@ -3,6 +3,16 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Runbooks (automatizaciones multi-paso por segmento y sector)**: nueva sección
+  *Runbooks* con una biblioteca lista para usar, filtrable por **segmento** (PyME/Enterprise)
+  y **sector** (Servicios/Atención, Manufactura/Producción, Retail, Logística) — de áreas de
+  servicio hasta planta de producción (triage de tickets, SLA, cobranza, onboarding, orden de
+  trabajo, OEE/paros, mantenimiento preventivo, no conformidades, reorden de almacén, etc.).
+  **Instalar** un runbook lo convierte en un *playbook del agente* re-ejecutable (lecturas al
+  momento; escrituras con aprobación). `GET /runbooks` + `/runbooks/facets` +
+  `POST /runbooks/{id}/install` (`app/runbooks/catalog.py`).
+- **Imágenes · fallback al URL del proveedor**: si no hay copia con token o falla la descarga,
+  la galería usa el `source_url` del proveedor (`AuthImage`).
 - **Imágenes · la galería ahora sí muestra las miniaturas**: el `<img>` apuntaba al
   endpoint protegido `/images/{id}/data`, pero una etiqueta `<img>` del navegador no manda
   el header `Authorization` → 401 → imagen rota. Ahora se descargan los bytes **con token**
