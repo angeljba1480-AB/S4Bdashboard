@@ -36,7 +36,7 @@ def _ensure_columns() -> None:
     tables = set(insp.get_table_names())
     plan: dict[str, dict[str, str]] = {
         "documents": {"area": "''", "category": "''"},
-        "users": {"area": "''", "license": "'basic'"},
+        "users": {"area": "''", "license": "'basic'", "mfa_secret_enc": "''", "mfa_backup_codes": "''"},
     }
     with engine.begin() as conn:
         for table, cols in plan.items():

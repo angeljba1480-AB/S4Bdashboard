@@ -3,6 +3,13 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **MFA (verificación en dos pasos · TOTP)**: enrolamiento (app autenticadora) +
+  **códigos de respaldo** de un solo uso; el login exige el código cuando MFA está
+  activo. Secreto TOTP cifrado. Endpoints `/auth/mfa/setup|verify|disable`; UI en
+  *Mi cuenta* y en el login. (Solo se exige si hay secreto enrolado → sin lockout.)
+- **OCR de escaneados**: el binario **tesseract + poppler** se instala en la imagen
+  (Dockerfile) y se activan `pytesseract`/`pdf2image`; los PDFs sin capa de texto se
+  pasan por OCR en la ingesta.
 - **Antivirus en la ingesta**: al subir un archivo se escanea antes de procesarlo —
   firma estándar **EICAR** (determinista, sin infra) + **ClamAV opcional** si hay daemon,
   con **tope de tamaño** configurable. Los archivos infectados/grandes se **rechazan

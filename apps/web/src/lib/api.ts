@@ -77,15 +77,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   base: API_BASE,
-  async login(email: string, password: string) {
+  async login(email: string, password: string, mfaCode?: string) {
     const data = await request<{ access_token: string }>("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, mfa_code: mfaCode }),
     });
     setToken(data.access_token);
     return data;
   },
   me: () => request<Me>("/me"),
+  // MFA (TOTP)
+  mfaSetup: () => request<{ secret: string; otpauth_uri: string; issuer: string }>("/auth/mfa/setup", { method: "POST" }),
+  mfaVerify: (code: string) => request<{ enabled: boolean; backup_codes: string[] }>("/auth/mfa/verify", { method: "POST", body: JSON.stringify({ code }) }),
+  mfaDisable: (code: string) => request<{ enabled: boolean }>("/auth/mfa/disable", { method: "POST", body: JSON.stringify({ code }) }),
   // Billing / seats
   getBilling: () =>
     request<{
