@@ -6,7 +6,7 @@ import type { CompanyArea, CompanyProfile, Me } from "@shared/types";
 import { Building2, CheckCircle2, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const SIZES = ["Micro (1-10)", "Pequeña (11-50)", "Mediana (51-250)", "Grande (250+)", "Gobierno"];
+const SIZES = ["Micro (1-10)", "Pequeña (11-50)", "Mediana (51-250)", "Grande (250+)"];
 const TONES = ["Formal", "Cercano", "Persuasivo", "Directo", "Institucional"];
 
 export default function CompanyPage() {
@@ -117,6 +117,22 @@ export default function CompanyPage() {
                   {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </Field>
+              <Field label="Tipo de organización">
+                <select className={inp} disabled={!canEdit} value={p.org_type || "privada"}
+                  onChange={(e) => set("org_type", e.target.value)}>
+                  <option value="privada">Iniciativa privada (IP)</option>
+                  <option value="gobierno">Gobierno / sector público</option>
+                </select>
+              </Field>
+              {(p.org_type || "privada") !== "gobierno" && (
+                <Field label="¿Participan en licitaciones o trámites de gobierno?">
+                  <label className="flex items-center gap-2 text-sm text-slate-600">
+                    <input type="checkbox" disabled={!canEdit} checked={!!p.gov_tramites}
+                      onChange={(e) => set("gov_tramites", e.target.checked)} />
+                    Mostrar los casos y trámites de gobierno (p. ej. licitaciones)
+                  </label>
+                </Field>
+              )}
               <Field label="¿A qué se dedica la empresa?">
                 <textarea className={inp} rows={3} disabled={!canEdit} value={p.description}
                   placeholder="Describe el negocio en 2-3 líneas"
