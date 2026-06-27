@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader, Shell } from "@/components/Shell";
+import { ReadinessPanel } from "@/components/ReadinessPanel";
 import { api } from "@/lib/api";
 import { useEffect, useState } from "react";
 
@@ -200,6 +201,8 @@ export default function AdminPage() {
       <PageHeader title="Administración" subtitle="Usuarios, roles, modelos habilitados y rutas de privacidad." help={["modelos", "onprem"]} />
       <div className="space-y-6 p-8">
         {error && <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
+
+        <ReadinessPanel />
 
         {billing && (
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
