@@ -3,6 +3,13 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **WhatsApp (CallMeBot) — enviar resultados y recibir alertas por WhatsApp**: configura una
+  vez tu número + apikey de CallMeBot (cifrada) en *Alertas → WhatsApp*. Ahora el resultado de
+  cualquier **caso de uso** tiene botón **«Enviar a WhatsApp»**, y el **canal WhatsApp de
+  Alertas** entrega de verdad: usa **CallMeBot** si lo configuraste, o el **webhook de tu
+  proveedor** (Twilio/Meta/Zapier) si pusiste una URL — ambos métodos soportados.
+  `GET/POST /whatsapp/config`, `POST /whatsapp/send`, `POST /whatsapp/test`
+  (`app/integrations/whatsapp.py`).
 - **Correo · usa la cuenta que conectaste (la más reciente por defecto)**: el caso
   *Resumen de correo y agenda* tomaba la cuenta **más antigua** conectada (p. ej. un Gmail
   viejo) aunque acabaras de conectar otra (Outlook). Ahora las cuentas conectadas se ordenan

@@ -4,7 +4,7 @@ import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
 import { cleanMarkdown } from "@/lib/format";
 import type { CompanyProfile, DocumentItem, Recipe, RecipeRun } from "@shared/types";
-import { Building2, CheckCircle2, ChevronLeft, Download, FileText, Link2, Sparkles } from "lucide-react";
+import { Building2, CheckCircle2, ChevronLeft, Download, FileText, Link2, MessageCircle, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -24,6 +24,20 @@ export default function RecipesPage() {
   const [error, setError] = useState("");
   const [propTitle, setPropTitle] = useState("");
   const [propMsg, setPropMsg] = useState("");
+  const [waMsg, setWaMsg] = useState("");
+
+  async function sendResultToWhatsapp() {
+    if (!run) return;
+    const text = (run.result?.documento as string) || (run.result?.message as string) || "";
+    setWaMsg("Enviando…");
+    try {
+      await api.sendWhatsapp(cleanMarkdown(text).slice(0, 900));
+      setWaMsg("Enviado a tu WhatsApp ✅");
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "Error";
+      setWaMsg(m.includes("Configura") ? "Configura WhatsApp en Alertas → WhatsApp y vuelve a intentar." : m);
+    }
+  }
 
   useEffect(() => {
     api.recipeCategories().then(setCategories).catch(() => {});
@@ -475,7 +489,14 @@ export default function RecipesPage() {
                         >
                           Markdown
                         </button>
+                        <button
+                          onClick={sendResultToWhatsapp}
+                          className="flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95"
+                        >
+                          <MessageCircle className="h-4 w-4" /> Enviar a WhatsApp
+                        </button>
                       </div>
+                      {waMsg && <p className="mt-2 text-xs text-slate-500">{waMsg}</p>}
                     </div>
                   ) : (
                     <button

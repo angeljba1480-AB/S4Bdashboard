@@ -56,8 +56,10 @@ def _validate(body: RuleIn) -> tuple[str, list[str], str]:
     if schedule not in alerts_engine.SCHEDULES:
         raise HTTPException(status_code=422, detail="schedule inválido (use vacío, daily o weekly)")
     channels = [c for c in body.channels if c in _CHANNELS] or ["popup"]
-    if ("webhook" in channels or "whatsapp" in channels) and not body.webhook_url.strip().startswith("http"):
-        raise HTTPException(status_code=422, detail="El canal webhook/WhatsApp requiere una URL válida (tu proveedor o Zapier)")
+    if "webhook" in channels and not body.webhook_url.strip().startswith("http"):
+        raise HTTPException(status_code=422, detail="El canal webhook requiere una URL válida (Slack/Teams/Zapier)")
+    # WhatsApp: se entrega por CallMeBot (configúralo en Alertas → WhatsApp) o, si pones
+    # una URL, por el webhook de tu proveedor. No exigimos URL aquí.
     if "telegram" in channels and not (body.telegram_token.strip() and body.telegram_chat_id.strip()):
         raise HTTPException(status_code=422, detail="Telegram requiere token del bot y chat_id")
     return body.event_type, channels, schedule

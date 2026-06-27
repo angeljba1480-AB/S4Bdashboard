@@ -62,11 +62,29 @@ def _deliver(session, rule: AlertRule, event_type: str, title: str, body: str,
     payload = {"event": event_type, "title": title, "body": body, "level": level}
     if "webhook" in channels and rule.webhook_url:
         _post_webhook(rule.webhook_url, payload)
-    if "whatsapp" in channels and rule.webhook_url:
-        # WhatsApp vía tu proveedor (Twilio/Meta/Zapier): se envía al webhook configurado.
-        _post_webhook(rule.webhook_url, {**payload, "channel": "whatsapp"})
+    if "whatsapp" in channels:
+        _send_whatsapp(session, rule, f"{title}\n{body}".strip())
     if "telegram" in channels and rule.telegram_token and rule.telegram_chat_id:
         _send_telegram(rule.telegram_token, rule.telegram_chat_id, f"{title}\n{body}")
+
+
+def _send_whatsapp(session, rule, text: str) -> None:
+    """WhatsApp del canal de alertas: usa CallMeBot si el dueño de la regla lo tiene
+    configurado; si no, cae al webhook del proveedor (Twilio/Meta/Zapier)."""
+    try:
+        from .models import Tenant, User
+        user = session.get(User, rule.user_id)
+        if user and user.callmebot_phone and user.callmebot_apikey_enc:
+            from .integrations import whatsapp as _wa
+            from .security.crypto import decrypt
+            tenant = session.get(Tenant, rule.tenant_id)
+            apikey = decrypt(user.callmebot_apikey_enc, tenant.kms_key_id)
+            _wa.send_callmebot(user.callmebot_phone, apikey, text)
+            return
+    except Exception:
+        pass
+    if rule.webhook_url:
+        _post_webhook(rule.webhook_url, {"channel": "whatsapp", "text": text})
 
 
 def dispatch(session, tenant_id: str, event_type: str, title: str, body: str = "",
