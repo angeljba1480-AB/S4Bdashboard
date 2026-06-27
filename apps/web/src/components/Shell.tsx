@@ -13,6 +13,7 @@ import {
   Building2,
   FileText,
   Cpu,
+  Factory,
   GitBranch,
   HelpCircle,
   IdCard,
@@ -51,6 +52,7 @@ const NAV = [
     group: "PLATAFORMA",
     items: [
       { href: "/recipes", label: "Casos de uso", icon: Sparkles },
+      { href: "/runbooks", label: "Runbooks", icon: Factory },
       { href: "/flowcharts", label: "Flujogramas", icon: GitBranch },
       { href: "/dashboards", label: "Tableros", icon: LayoutGrid },
       { href: "/regional", label: "Trámites y casos", icon: MapPin },

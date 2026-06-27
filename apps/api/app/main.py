@@ -33,6 +33,7 @@ from .routers import (
     alerts,
     recipes,
     regional,
+    runbooks,
     search,
     sso,
     voice,
@@ -116,6 +117,7 @@ app.include_router(finetune.router)
 app.include_router(voice.router)
 app.include_router(alerts.router)
 app.include_router(search.router)
+app.include_router(runbooks.router)
 
 
 @app.get("/health", tags=["meta"])
