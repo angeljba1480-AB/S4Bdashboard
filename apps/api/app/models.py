@@ -108,6 +108,8 @@ class User(SQLModel, table=True):
     mfa_enabled: bool = False
     mfa_secret_enc: str = ""        # secreto TOTP cifrado (pendiente hasta verificar)
     mfa_backup_codes: str = ""      # hashes de códigos de respaldo (un solo uso)
+    callmebot_phone: str = ""       # WhatsApp vía CallMeBot: número en formato intl (+52...)
+    callmebot_apikey_enc: str = ""  # apikey de CallMeBot, cifrada
     status: str = "active"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
