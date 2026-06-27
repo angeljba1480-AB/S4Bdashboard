@@ -50,6 +50,24 @@ def is_configured() -> bool:
     return _open_provider() is not None
 
 
+def _raise_for_image_status(resp) -> None:
+    """Si la respuesta no es 2xx, levanta el mensaje real del proveedor (NaN devuelve
+    el motivo en el cuerpo: `param`, `code`, `message`) en vez de un '400' opaco."""
+    if resp.status_code < 400:
+        return
+    detail = f"HTTP {resp.status_code}"
+    try:
+        err = resp.json().get("error", {}) or {}
+        msg = err.get("message") or ""
+        code = err.get("code") or ""
+        param = err.get("param") or ""
+        detail = " · ".join(x for x in (msg, f"code={code}" if code else "",
+                                        f"param={param}" if param else "") if x) or detail
+    except Exception:
+        detail = (resp.text or detail)[:300]
+    raise RuntimeError(f"NaN /images respondió {resp.status_code}: {detail}")
+
+
 def _fetch_b64(url: str) -> str:
     """Download an image URL and return its base64 (so the gallery owns a copy)."""
     import httpx
@@ -77,10 +95,11 @@ def generate(prompt: str, *, n: int = 1, size: str = "1024x1024",
     resp = httpx.post(
         f"{base}/images/generations",
         headers={"Authorization": f"Bearer {prov['api_key']}"},
-        json={"model": use_model, "prompt": redact(prompt), "n": max(1, min(n, 4)), "size": size},
+        json={"model": use_model, "prompt": redact(prompt), "n": max(1, min(n, 4)),
+              "size": size, "response_format": "url"},
         timeout=TIMEOUT,
     )
-    resp.raise_for_status()
+    _raise_for_image_status(resp)
     return _parse_data(resp.json(), store)
 
 
@@ -106,7 +125,7 @@ def edit(prompt: str, images: list[tuple[str, bytes]], *, n: int = 1, size: str 
         files=files,
         timeout=TIMEOUT,
     )
-    resp.raise_for_status()
+    _raise_for_image_status(resp)
     return _parse_data(resp.json(), store)
 
 
