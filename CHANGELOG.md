@@ -3,6 +3,13 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Más acciones nativas del toolkit**: **Gmail borrador**, **subir a Google Drive**,
+  **crear Google Doc**, **Outlook borrador** y **subir a OneDrive**. Aparecen en el
+  catálogo de *Acciones* y el **agente** las puede invocar (escrituras con aprobación).
+- **Perfil de trainer GPU/CUDA** para fine-tuning (`integrations/trainer-cuda/`):
+  `train-lora-cuda.py` (transformers + PEFT) como alternativa al lab MLX. El payload
+  ahora incluye **`hf_model`** (repo HuggingFace, `HF_MODEL_MAP`) además de `mlx_model`;
+  cada trainer toma el que necesita. README + guía de servir (Ollama/vLLM).
 - **Conector SFTP (sistemas legados)**: trae archivos (PDF/DOCX/CSV/TXT) de un servidor
   **SFTP de solo lectura** (un archivo o un directorio), extrae su texto y los importa al
   repositorio + RAG (clasificados y cifrados). CRUD `/datasources/sftp` (ADMIN/DEVOPS) +

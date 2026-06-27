@@ -42,6 +42,16 @@ def test_base_models_catalog(client):
     assert names["deepseek-r1:8b"]["family"] == "DeepSeek"
 
 
+def test_trainer_payload_has_mlx_and_hf_models():
+    from app import finetune as ft
+    assert ft.hf_model_for("llama3.1:8b") == "meta-llama/Llama-3.1-8B-Instruct"
+    assert ft.hf_model_for("desconocido:1b") == "desconocido:1b"  # fallback
+    payload = ft.build_trainer_payload("j1", "llama3.1:8b", [("hola", "mundo")], ollama_name="x")
+    assert payload["mlx_model"].startswith("mlx-community/")
+    assert payload["hf_model"] == "meta-llama/Llama-3.1-8B-Instruct"
+    assert payload["ollama_name"] == "x" and "train_jsonl" in payload
+
+
 def test_example_is_anonymized(client):
     h = _auth(client)
     ds = _dataset(client, h)

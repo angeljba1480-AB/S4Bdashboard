@@ -103,6 +103,42 @@ def mlx_model_for(base_model: str) -> str:
     return MLX_MODEL_MAP.get(base_model, base_model)
 
 
+# Mapa para trainers con **GPU NVIDIA/CUDA** (PEFT/transformers): nombre Ollama → repo
+# HuggingFace base (sin cuantizar). Lo usa el perfil de trainer CUDA (integrations/
+# trainer-cuda). Si no está, se usa el base_model tal cual.
+HF_MODEL_MAP = {
+    "llama3.2:1b": "meta-llama/Llama-3.2-1B-Instruct",
+    "llama3.2:3b": "meta-llama/Llama-3.2-3B-Instruct",
+    "llama3:8b": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "llama3.1": "meta-llama/Llama-3.1-8B-Instruct",
+    "llama3.1:8b": "meta-llama/Llama-3.1-8B-Instruct",
+    "llama3.1:70b": "meta-llama/Llama-3.1-70B-Instruct",
+    "llama3.3:70b": "meta-llama/Llama-3.3-70B-Instruct",
+    "mistral:7b": "mistralai/Mistral-7B-Instruct-v0.3",
+    "mistral-nemo:12b": "mistralai/Mistral-Nemo-Instruct-2407",
+    "mixtral:8x7b": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    "qwen2.5:3b": "Qwen/Qwen2.5-3B-Instruct",
+    "qwen2.5:7b": "Qwen/Qwen2.5-7B-Instruct",
+    "qwen2.5:14b": "Qwen/Qwen2.5-14B-Instruct",
+    "qwen2.5:32b": "Qwen/Qwen2.5-32B-Instruct",
+    "qwen2.5-coder:7b": "Qwen/Qwen2.5-Coder-7B-Instruct",
+    "qwen3:8b": "Qwen/Qwen3-8B",
+    "qwen3:14b": "Qwen/Qwen3-14B",
+    "gemma2:9b": "google/gemma-2-9b-it",
+    "gemma2:27b": "google/gemma-2-27b-it",
+    "gemma3:12b": "google/gemma-3-12b-it",
+    "phi3.5": "microsoft/Phi-3.5-mini-instruct",
+    "phi4": "microsoft/phi-4",
+    "deepseek-r1:7b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+    "deepseek-r1:8b": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+    "deepseek-r1:14b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+}
+
+
+def hf_model_for(base_model: str) -> str:
+    return HF_MODEL_MAP.get(base_model, base_model)
+
+
 def list_base_models() -> list[dict]:
     """Catálogo legible para la UI: nombre Ollama → id MLX, agrupado por familia."""
     def _family(name: str) -> str:
@@ -163,7 +199,8 @@ def build_trainer_payload(job_id: str, base_model: str, examples: list[tuple[str
     return {
         "job_id": job_id,
         "base_model": base_model,                 # nombre Ollama (informativo)
-        "mlx_model": mlx_model_for(base_model),    # id MLX → MODEL en train-lora.sh
+        "mlx_model": mlx_model_for(base_model),    # id MLX (Apple Silicon) → train-lora.sh
+        "hf_model": hf_model_for(base_model),       # repo HF (GPU/CUDA) → trainer PEFT
         "ollama_name": ollama_name or suggest_ollama_name(base_model),
         "train_jsonl": train_jsonl,
         "valid_jsonl": valid_jsonl,
