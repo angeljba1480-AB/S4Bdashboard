@@ -262,6 +262,8 @@ class AlertRule(SQLModel, table=True):
     webhook_url: str = ""         # destino del canal webhook (y de whatsapp vía proveedor/Zapier)
     telegram_token: str = ""      # canal telegram: token del bot
     telegram_chat_id: str = ""    # canal telegram: chat/grupo destino
+    schedule: str = ""            # "" = tiempo real | "daily" | "weekly" (digest programado)
+    last_digest_at: str = ""      # ISO del último digest enviado (solo reglas programadas)
     enabled: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

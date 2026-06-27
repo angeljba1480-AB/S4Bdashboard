@@ -110,4 +110,8 @@ async def inbound_webhook(
     payload = data.get("payload", data)
     tenant = session.get(Tenant, wh.tenant_id)
     ran = dispatch_event(session, tenant, event, payload)
-    return {"ok": True, "event": event, "automations_triggered": ran}
+    # Alerta configurable de webhook entrante (pop-up/Telegram/webhook/WhatsApp).
+    from .. import alerts as _alerts
+    fired = _alerts.dispatch(session, wh.tenant_id, "webhook", f"Webhook entrante: {event}",
+                             f"De «{wh.name}». Automatizaciones disparadas: {ran}.", level="info")
+    return {"ok": True, "event": event, "automations_triggered": ran, "alerts_fired": fired}

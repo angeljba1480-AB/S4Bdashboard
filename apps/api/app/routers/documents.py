@@ -168,6 +168,10 @@ async def upload(
                        + (f" [{verdict.threat}]" if verdict.threat else ""),
             ))
             session.commit()
+            from .. import alerts as _alerts
+            _alerts.dispatch(session, tenant.id, "antivirus", "Archivo rechazado por antivirus",
+                             f"{name}: {verdict.reason}" + (f" [{verdict.threat}]" if verdict.threat else ""),
+                             level="error")
             raise HTTPException(status_code=422, detail=f"Archivo rechazado: {verdict.reason}.")
         # Extrae texto según el tipo (PDF/DOCX/texto/CSV) — OCR opcional si hay binario.
         from ..ingest import extract_text
@@ -209,6 +213,11 @@ async def upload(
     dispatch_event(session, tenant, "document_uploaded", {
         "document_id": doc.id, "filename": doc.filename, "sensitivity": doc.sensitivity.value,
     }, user=user)
+
+    # Alerta configurable de ingesta de documentos.
+    from .. import alerts as _alerts
+    _alerts.dispatch(session, tenant.id, "ingest", "Documento ingresado",
+                     f"{doc.filename} · {doc.sensitivity.value} · {chunks} fragmentos", level="info")
 
     return _out(doc, _label_map(session, tenant.id))
 

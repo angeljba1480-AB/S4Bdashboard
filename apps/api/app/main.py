@@ -33,6 +33,7 @@ from .routers import (
     alerts,
     recipes,
     regional,
+    search,
     sso,
     voice,
     tramites,
@@ -114,6 +115,7 @@ app.include_router(images.router)
 app.include_router(finetune.router)
 app.include_router(voice.router)
 app.include_router(alerts.router)
+app.include_router(search.router)
 
 
 @app.get("/health", tags=["meta"])

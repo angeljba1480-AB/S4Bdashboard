@@ -5,22 +5,32 @@ import { api } from "@/lib/api";
 import { Bell, Plus, TestTube, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-type Rule = { id: string; name: string; event_type: string; channels: string[]; webhook_url: string; telegram_chat_id: string; has_telegram_token: boolean; enabled: boolean };
+type Rule = { id: string; name: string; event_type: string; channels: string[]; webhook_url: string; telegram_chat_id: string; has_telegram_token: boolean; schedule: string; last_digest_at: string; enabled: boolean };
 const ALL_CHANNELS = [
   { id: "popup", label: "Pop-up (in-app)" },
   { id: "webhook", label: "Webhook" },
   { id: "telegram", label: "Telegram" },
   { id: "whatsapp", label: "WhatsApp (vía proveedor/Zapier)" },
 ];
+const SCHEDULES = [
+  { id: "", label: "Tiempo real (cuando ocurre)" },
+  { id: "daily", label: "Resumen diario (digest)" },
+  { id: "weekly", label: "Resumen semanal (digest)" },
+];
 
 export default function AlertsPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [events, setEvents] = useState<{ key: string; label: string }[]>([]);
-  const [form, setForm] = useState({ name: "", event_type: "finetune", channels: ["popup"] as string[], webhook_url: "", telegram_token: "", telegram_chat_id: "" });
+  const [form, setForm] = useState({ name: "", event_type: "finetune", channels: ["popup"] as string[], webhook_url: "", telegram_token: "", telegram_chat_id: "", schedule: "" });
   const [msg, setMsg] = useState("");
+  const [threshold, setThreshold] = useState(0);
 
   function load() { api.alertRules().then(setRules).catch(() => {}); }
-  useEffect(() => { load(); api.alertEventTypes().then(setEvents).catch(() => {}); }, []);
+  useEffect(() => {
+    load();
+    api.alertEventTypes().then(setEvents).catch(() => {});
+    api.getAlertThreshold().then((r) => setThreshold(r.spend_threshold_usd)).catch(() => {});
+  }, []);
 
   function toggleChannel(c: string) {
     setForm((f) => ({ ...f, channels: f.channels.includes(c) ? f.channels.filter((x) => x !== c) : [...f.channels, c] }));
@@ -30,7 +40,7 @@ export default function AlertsPage() {
     if (!form.name.trim()) { setMsg("Pon un nombre."); return; }
     try {
       await api.createAlertRule({ ...form });
-      setForm({ name: "", event_type: form.event_type, channels: ["popup"], webhook_url: "", telegram_token: "", telegram_chat_id: "" });
+      setForm({ name: "", event_type: form.event_type, channels: ["popup"], webhook_url: "", telegram_token: "", telegram_chat_id: "", schedule: form.schedule });
       setMsg("Regla creada."); load();
     } catch (e) { setMsg(e instanceof Error ? e.message : "Error"); }
   }
@@ -38,6 +48,15 @@ export default function AlertsPage() {
   async function test() {
     const r = await api.testAlert();
     setMsg(r.fired > 0 ? `Alerta de prueba enviada a ${r.fired} regla(s). Revisa la campana arriba.` : "No hay reglas para el evento «test». Crea una con evento Prueba.");
+  }
+  async function runDigest(freq: string) {
+    const r = await api.runDigests(freq);
+    setMsg(r.sent > 0 ? `Resumen ${freq === "daily" ? "diario" : "semanal"} enviado a ${r.sent} regla(s).` : `No hay reglas programadas (${freq}). Crea una con cadencia de resumen.`);
+  }
+  async function saveThreshold() {
+    const r = await api.setAlertThreshold(threshold);
+    setThreshold(r.spend_threshold_usd);
+    setMsg(r.spend_threshold_usd > 0 ? `Umbral de gasto: $${r.spend_threshold_usd}/día.` : "Umbral de gasto desactivado.");
   }
 
   const needWebhook = form.channels.includes("webhook") || form.channels.includes("whatsapp");
@@ -56,6 +75,11 @@ export default function AlertsPage() {
           <select value={form.event_type} onChange={(e) => setForm({ ...form, event_type: e.target.value })}
             className="mb-3 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
             {events.map((ev) => <option key={ev.key} value={ev.key}>{ev.label}</option>)}
+          </select>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cadencia</label>
+          <select value={form.schedule} onChange={(e) => setForm({ ...form, schedule: e.target.value })}
+            className="mb-3 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            {SCHEDULES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Canales</div>
           <div className="mb-3 grid grid-cols-2 gap-2">
@@ -94,7 +118,7 @@ export default function AlertsPage() {
               <div key={r.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm">
                 <span className="min-w-0">
                   <span className="font-medium text-slate-700">{r.name}</span>
-                  <span className="block truncate text-xs text-slate-400">{r.event_type} · {r.channels.join(", ")}</span>
+                  <span className="block truncate text-xs text-slate-400">{r.event_type} · {r.channels.join(", ")}{r.schedule ? ` · ${r.schedule === "daily" ? "resumen diario" : "resumen semanal"}` : ""}</span>
                 </span>
                 <button onClick={() => remove(r.id)} title="Eliminar" className="shrink-0 rounded-md border border-slate-300 p-1 text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
@@ -104,6 +128,34 @@ export default function AlertsPage() {
             WhatsApp se entrega a través de tu proveedor (Twilio/Meta) o un Zap: usa el canal
             WhatsApp con la URL del webhook de tu proveedor. Telegram es directo con el bot.
           </p>
+
+          {/* Resúmenes programados + umbral de gasto */}
+          <div className="mt-5 border-t border-slate-100 pt-4">
+            <h3 className="mb-2 text-sm font-semibold text-slate-700">Resúmenes programados</h3>
+            <p className="mb-2 text-xs text-slate-400">
+              Las reglas con cadencia «resumen» juntan la actividad del periodo en un solo aviso.
+              Se envían automáticamente desde un cron; aquí puedes dispararlos manualmente.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => runDigest("daily")} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600">Enviar resumen diario</button>
+              <button onClick={() => runDigest("weekly")} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600">Enviar resumen semanal</button>
+            </div>
+          </div>
+          <div className="mt-5 border-t border-slate-100 pt-4">
+            <h3 className="mb-2 text-sm font-semibold text-slate-700">Umbral de gasto (alerta automática)</h3>
+            <p className="mb-2 text-xs text-slate-400">
+              Si el gasto de tokens del día supera este monto (USD), se dispara una alerta del evento
+              «Umbral de gasto». 0 = desactivado. Crea una regla con ese evento para recibirla.
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500">$</span>
+              <input type="number" min={0} step="0.01" value={threshold}
+                onChange={(e) => setThreshold(parseFloat(e.target.value) || 0)}
+                className="w-28 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+              <span className="text-xs text-slate-400">/ día</span>
+              <button onClick={saveThreshold} className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">Guardar</button>
+            </div>
+          </div>
         </div>
       </div>
     </Shell>
