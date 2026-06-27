@@ -83,6 +83,49 @@ def resolve_refs(params: dict, outputs: dict) -> dict:
     return out
 
 
+_TOOLS_SYSTEM = (
+    "Eres un planificador de acciones. Usa SOLO las herramientas (functions) disponibles "
+    "para cumplir la instrucción del usuario, en orden lógico. Para ENCADENAR, pon "
+    "\"{{stepN}}\" (N = número de paso previo, 1-based) en el valor de un argumento y así "
+    "usar la salida de ese paso. Llama únicamente a las herramientas necesarias; no "
+    "inventes argumentos que no conozcas."
+)
+
+
+def _sanitize_name(action_id: str) -> str:
+    """Los nombres de function deben casar `^[a-zA-Z0-9_-]+$` (máx 64). Los ids de
+    acción traen `.`/`:` (gmail.send, workflow:ingesta) → se normalizan a `_`."""
+    return re.sub(r"[^a-zA-Z0-9_-]", "_", action_id)[:64]
+
+
+def build_tools(actions: list[dict], workflows: list[dict] | None = None) -> tuple[list[dict], dict]:
+    """Construye el arreglo `tools` (function calling OpenAI) y el mapa nombre→id."""
+    tools: list[dict] = []
+    name_map: dict[str, str] = {}
+    for a in actions:
+        nm = _sanitize_name(a["id"])
+        name_map[nm] = a["id"]
+        props = {p: {"type": "string"} for p in a.get("params", [])}
+        kind = "escritura" if a.get("write") else "lectura"
+        tools.append({"type": "function", "function": {
+            "name": nm,
+            "description": f'{a.get("label", a["id"])} ({kind}, {a.get("provider", "")})',
+            "parameters": {"type": "object", "properties": props, "required": []},
+        }})
+    for w in (workflows or []):
+        aid = f'workflow:{w["id"]}'
+        nm = _sanitize_name(aid)
+        name_map[nm] = aid
+        tools.append({"type": "function", "function": {
+            "name": nm,
+            "description": f'Workflow n8n: {w.get("name", w["id"])}. {w.get("steps", "")}'[:300],
+            "parameters": {"type": "object",
+                           "properties": {"payload": {"type": "string", "description": "Contexto opcional"}},
+                           "required": []},
+        }})
+    return tools, name_map
+
+
 def _allowed_catalog_text(actions: list[dict]) -> str:
     lines = []
     for a in actions:
@@ -143,7 +186,20 @@ def plan_steps(instruction: str, actions: list[dict], adapter=None,
         return {"steps": [], "source": "ninguna",
                 "note": "Sin instrucción o sin herramientas disponibles (conecta un proveedor)."}
 
-    # 1) Camino del modelo (si hay adapter real).
+    # 1) Function-calling nativo (proveedor real con tools, p. ej. qwen3.6 de NaN).
+    if adapter is not None and hasattr(adapter, "generate_tools"):
+        try:  # pragma: no cover - depende de modelo real
+            tools, name_map = build_tools(actions, workflows)
+            calls = adapter.generate_tools(_TOOLS_SYSTEM, instruction, tools)
+            raw = [{"action": name_map.get(c.get("name", "")), "params": c.get("arguments", {}),
+                    "reason": ""} for c in (calls or []) if name_map.get(c.get("name", ""))]
+            steps = _validate(raw, actions, workflows)
+            if steps:
+                return {"steps": steps, "source": "modelo (tools)", "note": ""}
+        except Exception:
+            pass  # cae a texto-JSON o heurística
+
+    # 2) Camino del modelo por texto-JSON (proveedor real sin tools).
     if adapter is not None and getattr(adapter, "model_name", "mock").startswith("mock") is False:
         wf_text = "\n".join(f'- "workflow:{w["id"]}" ({w.get("name")}): {w.get("steps", "")}' for w in workflows)
         system = (
