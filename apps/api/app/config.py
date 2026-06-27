@@ -56,9 +56,16 @@ class Settings(BaseSettings):
     local_request_timeout: int = 300
 
     # Embeddings / RAG. Provider: "local" | "open" (NaN Builders) | "premium".
+    # Para NaN: EMBEDDINGS_PROVIDER=open, EMBEDDINGS_MODEL=qwen3-embedding,
+    # EMBEDDINGS_DIM=4096 — y luego re-indexar (POST /documents/reindex).
     embeddings_provider: str = "local"
     embeddings_model: str = "text-embedding-3-small"
     embeddings_dim: int = 384
+
+    # Voz (vía proveedor abierto NaN): TTS (kokoro) y STT (whisper).
+    tts_model: str = "kokoro"
+    stt_model: str = "whisper"
+    default_voice: str = "ef_dora"   # español (femenina)
 
     # Vector store: "inprocess" (default) or "qdrant"
     vector_store: str = "inprocess"

@@ -3,6 +3,19 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Embeddings con NaN (`qwen3-embedding`) para el RAG**: el embebedor ahora resuelve
+  el proveedor abierto desde la config del admin (UI) → env (antes solo env). Guarda de
+  dimensión en `cosine` (local 384 ↔ NaN 4096 conviven sin romper) y endpoint
+  **`POST /documents/reindex`** + botón *Re-indexar RAG* para reconstruir vectores al
+  cambiar de proveedor. Check de embeddings en el autochequeo.
+- **Voz (NaN): TTS (`kokoro`) + STT (`whisper`)**: `/voice/tts` (texto→audio, voces ES
+  `ef_dora`/`em_alex`, PII redactada) y `/voice/transcribe` (audio→texto, ≤25 MB). En el
+  chat: botón **Narrar** en cada respuesta y **micrófono** en el compositor (voz→texto).
+- **Edición de imágenes (image-to-image, `flux-2-klein`)**: `/images/edit` con hasta 4
+  referencias; en *Generar imágenes* hay modo **Editar (imagen→imagen)**.
+- **Agente en el chat**: botón **⚡ Acción** en el compositor — el modelo traduce tu
+  mensaje a pasos del toolkit y los ejecuta (lecturas al momento; escrituras a aprobar
+  en *Acciones*), sin salir del chat.
 - **Agente · function-calling nativo (qwen3.6)**: cuando hay un proveedor con
   *tool calling* (NaN qwen3.6), el planner deja de parsear JSON de prosa y usa
   **functions** reales — el modelo elige la herramienta y rellena los argumentos de

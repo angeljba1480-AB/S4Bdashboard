@@ -7,7 +7,7 @@ import { HelpButton } from "@/components/HelpButton";
 import { SourceCitation } from "@/components/SourceCitation";
 import { api } from "@/lib/api";
 import type { Agent, ChatResponse, DocumentItem } from "@shared/types";
-import { Brain, Save, Send, Sparkles } from "lucide-react";
+import { Brain, Mic, Save, Send, Sparkles, Volume2, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface Turn {
@@ -90,6 +90,40 @@ export default function ChatPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function narrate(text: string) {
+    try {
+      const blob = await api.tts(text);
+      new Audio(URL.createObjectURL(blob)).play();
+    } catch (e) { alert(e instanceof Error ? e.message : "No se pudo narrar"); }
+  }
+
+  async function transcribe(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const r = await api.transcribe(form);
+      setInput((v) => (v ? v + " " : "") + r.text);
+    } catch (e) { alert(e instanceof Error ? e.message : "No se pudo transcribir"); }
+  }
+
+  async function runAsAction() {
+    const instr = input.trim();
+    if (!instr) return;
+    setInput("");
+    setTurns((t) => [...t, { role: "user", content: `⚡ ${instr}` }]);
+    setLoading(true);
+    try {
+      const r = await api.agentRun(instr, false, false);
+      const lines = r.steps.length
+        ? r.steps.map((s, i) => `${i + 1}. ${s.label} — ${s.step_status.replace("_", " ")}`).join("\n")
+        : (r.note || "No identifiqué acciones para esa instrucción.");
+      setTurns((t) => [...t, { role: "assistant", content:
+        `Plan del agente (${r.source}):\n${lines}\n\nLas escrituras pendientes se aprueban en «Acciones».` }]);
+    } catch (e) {
+      setTurns((t) => [...t, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : "desconocido"}` }]);
+    } finally { setLoading(false); }
   }
 
   async function saveToMemory(content: string) {
@@ -195,10 +229,16 @@ export default function ChatPage() {
                     <>
                       <div className="mt-2 flex items-center justify-between">
                         <span className="text-xs text-slate-400">Ruta: {t.meta.reason}</span>
-                        <button onClick={() => saveToMemory(t.content)}
-                          className="flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-800">
-                          <Save className="h-3 w-3" /> Guardar en memoria
-                        </button>
+                        <span className="flex items-center gap-3">
+                          <button onClick={() => narrate(t.content)}
+                            className="flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-800">
+                            <Volume2 className="h-3 w-3" /> Narrar
+                          </button>
+                          <button onClick={() => saveToMemory(t.content)}
+                            className="flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-800">
+                            <Save className="h-3 w-3" /> Guardar en memoria
+                          </button>
+                        </span>
                       </div>
                       <SourceCitation citations={t.meta.citations} />
                     </>
@@ -245,6 +285,20 @@ export default function ChatPage() {
                 placeholder="Escribe tu pregunta…"
                 className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
               />
+              <label title="Transcribir audio (voz → texto)"
+                className="flex cursor-pointer items-center rounded-lg border border-slate-300 px-2.5 py-2 text-slate-500 hover:bg-slate-50">
+                <Mic className="h-4 w-4" />
+                <input type="file" accept="audio/*" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) transcribe(f); e.target.value = ""; }} />
+              </label>
+              <button
+                onClick={runAsAction}
+                disabled={loading || !input.trim()}
+                title="Ejecutar como acción (el agente hace los pasos en las herramientas)"
+                className="flex items-center gap-1.5 rounded-lg border border-violet-300 bg-white px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 disabled:opacity-50"
+              >
+                <Zap className="h-4 w-4" /> Acción
+              </button>
               <button
                 onClick={() => send()}
                 disabled={loading}

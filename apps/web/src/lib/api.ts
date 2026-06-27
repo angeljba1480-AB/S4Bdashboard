@@ -391,6 +391,25 @@ export const api = {
   images: () => request<GeneratedImageDto[]>("/images"),
   imageDataUrl: (id: string) => `${api.base}/images/${id}/data`,
   deleteImage: (id: string) => request<{ ok: boolean }>(`/images/${id}`, { method: "DELETE" }),
+  editImages: (form: FormData) =>
+    request<{ images: GeneratedImageDto[] }>("/images/edit", { method: "POST", body: form }),
+  // Voz (NaN: kokoro TTS / whisper STT)
+  voiceConfig: () =>
+    request<{ configured: boolean; voices: { id: string; label: string }[] }>("/voice/config"),
+  tts: async (text: string, voice = "", format = "mp3"): Promise<Blob> => {
+    const res = await fetch(`${API_BASE}/voice/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) },
+      body: JSON.stringify({ text, voice, format }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "No se pudo narrar");
+    return res.blob();
+  },
+  transcribe: (form: FormData) =>
+    request<{ text: string; language: string }>("/voice/transcribe", { method: "POST", body: form }),
+  // RAG: re-indexar tras cambiar el proveedor de embeddings
+  reindexDocuments: () =>
+    request<{ documents: number; chunks: number }>("/documents/reindex", { method: "POST" }),
   // Fine-tuning ligero (LoRA)
   ftBaseModels: () =>
     request<{ name: string; mlx_model: string; family: string }[]>("/finetune/base-models"),
