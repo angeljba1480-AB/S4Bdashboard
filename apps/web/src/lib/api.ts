@@ -403,6 +403,19 @@ export const api = {
   deleteImage: (id: string) => request<{ ok: boolean }>(`/images/${id}`, { method: "DELETE" }),
   editImages: (form: FormData) =>
     request<{ images: GeneratedImageDto[] }>("/images/edit", { method: "POST", body: form }),
+  // Runbooks (automatizaciones multi-paso por segmento/sector)
+  runbookFacets: () =>
+    request<{ segments: { key: string; label: string }[]; sectors: { key: string; label: string; count: number }[]; total: number }>("/runbooks/facets"),
+  runbooks: (segment = "", sector = "", q = "") => {
+    const p = new URLSearchParams();
+    if (segment) p.set("segment", segment);
+    if (sector) p.set("sector", sector);
+    if (q) p.set("q", q);
+    const s = p.toString();
+    return request<{ id: string; title: string; description: string; segment: string; sector: string; area: string; benefit: string; icon: string; steps: string[] }[]>(`/runbooks${s ? `?${s}` : ""}`);
+  },
+  installRunbook: (id: string) =>
+    request<{ id: string; name: string; already_installed: boolean }>(`/runbooks/${id}/install`, { method: "POST" }),
   // Voz (NaN: kokoro TTS / whisper STT)
   voiceConfig: () =>
     request<{ configured: boolean; voices: { id: string; label: string }[] }>("/voice/config"),
