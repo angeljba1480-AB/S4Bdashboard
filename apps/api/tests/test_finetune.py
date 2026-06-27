@@ -29,6 +29,19 @@ def _dataset(client, h) -> str:
     return client.post("/finetune/datasets", headers=h, json={"name": "Tono comercial", "base_model": "llama3.1"}).json()["id"]
 
 
+def test_base_models_catalog(client):
+    h = _auth(client)
+    models = client.get("/finetune/base-models", headers=h).json()
+    names = {m["name"]: m for m in models}
+    # Familias clave de la industria presentes.
+    assert "llama3.2:3b" in names and names["llama3.2:3b"]["mlx_model"].startswith("mlx-community/")
+    assert any(n.startswith("qwen") for n in names)
+    assert any(n.startswith("mistral") for n in names)
+    assert any(n.startswith("gemma") for n in names)
+    assert any(n.startswith("deepseek") for n in names)
+    assert names["deepseek-r1:8b"]["family"] == "DeepSeek"
+
+
 def test_example_is_anonymized(client):
     h = _auth(client)
     ds = _dataset(client, h)

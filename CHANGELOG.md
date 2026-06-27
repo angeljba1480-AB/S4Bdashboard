@@ -3,6 +3,21 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Agente de acciones (el modelo ejecuta los pasos en las herramientas)**: nuevo
+  `POST /actions/agent` + panel *Asistente de acciones* en la sección Acciones. Escribes
+  una instrucción en lenguaje natural y el modelo la traduce a pasos del toolkit
+  (Google/Microsoft) y los ejecuta **por detrás**: lecturas al momento; escrituras con
+  **aprobación humana** (o «Permitir siempre» / ejecución directa con `auto_approve`).
+  Planner modelo-primero con **fallback heurístico** (funciona en laboratorio sin modelo).
+  Todo auditado (`agent_run`). Reusa la gobernanza de aprobaciones existente.
+- **Catálogo de modelos de la industria para LoRA**: `MLX_MODEL_MAP` ampliado a las
+  familias Llama (3/3.1/3.2/3.3), Mistral/Mixtral, Qwen (2.5/3 + Coder), Gemma (2/3),
+  Phi (3/3.5/4), DeepSeek-R1 (distill) y otros (SmolLM2, Yi) → su id `mlx-community`.
+  Nuevo `GET /finetune/base-models` y **selector agrupado por familia** en el panel de
+  Fine-tuning (antes era texto libre).
+- **Workflow n8n importable + wrapper** (`integrations/n8n/`): `lora-trainer.workflow.json`
+  (Webhook → ejecuta el trainer → responde) y `lora-train-wrapper.sh` (mapea el payload de
+  MaestroAI a `train-lora.sh`/`fuse-lora.sh` y hace el callback). README de puesta en marcha.
 
 ## 2026-06-27 — promovido a prod (PR #35 → #36)
 - **Trainer LoRA alineado con el laboratorio MLX**: `dispatch_training` arma el payload
