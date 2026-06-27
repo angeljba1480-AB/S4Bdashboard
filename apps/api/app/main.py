@@ -23,6 +23,7 @@ from .routers import (
     documents,
     drive,
     export,
+    finetune,
     flowcharts,
     images,
     memory,
@@ -108,6 +109,7 @@ app.include_router(actions.router)
 app.include_router(memory.router)
 app.include_router(datasources.router)
 app.include_router(images.router)
+app.include_router(finetune.router)
 
 
 @app.get("/health", tags=["meta"])
