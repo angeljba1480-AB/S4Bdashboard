@@ -3,6 +3,10 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Imágenes · la galería ahora sí muestra las miniaturas**: el `<img>` apuntaba al
+  endpoint protegido `/images/{id}/data`, pero una etiqueta `<img>` del navegador no manda
+  el header `Authorization` → 401 → imagen rota. Ahora se descargan los bytes **con token**
+  (componente `AuthImage` + `api.imageBlob`) y se muestran como *object URL*.
 - **Gobierno por perfil de empresa**: el contenido de gobierno (sección *Trámites y casos*
   y recetas de giro público como *Licitación*) ahora **solo aplica si el perfil lo habilita**.
   Nuevo campo **tipo de organización** (privada / gobierno) + switch **«participamos en

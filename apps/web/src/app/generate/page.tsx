@@ -1,5 +1,6 @@
 "use client";
 
+import { AuthImage } from "@/components/AuthImage";
 import { PageHeader, Shell } from "@/components/Shell";
 import { api, type GeneratedImageDto } from "@/lib/api";
 import { ImageIcon, Sparkles, Trash2, Wand2 } from "lucide-react";
@@ -130,8 +131,7 @@ export default function GeneratePage() {
               {gallery.map((img) => (
                 <div key={img.id} className="group relative overflow-hidden rounded-xl border border-slate-200">
                   {img.has_data ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={api.imageDataUrl(img.id)} alt={img.prompt} className="aspect-square w-full object-cover" />
+                    <AuthImage id={img.id} alt={img.prompt} className="aspect-square w-full object-cover" />
                   ) : (
                     <div className="flex aspect-square items-center justify-center bg-slate-100 text-xs text-slate-400">sin copia</div>
                   )}

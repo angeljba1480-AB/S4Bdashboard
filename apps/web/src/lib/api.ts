@@ -390,6 +390,16 @@ export const api = {
     request<{ images: GeneratedImageDto[] }>("/images/generate", { method: "POST", body: JSON.stringify(body) }),
   images: () => request<GeneratedImageDto[]>("/images"),
   imageDataUrl: (id: string) => `${api.base}/images/${id}/data`,
+  // Carga los bytes de la imagen CON token (un <img src> normal no manda el header
+  // Authorization) y devuelve un object URL para usar como src.
+  imageBlob: async (id: string): Promise<string> => {
+    const token = getToken();
+    const res = await fetch(`${api.base}/images/${id}/data`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error(`No se pudo cargar la imagen (${res.status})`);
+    return URL.createObjectURL(await res.blob());
+  },
   deleteImage: (id: string) => request<{ ok: boolean }>(`/images/${id}`, { method: "DELETE" }),
   editImages: (form: FormData) =>
     request<{ images: GeneratedImageDto[] }>("/images/edit", { method: "POST", body: form }),
