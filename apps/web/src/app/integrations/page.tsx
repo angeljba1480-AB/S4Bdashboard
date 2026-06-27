@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader, Shell } from "@/components/Shell";
+import { N8nRecipesPanel } from "@/components/N8nRecipesPanel";
 import { api } from "@/lib/api";
 import { CheckCircle2, Eye, EyeOff, HelpCircle, Info, KeyRound, Link2, Mail, Trash2, Webhook } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -160,6 +161,8 @@ export default function IntegrationsPage() {
           <HelpCircle className="h-4 w-4" />
           ¿Cómo conecto n8n, correo o un sistema legado? Mira las guías paso a paso en <b>Ayuda</b>.
         </a>
+        <N8nRecipesPanel />
+
         {/* Mailbox connect (OAuth) */}
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mb-1 flex items-center gap-2"><Mail className="h-5 w-5 text-violet-600" /><h2 className="font-semibold text-slate-800">Conectar correo (Outlook / Gmail)</h2></div>

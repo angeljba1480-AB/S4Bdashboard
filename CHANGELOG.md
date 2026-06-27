@@ -3,6 +3,11 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Recetas n8n a la medida**: el cliente define sus propios flujos (DB, SOAP, apps
+  internas) como webhooks de su n8n. CRUD `/workflows/recipes` (ADMIN/DEVOPS), ejecución
+  `/workflows/recipes/{id}/run` con payload, y panel en *Integraciones*. El **agente** las
+  ofrece como herramientas (`workflow:<id>`), así que puede dispararlas por instrucción.
+  Modelo `N8nRecipe` (categoría, webhook_path, params). Todo auditado.
 - **Embeddings con NaN (`qwen3-embedding`) para el RAG**: el embebedor ahora resuelve
   el proveedor abierto desde la config del admin (UI) → env (antes solo env). Guarda de
   dimensión en `cosine` (local 384 ↔ NaN 4096 conviven sin romper) y endpoint
