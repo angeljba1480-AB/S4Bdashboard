@@ -13,10 +13,12 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from .. import actions as catalog
+from ..ai.adapters import get_adapter
+from ..ai.agent_planner import plan_steps
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
 from ..integrations import actions_exec, token_store
-from ..models import ActionGrant, ActionRequest, AuditEvent, Tenant, User
+from ..models import ActionGrant, ActionRequest, AuditEvent, ModelRoute, Tenant, User
 
 router = APIRouter(prefix="/actions", tags=["actions"])
 
@@ -105,6 +107,61 @@ def run_action(
     session.commit()
     session.refresh(req)
     return {"status": "pending", "request": _req_out(req)}
+
+
+class AgentBody(BaseModel):
+    instruction: str
+    auto_approve: bool = False   # ejecuta también escrituras sin pedir aprobación
+
+
+@router.post("/agent")
+def agent_run(
+    body: AgentBody,
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Agente de acciones: el modelo traduce una instrucción en pasos del toolkit y
+    los ejecuta «por detrás». Lecturas y escrituras autorizadas corren al momento;
+    el resto queda **pendiente de aprobación**. Todo auditado."""
+    # Solo se ofrecen acciones de proveedores conectados.
+    connected = {c.provider for c in token_store.list_connections(session, tenant.id, user.id)}
+    allowed = [a for a in catalog.list_actions() if a["provider"] in connected]
+    if not allowed:
+        raise HTTPException(status_code=400, detail="Conecta Google o Microsoft en Integraciones primero.")
+
+    # Planifica con el modelo (ruta abierta/NaN); cae a heurística si no hay modelo real.
+    adapter = get_adapter(ModelRoute.OPEN)
+    plan = plan_steps(body.instruction, allowed, adapter=adapter)
+
+    results: list[dict] = []
+    for step in plan["steps"]:
+        meta = catalog.get_action(step["action"])
+        if not meta:
+            continue
+        req = ActionRequest(tenant_id=tenant.id, user_id=user.id, provider=meta["provider"],
+                            action=step["action"], params=json.dumps(step.get("params", {})))
+        run_now = (not meta.get("write")) or body.auto_approve or _granted(session, tenant.id, user.id, step["action"])
+        if run_now:
+            session.add(req); session.commit(); session.refresh(req)
+            out = _req_out(_execute(session, tenant, user, req))
+            out["step_status"] = "ejecutado"
+        else:
+            req.status = "pending"
+            session.add(req); session.commit(); session.refresh(req)
+            out = _req_out(req)
+            out["step_status"] = "pendiente_aprobación"
+        out["reason"] = step.get("reason", "")
+        results.append(out)
+
+    session.add(AuditEvent(
+        tenant_id=tenant.id, user_id=user.id, event_type="agent", object_type="agent_run",
+        object_id="actions", risk_level="med",
+        reason=f"agente: {len(results)} paso(s) [{plan['source']}] — {body.instruction[:80]}",
+    ))
+    session.commit()
+    return {"instruction": body.instruction, "source": plan["source"], "note": plan.get("note", ""),
+            "steps": results}
 
 
 @router.get("/requests")

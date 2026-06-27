@@ -55,6 +55,10 @@ FINETUNE_ITERS=600  FINETUNE_BATCH=4  FINETUNE_LEARNING_RATE=1e-5  FINETUNE_NUM_
 > porque `mlx_lm.lora` exige `train.jsonl` **y** `valid.jsonl`.
 
 ### Wrapper del trainer (script en la Mac, disparado por n8n)
+> **Listos para usar:** `integrations/n8n/lora-trainer.workflow.json` (impórtalo en n8n)
+> y `integrations/n8n/lora-train-wrapper.sh` (cópialo a `ai-local-lab-mac/scripts/`).
+> Ver `integrations/n8n/README.md`. El snippet de abajo es la versión mínima explicada.
+
 Mapea el payload a las env vars de `train-lora.sh`/`fuse-lora.sh` y hace el callback:
 ```bash
 #!/bin/bash

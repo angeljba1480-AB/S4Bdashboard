@@ -352,6 +352,9 @@ export const api = {
     request<{ request: ActionRequestItem }>(`/actions/requests/${id}/reject`, { method: "POST" }),
   actionGrants: () => request<{ action: string; label: string }[]>("/actions/grants"),
   revokeGrant: (action: string) => request<{ ok: boolean }>(`/actions/grants/${action}`, { method: "DELETE" }),
+  agentRun: (instruction: string, autoApprove = false) =>
+    request<{ instruction: string; source: string; note: string; steps: (ActionRequestItem & { step_status: string; reason: string })[] }>(
+      "/actions/agent", { method: "POST", body: JSON.stringify({ instruction, auto_approve: autoApprove }) }),
   flowcharts: () => request<FlowchartSummary[]>("/flowcharts"),
   flowchart: (id: string) => request<Flowchart>(`/flowcharts/${id}`),
   // Data sources (legacy connectors: read-only DB → RAG)
@@ -378,6 +381,8 @@ export const api = {
   imageDataUrl: (id: string) => `${api.base}/images/${id}/data`,
   deleteImage: (id: string) => request<{ ok: boolean }>(`/images/${id}`, { method: "DELETE" }),
   // Fine-tuning ligero (LoRA)
+  ftBaseModels: () =>
+    request<{ name: string; mlx_model: string; family: string }[]>("/finetune/base-models"),
   ftDatasets: () =>
     request<{ id: string; name: string; area: string; base_model: string; status: string; version: number; examples: number; created_at: string }[]>("/finetune/datasets"),
   ftCreateDataset: (body: { name: string; area?: string; base_model?: string }) =>

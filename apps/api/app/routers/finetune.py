@@ -67,6 +67,12 @@ def create_dataset(body: DatasetIn, _: User = Depends(require_roles(Role.ADMIN, 
     return _ds_out(d, 0)
 
 
+@router.get("/base-models")
+def base_models(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS))) -> list[dict]:
+    """Catálogo de modelos base open source (industria) disponibles para LoRA."""
+    return ft.list_base_models()
+
+
 @router.get("/datasets")
 def list_datasets(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
                   tenant: Tenant = Depends(get_current_tenant), session: Session = Depends(get_session)) -> list[dict]:
