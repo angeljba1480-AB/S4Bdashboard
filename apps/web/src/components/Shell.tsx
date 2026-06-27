@@ -2,9 +2,11 @@
 
 import { api, clearToken } from "@/lib/api";
 import { HelpButton } from "@/components/HelpButton";
+import { NotificationBell } from "@/components/NotificationBell";
 import type { Me } from "@shared/types";
 import {
   Activity,
+  Bell,
   Bot,
   Brain,
   Building2,
@@ -67,6 +69,7 @@ const NAV = [
     group: "GOBIERNO",
     items: [
       { href: "/company", label: "Configuración", icon: Building2 },
+      { href: "/alerts", label: "Alertas", icon: Bell },
       { href: "/account", label: "Mi cuenta", icon: IdCard },
       { href: "/audit", label: "Auditoría", icon: ShieldCheck },
       { href: "/admin", label: "Admin", icon: Settings },
@@ -153,7 +156,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto"><NotificationBell />{children}</main>
     </div>
   );
 }

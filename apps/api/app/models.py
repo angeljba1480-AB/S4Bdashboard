@@ -248,6 +248,38 @@ class N8nRecipe(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class AlertRule(SQLModel, table=True):
+    """Regla de alerta configurable: cuando ocurre un evento (event_type) la plataforma
+    notifica por los canales elegidos. Canales: 'popup' (in-app) y/o 'webhook' (POST a
+    una URL — sirve para Slack/Teams/correo vía n8n o Zapier). Por usuario y tenant."""
+    __tablename__ = "alert_rules"
+    id: str = Field(default_factory=lambda: _uuid("alr"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    name: str = ""
+    event_type: str = "test"       # test | finetune | workflow | recipe | action | antivirus | ingest
+    channels: str = '["popup"]'   # JSON list: popup | webhook | telegram | whatsapp
+    webhook_url: str = ""         # destino del canal webhook (y de whatsapp vía proveedor/Zapier)
+    telegram_token: str = ""      # canal telegram: token del bot
+    telegram_chat_id: str = ""    # canal telegram: chat/grupo destino
+    enabled: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Notification(SQLModel, table=True):
+    """Notificación in-app (pop-up): una alerta entregada a un usuario. Se marca leída."""
+    __tablename__ = "notifications"
+    id: str = Field(default_factory=lambda: _uuid("ntf"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    user_id: str = Field(index=True, foreign_key="users.id")
+    title: str = ""
+    body: str = ""
+    level: str = "info"            # info | warn | error
+    event_type: str = ""
+    read: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class DataSource(SQLModel, table=True):
     """Conector a sistemas a la medida sin API: una fuente de datos (hoy base de
     datos de SOLO LECTURA). Guarda una consulta SELECT y, al importar, vuelca el
