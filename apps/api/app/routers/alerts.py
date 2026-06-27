@@ -8,19 +8,22 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from .. import alerts as alerts_engine
-from ..auth import get_current_tenant, get_current_user
+from .. import runtime_config
+from ..auth import get_current_tenant, get_current_user, require_roles
 from ..db import get_session
-from ..models import AlertRule, Notification, Tenant, User
+from ..models import AlertRule, Notification, Role, Tenant, User
 
 router = APIRouter(tags=["alerts"])
 
 _CHANNELS = {"popup", "webhook", "telegram", "whatsapp"}
+_SPEND_KEY = "alert_spend_threshold_usd"
 
 
 def _rule_out(r: AlertRule) -> dict:
     return {"id": r.id, "name": r.name, "event_type": r.event_type,
             "channels": json.loads(r.channels or "[]"), "webhook_url": r.webhook_url,
             "telegram_chat_id": r.telegram_chat_id, "has_telegram_token": bool(r.telegram_token),
+            "schedule": r.schedule, "last_digest_at": r.last_digest_at or "",
             "enabled": r.enabled, "created_at": r.created_at.isoformat()}
 
 
@@ -42,18 +45,22 @@ class RuleIn(BaseModel):
     webhook_url: str = ""
     telegram_token: str = ""
     telegram_chat_id: str = ""
+    schedule: str = ""            # "" tiempo real | "daily" | "weekly" (digest)
     enabled: bool = True
 
 
-def _validate(body: RuleIn) -> tuple[str, list[str]]:
+def _validate(body: RuleIn) -> tuple[str, list[str], str]:
     if body.event_type not in alerts_engine._VALID:
         raise HTTPException(status_code=422, detail="event_type inválido")
+    schedule = (body.schedule or "").strip()
+    if schedule not in alerts_engine.SCHEDULES:
+        raise HTTPException(status_code=422, detail="schedule inválido (use vacío, daily o weekly)")
     channels = [c for c in body.channels if c in _CHANNELS] or ["popup"]
     if ("webhook" in channels or "whatsapp" in channels) and not body.webhook_url.strip().startswith("http"):
         raise HTTPException(status_code=422, detail="El canal webhook/WhatsApp requiere una URL válida (tu proveedor o Zapier)")
     if "telegram" in channels and not (body.telegram_token.strip() and body.telegram_chat_id.strip()):
         raise HTTPException(status_code=422, detail="Telegram requiere token del bot y chat_id")
-    return body.event_type, channels
+    return body.event_type, channels, schedule
 
 
 @router.get("/alerts/rules")
@@ -70,11 +77,12 @@ def create_rule(body: RuleIn, tenant: Tenant = Depends(get_current_tenant),
                 user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
     if not body.name.strip():
         raise HTTPException(status_code=422, detail="El nombre es obligatorio")
-    event_type, channels = _validate(body)
+    event_type, channels, schedule = _validate(body)
     r = AlertRule(tenant_id=tenant.id, user_id=user.id, name=body.name.strip(),
                   event_type=event_type, channels=json.dumps(channels),
                   webhook_url=body.webhook_url.strip(), telegram_token=body.telegram_token.strip(),
-                  telegram_chat_id=body.telegram_chat_id.strip(), enabled=body.enabled)
+                  telegram_chat_id=body.telegram_chat_id.strip(), schedule=schedule,
+                  enabled=body.enabled)
     session.add(r); session.commit(); session.refresh(r)
     return _rule_out(r)
 
@@ -90,7 +98,7 @@ def _owned_rule(session, tenant, user, rid) -> AlertRule:
 def update_rule(rid: str, body: RuleIn, tenant: Tenant = Depends(get_current_tenant),
                 user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
     r = _owned_rule(session, tenant, user, rid)
-    event_type, channels = _validate(body)
+    event_type, channels, schedule = _validate(body)
     r.name = body.name.strip() or r.name
     r.event_type = event_type
     r.channels = json.dumps(channels)
@@ -98,6 +106,7 @@ def update_rule(rid: str, body: RuleIn, tenant: Tenant = Depends(get_current_ten
     if body.telegram_token.strip():
         r.telegram_token = body.telegram_token.strip()
     r.telegram_chat_id = body.telegram_chat_id.strip()
+    r.schedule = schedule
     r.enabled = body.enabled
     session.add(r); session.commit(); session.refresh(r)
     return _rule_out(r)
@@ -116,6 +125,50 @@ def test_alert(tenant: Tenant = Depends(get_current_tenant), _: User = Depends(g
                session: Session = Depends(get_session)) -> dict:
     fired = alerts_engine.dispatch(session, tenant.id, "test", "Alerta de prueba",
                                    "Si ves esto, las alertas funcionan.", level="info")
+    return {"fired": fired}
+
+
+# --- digests programados + umbrales del sistema -----------------------------
+def _spend_threshold() -> float:
+    try:
+        return float(runtime_config._raw(_SPEND_KEY) or 0)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+@router.get("/alerts/threshold")
+def get_threshold(_: User = Depends(get_current_user)) -> dict:
+    """Umbral de gasto diario (USD) que dispara una alerta 'threshold'. 0 = apagado."""
+    return {"spend_threshold_usd": _spend_threshold()}
+
+
+class ThresholdIn(BaseModel):
+    spend_threshold_usd: float = 0.0
+
+
+@router.post("/alerts/threshold")
+def set_threshold(body: ThresholdIn, _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+                  session: Session = Depends(get_session)) -> dict:
+    value = max(0.0, float(body.spend_threshold_usd or 0))
+    runtime_config.set_value(session, _SPEND_KEY, str(value))
+    return {"spend_threshold_usd": value}
+
+
+@router.post("/alerts/run-digests")
+def run_digests(frequency: str = "daily", tenant: Tenant = Depends(get_current_tenant),
+                _: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    """Procesa las reglas programadas (digest) de este tenant. Pensado para un cron
+    externo (Render/n8n) que llame daily/weekly — funciona sin scheduler en proceso."""
+    sent = alerts_engine.run_digests(session, tenant.id, frequency)
+    return {"frequency": frequency, "sent": sent}
+
+
+@router.post("/alerts/run-checks")
+def run_checks(tenant: Tenant = Depends(get_current_tenant),
+               _: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    """Evalúa umbrales del sistema (gasto del día) y dispara alertas si procede.
+    Cron-friendly (llamar cada hora/día)."""
+    fired = alerts_engine.run_checks(session, tenant.id, _spend_threshold())
     return {"fired": fired}
 
 

@@ -2,6 +2,7 @@
 
 import { api, clearToken } from "@/lib/api";
 import { HelpButton } from "@/components/HelpButton";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { NotificationBell } from "@/components/NotificationBell";
 import type { Me } from "@shared/types";
 import {
@@ -23,6 +24,7 @@ import {
   MessageSquare,
   NotebookPen,
   Rocket,
+  Search as SearchIcon,
   Wand2,
   Plug,
   Settings,
@@ -41,6 +43,7 @@ const NAV = [
     group: "GENERAL",
     items: [
       { href: "/dashboard", label: "Resumen", icon: LayoutDashboard },
+      { href: "/search", label: "Buscar", icon: SearchIcon },
       { href: "/operations", label: "Operación", icon: Activity },
     ],
   },
@@ -156,7 +159,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto"><NotificationBell />{children}</main>
+      <main className="flex-1 overflow-auto"><GlobalSearch /><NotificationBell />{children}</main>
     </div>
   );
 }
