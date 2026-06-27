@@ -3,6 +3,11 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Correo · usa la cuenta que conectaste (la más reciente por defecto)**: el caso
+  *Resumen de correo y agenda* tomaba la cuenta **más antigua** conectada (p. ej. un Gmail
+  viejo) aunque acabaras de conectar otra (Outlook). Ahora las cuentas conectadas se ordenan
+  por la **más reciente primero**, así el selector y la resolución por defecto usan la que
+  acabas de conectar. Sigues pudiendo elegir otra en el selector «Cuenta a resumir».
 - **Runbooks (automatizaciones multi-paso por segmento y sector)**: nueva sección
   *Runbooks* con una biblioteca lista para usar, filtrable por **segmento** (PyME/Enterprise)
   y **sector** (Servicios/Atención, Manufactura/Producción, Retail, Logística) — de áreas de
