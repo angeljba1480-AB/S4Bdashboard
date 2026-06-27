@@ -34,6 +34,14 @@ def missing_required(profile: CompanyProfile) -> list[str]:
     return missing
 
 
+def gov_enabled(profile: CompanyProfile) -> bool:
+    """¿Aplica el contenido de gobierno (Trámites, recetas de giro público)?
+    Sí para perfiles de gobierno, o para empresas IP que opten por licitaciones/trámites."""
+    if (getattr(profile, "org_type", "") or "").strip().lower() == "gobierno":
+        return True
+    return str(getattr(profile, "gov_tramites", "") or "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def get_or_create(session: Session, tenant_id: str) -> CompanyProfile:
     profile = session.exec(
         select(CompanyProfile).where(CompanyProfile.tenant_id == tenant_id)
@@ -85,6 +93,9 @@ def to_dict(profile: CompanyProfile) -> dict:
     return {
         "industry": profile.industry,
         "company_size": profile.company_size,
+        "org_type": getattr(profile, "org_type", "") or "privada",
+        "gov_tramites": str(getattr(profile, "gov_tramites", "") or "").strip().lower() in ("1", "true", "yes", "on"),
+        "gov_enabled": gov_enabled(profile),
         "description": profile.description,
         "audience": profile.audience,
         "value_prop": profile.value_prop,

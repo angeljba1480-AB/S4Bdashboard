@@ -125,7 +125,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 {g.group}
               </div>
-              {g.items.map((it) => {
+              {g.items.filter((it) => it.href !== "/regional" || me?.gov_enabled).map((it) => {
                 const Icon = it.icon;
                 const active = pathname === it.href;
                 return (

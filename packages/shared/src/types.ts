@@ -18,6 +18,7 @@ export interface Me {
   brand_tagline?: string;
   country?: string;
   country_name?: string;
+  gov_enabled?: boolean;
 }
 
 export interface Agent {
@@ -186,6 +187,9 @@ export interface CompanyArea {
 export interface CompanyProfile {
   industry: string;
   company_size: string;
+  org_type?: string;          // "privada" | "gobierno"
+  gov_tramites?: boolean;     // IP que opta por trámites/licitaciones de gobierno
+  gov_enabled?: boolean;      // derivado: ¿aplica contenido de gobierno?
   description: string;
   audience: string;
   value_prop: string;

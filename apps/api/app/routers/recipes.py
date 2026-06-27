@@ -121,6 +121,12 @@ def _resolve(session: Session, tenant_id: str, recipe_id: str) -> dict | None:
     return next((r for r in _all_recipes(session, tenant_id) if r["id"] == recipe_id), None)
 
 
+def _gov_enabled(session: Session, tenant_id: str) -> bool:
+    """¿El perfil de empresa habilita el contenido de gobierno?"""
+    from ..company_profile import get_or_create, gov_enabled
+    return gov_enabled(get_or_create(session, tenant_id))
+
+
 # --- catalog ----------------------------------------------------------------
 @router.get("")
 def list_recipes(
@@ -131,6 +137,8 @@ def list_recipes(
     session: Session = Depends(get_session),
 ) -> list[dict]:
     items = _all_recipes(session, tenant.id)
+    if not _gov_enabled(session, tenant.id):
+        items = [r for r in items if not r.get("gov")]
     if category:
         items = [r for r in items if r.get("category") == category]
     if q:
@@ -151,8 +159,11 @@ def list_categories(
     _: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> list[dict]:
+    gov_on = _gov_enabled(session, tenant.id)
     counts: dict[str, int] = {}
     for r in _all_recipes(session, tenant.id):
+        if r.get("gov") and not gov_on:
+            continue
         counts[r.get("category", "otros")] = counts.get(r.get("category", "otros"), 0) + 1
     return [{**c, "count": counts.get(c["id"], 0)} for c in CATEGORIES]
 

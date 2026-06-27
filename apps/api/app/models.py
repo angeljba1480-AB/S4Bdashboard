@@ -79,7 +79,9 @@ class CompanyProfile(SQLModel, table=True):
     id: str = Field(default_factory=lambda: _uuid("cprof"), primary_key=True)
     tenant_id: str = Field(index=True, foreign_key="tenants.id")
     industry: str = ""             # giro / sector (ej. retail, fintech, salud)
-    company_size: str = ""         # micro | pequeña | mediana | grande | gobierno
+    company_size: str = ""         # micro | pequeña | mediana | grande
+    org_type: str = "privada"      # privada (IP) | gobierno — define si aplica lo de gobierno
+    gov_tramites: str = ""         # "1" si una empresa IP opta por trámites/licitaciones de gobierno
     description: str = ""          # contexto: a qué se dedica la empresa
     audience: str = ""             # clientes / mercado objetivo
     value_prop: str = ""           # propuesta de valor / diferenciadores

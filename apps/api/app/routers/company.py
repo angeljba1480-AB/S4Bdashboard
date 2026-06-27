@@ -29,6 +29,8 @@ class Area(BaseModel):
 class ProfileUpdate(BaseModel):
     industry: str = ""
     company_size: str = ""
+    org_type: str = "privada"       # privada | gobierno
+    gov_tramites: bool | None = None  # IP opta por trámites/licitaciones de gobierno
     description: str = ""
     audience: str = ""
     value_prop: str = ""
@@ -60,6 +62,9 @@ def update_profile(
     profile = get_or_create(session, tenant.id)
     profile.industry = body.industry.strip()
     profile.company_size = body.company_size.strip()
+    profile.org_type = "gobierno" if body.org_type.strip().lower() == "gobierno" else "privada"
+    if body.gov_tramites is not None:
+        profile.gov_tramites = "1" if body.gov_tramites else ""
     profile.description = body.description.strip()
     profile.audience = body.audience.strip()
     profile.value_prop = body.value_prop.strip()

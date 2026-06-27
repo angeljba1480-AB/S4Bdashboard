@@ -66,6 +66,25 @@ def test_raise_for_image_status_surfaces_nan_error():
     imagegen._raise_for_image_status(_OK())
 
 
+def test_content_policy_violation_friendly_message():
+    from app.ai import images as imagegen
+
+    class _R:
+        status_code = 400
+        def json(self):
+            return {"error": {"message": "Your request was rejected by the safety system.",
+                              "code": "content_policy_violation", "param": "prompt"}}
+        @property
+        def text(self):
+            return ""
+
+    import pytest as _pytest
+    with _pytest.raises(RuntimeError) as ei:
+        imagegen._raise_for_image_status(_R())
+    m = str(ei.value)
+    assert "política de contenido" in m and "derechos de autor" in m
+
+
 def test_config(client):
     r = client.get("/images/config", headers=_auth(client)).json()
     assert r["configured"] is True and "1:1" in r["aspect_ratios"]
