@@ -3,6 +3,10 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Antivirus en la ingesta**: al subir un archivo se escanea antes de procesarlo —
+  firma estándar **EICAR** (determinista, sin infra) + **ClamAV opcional** si hay daemon,
+  con **tope de tamaño** configurable. Los archivos infectados/grandes se **rechazan
+  (422) y auditan** (`ANTIVIRUS_ENABLED`, `CLAMAV_HOST/PORT/SOCKET`, `MAX_UPLOAD_MB`).
 - **Ayuda contextual (popup por sección)**: cada sección tiene un botón **? Ayuda** en
   el encabezado que abre un **popup** con la guía relevante (pasos + notas) y enlace a la
   Ayuda completa. Contenido compartido en `lib/help.ts`.

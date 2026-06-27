@@ -81,6 +81,15 @@ class Settings(BaseSettings):
     master_kms_key: str = ""  # falls back to secret_key when empty
     kms_key_version: int = 1  # bump to rotate
 
+    # Ingesta segura: antivirus + tope de tamaño (blueprint «upload → antivirus»).
+    # Siempre detecta la firma estándar EICAR (sin infra). Si hay un daemon ClamAV
+    # configurado (host/puerto o socket) y la librería `clamd`, también lo usa.
+    antivirus_enabled: bool = True
+    clamav_host: str = ""           # ej. 127.0.0.1 — si vacío y hay socket, usa unix
+    clamav_port: int = 3310
+    clamav_socket: str = ""         # ej. /var/run/clamav/clamd.ctl (unix socket)
+    max_upload_mb: int = 25         # tope de tamaño por archivo subido (0 = sin tope)
+
     # Provider resilience: fallback order tried when a route's adapter fails.
     fallback_order: str = "vpc,open,local"
 

@@ -152,7 +152,8 @@ SCORE = [
     ("Model adapters (OpenAI-compat, Ollama, vLLM, NaN, premium) · cost meter", "Hecho"),
     ("Export DOCX/PDF · security tests (injection, exfil, PII, cross-tenant)", "Hecho"),
     ("Ingesta: extracción de texto de PDF/DOCX", "Hecho (v2)"),
-    ("Ingesta: antivirus + OCR de escaneados", "Parcial (OCR opcional; AV pendiente)"),
+    ("Ingesta: antivirus (EICAR + ClamAV opcional) + tope de tamaño", "Hecho (v2)"),
+    ("Ingesta: OCR de escaneados", "Parcial (opcional si hay binario)"),
     ("MFA (multi-factor)", "Pendiente (campo listo, sin forzar)"),
     ("Fine-tuning ligero (LoRA) real", "Pendiente (Fase 5)"),
     ("Confidential computing / TEE · mTLS / private endpoints", "Pendiente (infra)"),
@@ -170,13 +171,12 @@ EXTRAS = [
 ]
 
 PENDIENTES = [
-    {"t": "Ingesta avanzada — antivirus + OCR",
-     "que": "Escanear con antivirus el archivo subido y aplicar OCR a PDFs escaneados (sin capa de texto).",
-     "porque": "El blueprint pide «upload → antivirus → OCR si aplica → clasificación». Hoy ya extraemos texto de "
-               "PDF/DOCX; falta AV y OCR de imágenes/escaneados.",
-     "como": "OCR: pytesseract + pdf2image + binario tesseract (ya soportado de forma opcional en el código). "
-             "Antivirus: ClamAV (clamd) o un servicio de análisis; rechazar/cuarentena si da positivo.",
-     "dep": "tesseract-ocr, poppler, pytesseract, pdf2image; clamav/clamd o API."},
+    {"t": "OCR de escaneados (completar ingesta avanzada)",
+     "que": "Aplicar OCR a PDFs escaneados sin capa de texto (el antivirus en la ingesta ya quedó hecho).",
+     "porque": "Completa «upload → antivirus → OCR si aplica → clasificación» del blueprint.",
+     "como": "pytesseract + pdf2image + binario tesseract (ya soportado de forma opcional en el código); "
+             "instalar el binario en el contenedor para activarlo.",
+     "dep": "tesseract-ocr, poppler, pytesseract, pdf2image."},
     {"t": "MFA (multi-factor) — TOTP",
      "que": "Segundo factor en el login (app autenticadora) con enrolamiento, verificación y códigos de respaldo.",
      "porque": "El blueprint incluye «RBAC + MFA». El modelo ya tiene el campo mfa_enabled; falta el flujo.",
