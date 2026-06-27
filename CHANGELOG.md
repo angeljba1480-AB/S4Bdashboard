@@ -3,6 +3,9 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Voz · narración con pausa (sin solaparse)**: el botón *Narrar* del chat ahora es
+  **toggle** (Narrar/Detener), reproduce **un solo audio a la vez** (corta el anterior)
+  y se detiene al cambiar de agente o salir del chat. Adiós a los clics que encimaban audios.
 - **Imágenes · error legible + `response_format`**: si NaN responde 4xx, ahora se muestra
   el **motivo real** (message/code/param) en vez de un “400” opaco; se envía
   `response_format=url` explícito. Ayuda a diagnosticar (p. ej. tier *community* sin imágenes).
