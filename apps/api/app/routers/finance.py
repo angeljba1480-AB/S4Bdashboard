@@ -29,10 +29,14 @@ def overview(entity: str = "CONS", _: User = Depends(get_current_user)) -> dict:
     return {
         "entity": e, "company": seed.COMPANY,
         "kpis": {
-            "revenue": k["revenue"], "ebitda": k["ebitda"], "neta": k["neta"],
+            "revenue": k["revenue"], "costos": k["costos"], "ub": k["ub"],
+            "ebitda": k["ebitda"], "neta": k["neta"],
             "margen_bruto": k["margen_bruto"], "margen_ebitda": k["margen_ebitda"],
+            "margen_neto": k["margen_neto"],
             "dso": k["dso"], "dpo": k["dpo"], "ccc": k["ccc"], "roe": k["roe"],
-            "growth": k["growth"], "cash": k["cash"], "ar": k["ar"],
+            "endeudamiento": k["endeudamiento"], "growth": k["growth"],
+            "activo": k["activo"], "pasivo": k["pasivo"], "capital": k["capital"],
+            "cash": k["cash"], "ar": k["ar"], "ap": k["ap"],
         },
         "monthly": seed.MONTHLY[e],
         "segments": sorted(seed.SEGMENTS[e], key=lambda s: -s["revenue"]),
