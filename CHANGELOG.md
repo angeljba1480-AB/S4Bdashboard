@@ -3,6 +3,11 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Tablero Financiero · navegación por vistas (como el mockup)**: el tablero ahora tiene
+  pestañas internas — **Resumen, Finanzas (P&L), Posición (balance/liquidez/ciclo), Clientes,
+  Gobierno vs IP (tendencia 2023-2025), Benchmark y Alertas** — todas alimentadas por el mismo
+  endpoint. El `/finance/overview` expone además los campos de balance (activo/pasivo/capital,
+  AP, ROE, endeudamiento, costos/UB).
 - **Espacios (proyectos del cliente)**: nuevo contenedor que agrupa los entregables/módulos
   de un proyecto, aislando el trabajo por cliente dentro del tenant. Un cliente crea un
   **Espacio** (nombre, cliente, descripción) y dentro viven sus **módulos** — hoy el **Tablero
