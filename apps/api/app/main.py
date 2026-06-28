@@ -23,6 +23,7 @@ from .routers import (
     documents,
     drive,
     export,
+    finance,
     finetune,
     flowcharts,
     images,
@@ -122,6 +123,7 @@ app.include_router(search.router)
 app.include_router(runbooks.router)
 app.include_router(whatsapp.router)
 app.include_router(mail_digest.router)
+app.include_router(finance.router)
 
 
 @app.get("/health", tags=["meta"])
