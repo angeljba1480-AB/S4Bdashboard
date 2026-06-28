@@ -2,6 +2,7 @@
 
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
+import { Journeys } from "@/components/Journeys";
 import { cleanMarkdown } from "@/lib/format";
 import type { CompanyProfile, DocumentItem, Recipe, RecipeRun } from "@shared/types";
 import { Building2, CheckCircle2, ChevronLeft, Download, FileText, Link2, MessageCircle, Sparkles } from "lucide-react";
@@ -40,6 +41,11 @@ export default function RecipesPage() {
   }
 
   useEffect(() => {
+    // Aplica ?category= de los enlaces de los recorridos guiados.
+    if (typeof window !== "undefined") {
+      const c = new URLSearchParams(window.location.search).get("category");
+      if (c) setCat(c);
+    }
     api.recipeCategories().then(setCategories).catch(() => {});
     api.documents().then(setDocs).catch(() => {});
     api.documentCategories().then((cs) => setDocCats(cs.map((c) => ({ key: c.key, label: c.label })))).catch(() => {});
@@ -161,6 +167,8 @@ export default function RecipesPage() {
             </div>
           </Link>
         )}
+
+        {!active && <Journeys />}
 
         {!active && (
           <>
