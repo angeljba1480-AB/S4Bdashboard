@@ -670,6 +670,22 @@ class FineTuneJob(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class Space(SQLModel, table=True):
+    """Espacio (proyecto del cliente): contenedor que agrupa los entregables/módulos de
+    un proyecto (p. ej. el Tablero Financiero). Aísla el trabajo de cada cliente/proyecto
+    dentro del tenant. Pensado para demostrar la capacidad de la plataforma 'como lo haría
+    un cliente': crea un espacio y dentro construye sus tableros, fuentes y casos."""
+    __tablename__ = "spaces"
+    id: str = Field(default_factory=lambda: _uuid("spc"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    owner_id: str = Field(foreign_key="users.id")
+    name: str = ""
+    client: str = ""              # cliente al que pertenece el proyecto
+    description: str = ""
+    modules: str = '["finance"]'  # JSON: módulos activos (finance | docs | chat | ...)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class MailDigestConfig(SQLModel, table=True):
     """Configuración (por usuario) del resumen de correo automatizado: cada día clasifica
     el buzón conectado (categoría/prioridad, descarta propaganda, detecta pendientes) y lo

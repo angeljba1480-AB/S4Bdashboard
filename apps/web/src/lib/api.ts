@@ -416,6 +416,15 @@ export const api = {
   },
   installRunbook: (id: string) =>
     request<{ id: string; name: string; already_installed: boolean }>(`/runbooks/${id}/install`, { method: "POST" }),
+  // Espacios (proyectos del cliente)
+  spaces: () =>
+    request<{ id: string; name: string; client: string; description: string; modules: { key: string; title: string; href: string; icon: string; desc: string }[]; created_at: string }[]>("/spaces"),
+  space: (id: string) =>
+    request<{ id: string; name: string; client: string; description: string; modules: { key: string; title: string; href: string; icon: string; desc: string }[]; created_at: string }>(`/spaces/${id}`),
+  createSpace: (body: { name: string; client: string; description: string }) =>
+    request<{ id: string }>("/spaces", { method: "POST", body: JSON.stringify(body) }),
+  deleteSpace: (id: string) =>
+    request<{ ok: boolean }>(`/spaces/${id}`, { method: "DELETE" }),
   // Tablero Financiero (pilot)
   financeOverview: (entity: string) =>
     request<{ entity: string; company: { name: string; period: string; ceo: string; cfo: string }; kpis: Record<string, number>; monthly: { mes: string; ingresos: number; ebitda: number }[]; segments: { name: string; revenue: number; margin: number; tipo: string }[]; gob_ip: Record<string, { gob: number; ip: number }>; benchmarks: { metric: string; s4b: number; industry: number; topQ: number; format: string; higherBetter: boolean }[]; alerts: { level: string; area: string; msg: string; impact: number | null }[]; source: string }>(`/finance/overview?entity=${entity}`),
