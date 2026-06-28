@@ -26,6 +26,9 @@ def _entity(e: str) -> str:
 def overview(entity: str = "CONS", _: User = Depends(get_current_user)) -> dict:
     e = _entity(entity)
     k = seed.entity_kpis(e)
+    segs = sorted(seed.SEGMENTS[e], key=lambda s: -s["revenue"])
+    clientes = seed.TOP_CLIENTS if e == "CONS" else [c for c in seed.TOP_CLIENTS if c["entity"] == e]
+    rule40 = k["growth"] + k["margen_ebitda"]
     return {
         "entity": e, "company": seed.COMPANY,
         "kpis": {
@@ -36,7 +39,18 @@ def overview(entity: str = "CONS", _: User = Depends(get_current_user)) -> dict:
             "dso": k["dso"], "dpo": k["dpo"], "ccc": k["ccc"], "roe": k["roe"],
             "endeudamiento": k["endeudamiento"], "growth": k["growth"],
             "activo": k["activo"], "pasivo": k["pasivo"], "capital": k["capital"],
-            "cash": k["cash"], "ar": k["ar"], "ap": k["ap"],
+            "cash": k["cash"], "ar": k["ar"], "ap": k["ap"], "wc": k["wc"],
+            "headcount": seed.HEADCOUNT.get(e, seed.HEADCOUNT["CONS"]),
+            "rule40": rule40,
+            "headcount_s4b": seed.HEADCOUNT["S4B"], "headcount_s4c": seed.HEADCOUNT["S4C"],
+            "revenue_s4b": seed.FY["S4B"]["revenue"], "revenue_s4c": seed.FY["S4C"]["revenue"],
+            "ebitda_s4b": seed.FY["S4B"]["ebitda"], "ebitda_s4c": seed.FY["S4C"]["ebitda"],
+        },
+        "summary": {
+            "caja": k["cash"], "cartera": k["ar"], "capital_trabajo": k["wc"], "rule40": rule40,
+            "proyectos_riesgo": 6, "top_clientes": len(clientes), "lineas_servicio": len(segs),
+            "linea_principal": segs[0]["name"] if segs else "",
+            "alertas_criticas": len([a for a in seed.ALERTS if a["level"] == "high"]),
         },
         "monthly": seed.MONTHLY[e],
         "segments": sorted(seed.SEGMENTS[e], key=lambda s: -s["revenue"]),
@@ -52,6 +66,15 @@ def clients(entity: str = "CONS", _: User = Depends(get_current_user)) -> list[d
     e = _entity(entity)
     rows = seed.TOP_CLIENTS if e == "CONS" else [c for c in seed.TOP_CLIENTS if c["entity"] == e]
     return sorted(rows, key=lambda c: -c["revenue"])
+
+
+@router.get("/projects")
+def projects(_: User = Depends(get_current_user)) -> dict:
+    """Portafolio real de proyectos (derivado del zip 'Resumen por proyecto').
+
+    Paso 1: este dataset lo entrega el conector a la BD; el contrato no cambia.
+    """
+    return seed.projects()
 
 
 class AskIn(BaseModel):
@@ -72,6 +95,17 @@ def _context(entity: str) -> str:
                                                  for s in seed.SEGMENTS[entity]),
              "Gobierno vs IP 2025: Gobierno " + m(seed.GOB_IP['2025']['gob']) + ", IP " + m(seed.GOB_IP['2025']['ip']) + ".",
              "Alertas: " + " | ".join(a["msg"] for a in seed.ALERTS)]
+    pr = seed.projects()
+    if pr.get("totals"):
+        t = pr["totals"]
+        lines.append(
+            f"Portafolio de proyectos {pr.get('source', '')}: {t.get('proyectos')} proyectos, "
+            f"venta {m(t.get('venta', 0))}, margen {m(t.get('margen', 0))} ({t.get('pct_margen', 0)*100:.1f}%), "
+            f"EBITDA {m(t.get('ebitda', 0))}.")
+        top = pr.get("projects", [])[:8]
+        if top:
+            lines.append("Proyectos principales: " + "; ".join(
+                f"{p['cliente']} {m(p['venta'])} (margen {p['pct_margen']*100:.0f}%)" for p in top))
     return "\n".join(lines)
 
 

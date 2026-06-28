@@ -5,6 +5,24 @@ semilla se reemplaza por el conector a la fuente en Paso 1; el tablero no cambia
 """
 from __future__ import annotations
 
+import json
+from functools import lru_cache
+from pathlib import Path
+
+_DATA_DIR = Path(__file__).resolve().parent
+
+
+@lru_cache(maxsize=1)
+def projects() -> dict:
+    """Dataset real derivado del zip 'Resumen por proyecto' (101 proyectos 2025).
+
+    En Paso 1 esto lo entrega el conector a la BD; el contrato no cambia.
+    """
+    try:
+        return json.loads((_DATA_DIR / "projects_2025.json").read_text(encoding="utf-8"))
+    except FileNotFoundError:  # pragma: no cover - el archivo viaja con el repo
+        return {"source": "", "totals": {}, "trend": {}, "clients": [], "projects": []}
+
 COMPANY = {
     "name": "Silent4Business", "legalName": "Silent4Business + Silent4Cloud",
     "period": "2025 cierre · CONTPAQi", "ceo": "Ángel Beltrán", "cfo": "Lourdes Abadía",
@@ -14,22 +32,24 @@ COMPANY = {
 FY = {
     "S4B": {"revenue": 467909597, "costos": 297605953, "ub": 170303644, "ebitda": 90090808,
             "neta": 67789285, "activo": 366322060, "capital": 190643105, "pasivo": 175678955,
-            "cash": 149034288, "ar": 65954203, "ap": 120381270,
+            "cash": 149034288, "ar": 65954203, "ap": 120381270, "wc": 86759321,
             "margen_bruto": 0.364, "margen_ebitda": 0.193, "margen_neto": 0.145,
             "dso": 51, "dpo": 148, "ccc": -97, "roe": 0.356, "endeudamiento": 0.480},
     "S4C": {"revenue": 35098004, "costos": 22114839, "ub": 12983165, "ebitda": 3141696,
             "neta": 1515178, "activo": 31966356, "capital": 4085557, "pasivo": 27880799,
-            "cash": 3469106, "ar": 22735040, "ap": 3121929,
+            "cash": 3469106, "ar": 22735040, "ap": 3121929, "wc": 3772889,
             "margen_bruto": 0.370, "margen_ebitda": 0.090, "margen_neto": 0.043,
             "dso": 236, "dpo": 52, "ccc": 184, "roe": 0.371, "endeudamiento": 0.872},
 }
+# Headcount real (grupo): 80 S4B + 46 S4C + 14 otra = 140
+HEADCOUNT = {"S4B": 80, "S4C": 46, "CONS": 140}
 FY_2024 = {"S4B": {"revenue": 312888833, "ebitda": 61750000},
            "S4C": {"revenue": 18590989, "ebitda": 965549}}
 
 
 def _cons(a: dict, b: dict) -> dict:
     r = {k: a[k] + b[k] for k in ("revenue", "costos", "ub", "ebitda", "neta", "activo",
-                                  "capital", "pasivo", "cash", "ar", "ap")}
+                                  "capital", "pasivo", "cash", "ar", "ap", "wc")}
     r["margen_bruto"] = r["ub"] / r["revenue"]
     r["margen_ebitda"] = r["ebitda"] / r["revenue"]
     r["margen_neto"] = r["neta"] / r["revenue"]
