@@ -416,6 +416,13 @@ export const api = {
   },
   installRunbook: (id: string) =>
     request<{ id: string; name: string; already_installed: boolean }>(`/runbooks/${id}/install`, { method: "POST" }),
+  // Tablero Financiero (pilot)
+  financeOverview: (entity: string) =>
+    request<{ entity: string; company: { name: string; period: string; ceo: string; cfo: string }; kpis: Record<string, number>; monthly: { mes: string; ingresos: number; ebitda: number }[]; segments: { name: string; revenue: number; margin: number; tipo: string }[]; gob_ip: Record<string, { gob: number; ip: number }>; benchmarks: { metric: string; s4b: number; industry: number; topQ: number; format: string; higherBetter: boolean }[]; alerts: { level: string; area: string; msg: string; impact: number | null }[]; source: string }>(`/finance/overview?entity=${entity}`),
+  financeClients: (entity: string) =>
+    request<{ name: string; sector: string; entity: string; revenue: number; margin: number; status: string }[]>(`/finance/clients?entity=${entity}`),
+  financeAsk: (question: string, entity: string) =>
+    request<{ answer: string; entity: string; route: string }>("/finance/ask", { method: "POST", body: JSON.stringify({ question, entity }) }),
   // Resumen de correo automatizado
   mailDigestConfig: () =>
     request<{ id: string; enabled: boolean; account_id: string; schedule: string; channels: string[]; email_to: string; language: string; notes: string; discard_propaganda: boolean; pending_enabled: boolean; pending_days: number; last_run_at: string }>("/mail-digest/config"),

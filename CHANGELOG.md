@@ -3,6 +3,14 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Tablero Financiero (pilot)**: nueva sección *Tablero Financiero* con datos **curados**
+  (cierre 2025 CONTPAQi) servidos por endpoint — arquitectura "data viva por endpoint", de
+  modo que en Paso 1 se cambia la semilla por el **conector** a la fuente sin tocar el tablero.
+  Multi-entidad **S4B / S4C / Consolidado**, KPIs (ingresos, EBITDA, margen, CCC/DSO/DPO,
+  crecimiento YoY), evolución mensual, líneas de servicio, Gobierno vs IP, alertas directivas
+  y top clientes, con botón **Actualizar**. Incluye **Pregúntale a tus finanzas** (RAG sobre
+  las cifras, anti-alucinación). `GET /finance/overview`, `/finance/clients`, `POST /finance/ask`
+  (`app/finance/`).
 - **Chat · historial de conversaciones**: el *Chat con fuentes* ahora lista tus **chats
   recientes** (panel derecho) con botón **Nuevo** y **icono de borrar** por chat. Al tocar uno
   se **recarga** con sus mensajes y su agente. `GET /chat/conversations`,
