@@ -221,3 +221,68 @@ def chat(
         citations=[CitationOut(**c.__dict__) for c in citations],
         escalated=escalated, escalation_pending=escalation_pending,
     )
+
+
+# --- Historial de conversaciones -------------------------------------------
+@router.get("/conversations")
+def list_conversations(
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """Conversaciones recientes del usuario (para el historial del chat)."""
+    from sqlmodel import select
+    rows = session.exec(
+        select(Conversation).where(
+            Conversation.tenant_id == tenant.id, Conversation.user_id == user.id)
+        .order_by(Conversation.created_at.desc()).limit(50)
+    ).all()
+    agents = {a.id: a.name for a in session.exec(
+        select(Agent).where(Agent.tenant_id == tenant.id)).all()}
+    out = []
+    for c in rows:
+        n = len(session.exec(select(Message).where(Message.conversation_id == c.id)).all())
+        out.append({"id": c.id, "title": c.title, "agent_id": c.agent_id,
+                    "agent_name": agents.get(c.agent_id, ""), "messages": n,
+                    "created_at": c.created_at.isoformat()})
+    return out
+
+
+@router.get("/conversations/{conv_id}")
+def get_conversation(
+    conv_id: str,
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Mensajes de una conversación para recargarla en el chat."""
+    from sqlmodel import select
+    conv = session.get(Conversation, conv_id)
+    if not conv or conv.tenant_id != tenant.id or conv.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada")
+    msgs = session.exec(
+        select(Message).where(Message.conversation_id == conv.id)
+        .order_by(Message.created_at)
+    ).all()
+    return {"id": conv.id, "title": conv.title, "agent_id": conv.agent_id,
+            "messages": [{"role": m.role, "content": m.content_redacted,
+                          "route": m.route.value if m.route else ""} for m in msgs]}
+
+
+@router.delete("/conversations/{conv_id}")
+def delete_conversation(
+    conv_id: str,
+    tenant: Tenant = Depends(get_current_tenant),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Borra una conversación y sus mensajes."""
+    from sqlmodel import select
+    conv = session.get(Conversation, conv_id)
+    if not conv or conv.tenant_id != tenant.id or conv.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada")
+    for m in session.exec(select(Message).where(Message.conversation_id == conv.id)).all():
+        session.delete(m)
+    session.delete(conv)
+    session.commit()
+    return {"ok": True}

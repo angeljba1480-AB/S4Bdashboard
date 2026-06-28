@@ -3,6 +3,10 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Chat · historial de conversaciones**: el *Chat con fuentes* ahora lista tus **chats
+  recientes** (panel derecho) con botón **Nuevo** y **icono de borrar** por chat. Al tocar uno
+  se **recarga** con sus mensajes y su agente. `GET /chat/conversations`,
+  `GET /chat/conversations/{id}`, `DELETE /chat/conversations/{id}`.
 - **Resumen de correo automatizado (genérico y configurable)**: nueva sección *Resumen de
   correo*. Configura cuenta, frecuencia (diario/días hábiles), canales (**pop-up / correo /
   WhatsApp**), idioma (español o **bilingüe ES/EN**), notas de contexto y umbral de pendientes.

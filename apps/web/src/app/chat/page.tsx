@@ -8,7 +8,7 @@ import { SourceCitation } from "@/components/SourceCitation";
 import { api } from "@/lib/api";
 import { cleanMarkdown } from "@/lib/format";
 import type { Agent, ChatResponse, DocumentItem } from "@shared/types";
-import { Brain, Mic, Pause, Save, Send, Sparkles, Volume2, Zap } from "lucide-react";
+import { Brain, Mic, Pause, Plus, Save, Send, Sparkles, Trash2, Volume2, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface Turn {
@@ -16,6 +16,8 @@ interface Turn {
   content: string;
   meta?: ChatResponse;
 }
+
+type ConvSummary = { id: string; title: string; agent_id: string; agent_name: string; messages: number; created_at: string };
 
 export default function ChatPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -29,6 +31,7 @@ export default function ChatPage() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [convId, setConvId] = useState<string | undefined>();
+  const [history, setHistory] = useState<ConvSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof api.previewRoute>> | null>(null);
   const [narrating, setNarrating] = useState<number | null>(null);
@@ -41,7 +44,31 @@ export default function ChatPage() {
       if (a[0]) setAgentId(a[0].id);
     });
     api.documents().then(setDocs);
+    loadHistory();
   }, []);
+
+  function loadHistory() { api.conversations().then(setHistory).catch(() => {}); }
+
+  async function openConversation(id: string) {
+    stopAudio();
+    try {
+      const c = await api.conversation(id);
+      setConvId(c.id);
+      if (c.agent_id) setAgentId(c.agent_id);
+      setTurns(c.messages.map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.content })));
+    } catch { /* noop */ }
+  }
+  function newChat() {
+    stopAudio();
+    setConvId(undefined);
+    setTurns([]);
+    setInput("");
+  }
+  async function removeConversation(id: string) {
+    await api.deleteConversation(id);
+    if (id === convId) newChat();
+    loadHistory();
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -87,9 +114,11 @@ export default function ChatPage() {
         precision,
         approve_external: approveExternal,
       });
+      const wasNew = !convId;
       setConvId(res.conversation_id);
       setLastPrompt(prompt);
       setTurns((t) => [...t, { role: "assistant", content: res.content, meta: res }]);
+      if (wasNew) loadHistory();
     } catch (err) {
       setTurns((t) => [
         ...t,
@@ -356,7 +385,31 @@ export default function ChatPage() {
           </div>
         </div>
 
-        <aside className="w-72 flex-shrink-0 border-l border-slate-200 bg-white p-4">
+        <aside className="w-72 flex-shrink-0 overflow-auto border-l border-slate-200 bg-white p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-700">Chats recientes</h3>
+            <button onClick={newChat} title="Nuevo chat"
+              className="flex items-center gap-1 rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+              <Plus className="h-3.5 w-3.5" /> Nuevo
+            </button>
+          </div>
+          <div className="mb-4 space-y-1">
+            {history.length === 0 && <p className="text-xs text-slate-400">Aún no tienes chats.</p>}
+            {history.map((c) => (
+              <div key={c.id}
+                className={`group flex items-center gap-1 rounded-lg border px-2 py-1.5 ${c.id === convId ? "border-violet-300 bg-violet-50" : "border-transparent hover:bg-slate-50"}`}>
+                <button onClick={() => openConversation(c.id)} className="min-w-0 flex-1 text-left">
+                  <span className="block truncate text-sm text-slate-700">{c.title}</span>
+                  <span className="block truncate text-[11px] text-slate-400">{c.agent_name} · {c.messages} msj</span>
+                </button>
+                <button onClick={() => removeConversation(c.id)} title="Borrar"
+                  className="shrink-0 rounded-md p-1 text-slate-300 hover:bg-red-50 hover:text-red-500 group-hover:text-slate-400">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+
           <h3 className="mb-3 text-sm font-semibold text-slate-700">Contexto</h3>
           <div className="mb-4 space-y-1.5">
             {([
