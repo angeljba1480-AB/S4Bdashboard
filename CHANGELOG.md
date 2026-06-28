@@ -3,6 +3,14 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Tablero Financiero · vista Proyectos con datos reales del zip**: nueva pestaña **Proyectos**
+  alimentada con el portafolio **real** derivado del archivo *Resumen por proyecto* (zip subido):
+  **101 proyectos, venta $378.6M, margen $196.0M (51.8%), EBITDA $139.5M**, tendencia de venta por
+  año con desglose **Gobierno vs IP (2021-2026)**, top clientes reales (IMSS-BESTEL, Diputados,
+  Pemex, Banobras…) y detalle de los proyectos principales (cliente/proyecto, tipo, venta, margen,
+  EBITDA). El dataset (`app/finance/projects_2025.json`) se carga vía `seed.projects()` y se sirve
+  en `GET /finance/projects`; en Paso 1 lo entrega el conector a la BD sin cambiar el contrato. El
+  RAG (*Pregúntale a tus finanzas*) también queda fundamentado con estas cifras de proyectos.
 - **Tablero Financiero · navegación por vistas (como el mockup)**: el tablero ahora tiene
   pestañas internas — **Resumen, Finanzas (P&L), Posición (balance/liquidez/ciclo), Clientes,
   Gobierno vs IP (tendencia 2023-2025), Benchmark y Alertas** — todas alimentadas por el mismo
