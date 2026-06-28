@@ -654,5 +654,11 @@ export const api = {
   },
   exportConversation: (id: string, format: "pdf" | "md") =>
     api.download(`/export/conversation/${id}?format=${format}`, `conversacion.${format}`),
+  conversations: () =>
+    request<{ id: string; title: string; agent_id: string; agent_name: string; messages: number; created_at: string }[]>("/chat/conversations"),
+  conversation: (id: string) =>
+    request<{ id: string; title: string; agent_id: string; messages: { role: string; content: string; route: string }[] }>(`/chat/conversations/${id}`),
+  deleteConversation: (id: string) =>
+    request<{ ok: boolean }>(`/chat/conversations/${id}`, { method: "DELETE" }),
   exportAudit: () => api.download("/audit/export", "audit.jsonl"),
 };
