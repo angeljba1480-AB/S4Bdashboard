@@ -36,6 +36,15 @@ def list_spaces(tenant: Tenant = Depends(get_current_tenant), user: User = Depen
                 session: Session = Depends(get_session)) -> list[dict]:
     rows = session.exec(select(Space).where(Space.tenant_id == tenant.id)
                         .order_by(Space.created_at.desc())).all()
+    # Si no hay espacios, sembramos uno demo para que el Tablero Financiero sea visible
+    # de inmediato (el cliente lo puede renombrar o borrar).
+    if not rows:
+        demo = Space(tenant_id=tenant.id, owner_id=user.id,
+                     name="Proyecto demo · Tablero Financiero",
+                     client=tenant.name, description="Espacio de ejemplo para probar el tablero.",
+                     modules='["finance"]')
+        session.add(demo); session.commit(); session.refresh(demo)
+        rows = [demo]
     return [_out(s) for s in rows]
 
 
