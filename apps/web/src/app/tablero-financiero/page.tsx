@@ -2,7 +2,8 @@
 
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
-import { AlertTriangle, RefreshCw, Send, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronLeft, RefreshCw, Send, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type Overview = Awaited<ReturnType<typeof api.financeOverview>>;
@@ -23,6 +24,11 @@ export default function TableroFinancieroPage() {
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState("");
   const [asking, setAsking] = useState(false);
+  const [spaceId, setSpaceId] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") setSpaceId(new URLSearchParams(window.location.search).get("space") || "");
+  }, []);
 
   function load() {
     api.financeOverview(entity).then(setOv).catch(() => {});
@@ -49,6 +55,11 @@ export default function TableroFinancieroPage() {
     <Shell>
       <PageHeader title="Tablero Financiero" subtitle={`${ov.company.name} · ${ov.company.period} · ${ov.source}`} />
       <div className="p-8">
+        {spaceId && (
+          <Link href={`/espacios/${spaceId}`} className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+            <ChevronLeft className="h-4 w-4" /> Volver al espacio
+          </Link>
+        )}
         {/* Entidad + actualizar */}
         <div className="mb-5 flex items-center gap-3">
           <div className="flex rounded-lg bg-slate-100 p-1">
