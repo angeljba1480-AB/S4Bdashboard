@@ -3,6 +3,13 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Espacios (proyectos del cliente)**: nuevo contenedor que agrupa los entregables/módulos
+  de un proyecto, aislando el trabajo por cliente dentro del tenant. Un cliente crea un
+  **Espacio** (nombre, cliente, descripción) y dentro viven sus **módulos** — hoy el **Tablero
+  Financiero** (que dejó de ser página global y ahora vive dentro del espacio). Pensado para
+  demostrar la plataforma "como lo haría un cliente". `GET/POST /spaces`, `GET/DELETE /spaces/{id}`
+  (`app/routers/spaces.py`, modelo `Space`). El Tablero Financiero recibe `?space=` y enlaza de
+  vuelta al espacio.
 - **Tablero Financiero (pilot)**: nueva sección *Tablero Financiero* con datos **curados**
   (cierre 2025 CONTPAQi) servidos por endpoint — arquitectura "data viva por endpoint", de
   modo que en Paso 1 se cambia la semilla por el **conector** a la fuente sin tocar el tablero.

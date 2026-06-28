@@ -37,6 +37,7 @@ from .routers import (
     regional,
     runbooks,
     search,
+    spaces,
     sso,
     voice,
     tramites,
@@ -124,6 +125,7 @@ app.include_router(runbooks.router)
 app.include_router(whatsapp.router)
 app.include_router(mail_digest.router)
 app.include_router(finance.router)
+app.include_router(spaces.router)
 
 
 @app.get("/health", tags=["meta"])
