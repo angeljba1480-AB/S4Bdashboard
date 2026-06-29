@@ -19,6 +19,11 @@ export default function AutomationsPage() {
   const [connectors, setConnectors] = useState<{ id: string; name: string }[]>([]);
   const [custom, setCustom] = useState({ name: "", trigger: "manual", schedule: "daily", event: "document_uploaded", action_type: "workflow", action_ref: "", message: "" });
   const [valid, setValid] = useState<Record<string, Awaited<ReturnType<typeof api.validateAutomation>>>>({});
+  const [deliver, setDeliver] = useState<Record<string, string[]>>({});
+  const [emailTo, setEmailTo] = useState<Record<string, string>>({});
+  const [source, setSource] = useState<Record<string, { kind: string; ref: string; label: string }>>({});
+  const [datasources, setDatasources] = useState<{ id: string; name: string }[]>([]);
+  const [driveFolders, setDriveFolders] = useState<{ id: string; name: string }[]>([]);
 
   function load() {
     api.automations().then(setList).catch(() => {});
@@ -29,6 +34,7 @@ export default function AutomationsPage() {
     api.workflows().then((w) => setWorkflows(w.map((x) => ({ id: x.id, name: x.name })))).catch(() => {});
     api.recipes().then((r) => setRecipes(r.map((x) => ({ id: x.id, name: x.name })))).catch(() => {});
     api.connectors().then((c) => setConnectors(c.map((x) => ({ id: x.id, name: x.name })))).catch(() => {});
+    api.dataSources().then((d) => setDatasources(d.map((x) => ({ id: x.id, name: x.name })))).catch(() => {});
   }, []);
 
   const refOptions = custom.action_type === "workflow" ? workflows
@@ -70,6 +76,11 @@ export default function AutomationsPage() {
   }
   async function doValidate(a: Automation) {
     setMsg("");
+    // Pre-carga los controles de entrada/salida con lo que ya tiene guardado.
+    const cfg = (a.config || {}) as { deliver?: string[]; email_to?: string; source?: { kind: string; ref: string; label: string } };
+    setDeliver((d) => ({ ...d, [a.id]: cfg.deliver || ["notify"] }));
+    setEmailTo((e) => ({ ...e, [a.id]: cfg.email_to || "" }));
+    setSource((s) => ({ ...s, [a.id]: cfg.source || { kind: "new_documents", ref: "", label: "" } }));
     try { const r = await api.validateAutomation(a.id); setValid((v) => ({ ...v, [a.id]: r })); }
     catch (e) { setMsg(e instanceof Error ? e.message : "No se pudo validar"); }
   }
@@ -77,6 +88,36 @@ export default function AutomationsPage() {
     setMsg("");
     try { await api.scheduleAutomation(a.id, frequency); setMsg(`✓ «${a.name}» programada · ${frequency}`); load(); }
     catch (e) { setMsg(e instanceof Error ? e.message : "No se pudo programar"); }
+  }
+  function toggleChannel(aid: string, ch: string) {
+    setDeliver((d) => {
+      const cur = d[aid] || ["notify"];
+      return { ...d, [aid]: cur.includes(ch) ? cur.filter((c) => c !== ch) : [...cur, ch] };
+    });
+  }
+  async function saveDelivery(a: Automation) {
+    setMsg("");
+    try {
+      await api.setAutomationDelivery(a.id, deliver[a.id] || ["notify"], emailTo[a.id] || "");
+      setMsg(`✓ Salida guardada para «${a.name}»`);
+      load(); doValidate(a);
+    } catch (e) { setMsg(e instanceof Error ? e.message : "No se pudo guardar la salida"); }
+  }
+  async function loadDriveFolders() {
+    try { const r = await api.driveFiles(); setDriveFolders(r.files.filter((f) => f.is_folder).map((f) => ({ id: f.id, name: f.name }))); }
+    catch { setDriveFolders([]); }
+  }
+  function setSrc(aid: string, patch: Partial<{ kind: string; ref: string; label: string }>) {
+    setSource((s) => ({ ...s, [aid]: { ...(s[aid] || { kind: "new_documents", ref: "", label: "" }), ...patch } }));
+  }
+  async function saveSource(a: Automation) {
+    setMsg("");
+    try {
+      const s = source[a.id] || { kind: "new_documents", ref: "", label: "" };
+      await api.setAutomationSource(a.id, s);
+      setMsg(`✓ Entrada guardada para «${a.name}»`);
+      load(); doValidate(a);
+    } catch (e) { setMsg(e instanceof Error ? e.message : "No se pudo guardar la entrada"); }
   }
 
   return (
@@ -193,14 +234,71 @@ export default function AutomationsPage() {
                         {valid[a.id].ready ? "✓ Todo listo para ejecutar" : "Faltan requisitos:"}
                       </div>
                       <ol className="space-y-1">
-                        {valid[a.id].steps.map((s, i) => (
-                          <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
-                            <span className={s.status === "ok" ? "text-emerald-600" : "text-red-600"}>{s.status === "ok" ? "✓" : "✗"}</span>
-                            <b>{s.label}:</b> {s.detail}
-                            {s.status !== "ok" && s.link && <a href={s.link} className="text-violet-600 underline">configurar</a>}
-                          </li>
-                        ))}
+                        {valid[a.id].steps.map((s, i) => {
+                          const ok = s.status === "ok";
+                          const opt = !ok && s.optional;
+                          return (
+                            <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
+                              <span className={ok ? "text-emerald-600" : opt ? "text-amber-500" : "text-red-600"}>{ok ? "✓" : opt ? "○" : "✗"}</span>
+                              <b>{s.label}:</b> {s.detail}
+                              {!ok && s.link && <a href={s.link} className="text-violet-600 underline">configurar</a>}
+                            </li>
+                          );
+                        })}
                       </ol>
+
+                      {/* Entrada: qué procesar (solo workflows / n8n) */}
+                      {a.action_type === "workflow" && (
+                        <div className="mt-3 border-t border-slate-200 pt-2">
+                          <div className="mb-1.5 text-xs font-semibold text-slate-500">Entrada · qué procesar</div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <select value={source[a.id]?.kind || "new_documents"}
+                              onChange={(e) => { setSrc(a.id, { kind: e.target.value, ref: "", label: "" }); if (e.target.value === "drive_folder") loadDriveFolders(); }}
+                              className="rounded-md border border-slate-300 px-2 py-1 text-xs">
+                              <option value="new_documents">Documentos nuevos (desde última corrida)</option>
+                              <option value="drive_folder">Carpeta de Drive</option>
+                              <option value="datasource">Fuente de datos (legado)</option>
+                              <option value="manual">Sin entrada (lo arma el flujo)</option>
+                            </select>
+                            {source[a.id]?.kind === "datasource" && (
+                              <select value={source[a.id]?.ref || ""}
+                                onChange={(e) => { const o = datasources.find((d) => d.id === e.target.value); setSrc(a.id, { ref: e.target.value, label: o?.name || "" }); }}
+                                className="rounded-md border border-slate-300 px-2 py-1 text-xs">
+                                <option value="">Selecciona fuente…</option>
+                                {datasources.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                              </select>
+                            )}
+                            {source[a.id]?.kind === "drive_folder" && (
+                              <select value={source[a.id]?.ref || ""}
+                                onChange={(e) => { const o = driveFolders.find((d) => d.id === e.target.value); setSrc(a.id, { ref: e.target.value, label: o?.name || "" }); }}
+                                className="rounded-md border border-slate-300 px-2 py-1 text-xs">
+                                <option value="">{driveFolders.length ? "Selecciona carpeta…" : "Conecta Drive en Documentos"}</option>
+                                {driveFolders.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                              </select>
+                            )}
+                            <button onClick={() => saveSource(a)} className="rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white">Guardar entrada</button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Salida: a dónde mandar el resultado */}
+                      <div className="mt-3 border-t border-slate-200 pt-2">
+                        <div className="mb-1.5 text-xs font-semibold text-slate-500">Salida · a dónde mandar el resultado</div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          {([["notify", "Notificación"], ["whatsapp", "WhatsApp"], ["email", "Correo"]] as const).map(([ch, lbl]) => (
+                            <label key={ch} className="flex items-center gap-1 text-xs text-slate-600">
+                              <input type="checkbox" checked={(deliver[a.id] || ["notify"]).includes(ch)} onChange={() => toggleChannel(a.id, ch)} />
+                              {lbl}
+                            </label>
+                          ))}
+                          {(deliver[a.id] || []).includes("email") && (
+                            <input value={emailTo[a.id] || ""} onChange={(e) => setEmailTo((v) => ({ ...v, [a.id]: e.target.value }))}
+                              placeholder="correo destino (opcional)" className="rounded-md border border-slate-300 px-2 py-1 text-xs" />
+                          )}
+                          <button onClick={() => saveDelivery(a)} className="rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white">Guardar salida</button>
+                        </div>
+                      </div>
+
                       <div className="mt-3 flex items-center gap-2 border-t border-slate-200 pt-2">
                         <span className="text-xs text-slate-500">Programar:</span>
                         {["daily", "weekly", "monthly"].map((f) => (
