@@ -427,7 +427,7 @@ export const api = {
     request<{ ok: boolean }>(`/spaces/${id}`, { method: "DELETE" }),
   // Tablero Financiero (pilot)
   financeOverview: (entity: string) =>
-    request<{ entity: string; company: { name: string; period: string; ceo: string; cfo: string }; kpis: Record<string, number>; summary: Record<string, number | string>; monthly: { mes: string; ingresos: number; ebitda: number }[]; segments: { name: string; revenue: number; margin: number; tipo: string }[]; gob_ip: Record<string, { gob: number; ip: number }>; benchmarks: { metric: string; s4b: number; industry: number; topQ: number; format: string; higherBetter: boolean }[]; alerts: { level: string; area: string; msg: string; impact: number | null }[]; source: string }>(`/finance/overview?entity=${entity}`),
+    request<{ entity: string; company: { name: string; period: string; ceo: string; cfo: string }; kpis: Record<string, number>; summary: Record<string, number | string>; monthly: { mes: string; ingresos: number; ebitda: number }[]; segments: { name: string; revenue: number; margin: number; tipo: string }[]; gob_ip: Record<string, { gob: number; ip: number }>; benchmarks: { metric: string; s4b: number; industry: number; topQ: number; format: string; higherBetter: boolean }[]; alerts: { level: string; area: string; msg: string; impact: number | null }[]; source: string; is_demo: boolean }>(`/finance/overview?entity=${entity}`),
   financeClients: (entity: string) =>
     request<{ name: string; sector: string; entity: string; revenue: number; margin: number; status: string }[]>(`/finance/clients?entity=${entity}`),
   financeAsk: (question: string, entity: string) =>
@@ -441,6 +441,15 @@ export const api = {
       clients: { name: string; sector: string; revenue: number; margin: number; status: string }[];
       detail: { cliente: string; nombre: string; tipo: string; venta: number; costos: number; margen: number; pct_margen: number; ebitda: number; ebitda_bc: number; desviacion: number }[];
     }>("/finance/projects"),
+  financeDatasetStatus: () =>
+    request<{ loaded: boolean; source?: string; filename?: string; updated_at?: string; origin: string }>("/finance/dataset/status"),
+  financeUploadDataset: (files: File[]) => {
+    const fd = new FormData();
+    files.forEach((f) => fd.append("files", f));
+    return request<{ ok: boolean; source: string; filename: string; partial_entities: boolean; proyectos: number }>("/finance/dataset", { method: "POST", body: fd });
+  },
+  financeDeleteDataset: () =>
+    request<{ ok: boolean }>("/finance/dataset", { method: "DELETE" }),
   financeOperations: () =>
     request<{
       utilization: { year: string; horas_reales: number; horas_capacidad: number; utilizacion: number; empleados: number; capacidad_emp: number; by_project: { nombre: string; horas: number }[] };
