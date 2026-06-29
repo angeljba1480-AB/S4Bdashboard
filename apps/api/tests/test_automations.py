@@ -61,3 +61,25 @@ def test_workflow_automation_runs_simulated(client):
     # n8n disabled in tests -> simulated, but the action dispatches successfully
     assert run["status"] in ("simulated", "completed")
     assert "workflow" in run["detail"]
+
+
+def test_ingesta_native_indexes_pending_docs(client):
+    """La automatización 'ingesta' indexa DENTRO de MaestroAI (sin n8n)."""
+    h = _auth(client)
+    # Sube un documento (queda indexado al subir) y otro vía API que dejaremos pendiente.
+    client.post("/documents/upload", headers=h,
+                files=[("file", ("nota.txt", b"contenido de prueba para ingesta", "text/plain"))])
+    a = client.post("/automations/from-template", headers=h, json={"template_id": "indexar_nuevos_docs"}).json()
+    assert a["action_type"] == "workflow" and a["action_ref"] == "ingesta"
+
+    # Validar: debe mostrar el paso nativo y el de Entrada (opcional).
+    v = client.get(f"/automations/{a['id']}/validate", headers=h).json()
+    labels = {s["label"] for s in v["steps"]}
+    assert "Indexado (nativo)" in labels and "Entrada" in labels and "Salida" in labels
+
+    # Fijar fuente y salida, luego ejecutar: corre nativo (no "workflow … n8n").
+    client.post(f"/automations/{a['id']}/source", headers=h, json={"kind": "new_documents"})
+    client.post(f"/automations/{a['id']}/delivery", headers=h, json={"channels": ["notify"]})
+    run = client.post(f"/automations/{a['id']}/run", headers=h).json()
+    assert run["status"] == "completed"
+    assert "ingesta" in run["detail"] and "n8n" not in run["detail"]
