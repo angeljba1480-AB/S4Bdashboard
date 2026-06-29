@@ -12,6 +12,7 @@
 | Ítem | Estado | Detalle |
 |---|---|---|
 | Proveedor IA — NaN Builders (ruta `open`) | ✅ Listo | Admin → Modelos. Probar conexión OK · `qwen3.6`. Re-guardada tras cambiar llave. |
+| Modelo premium (escalada, ruta `premium`) | ✅ Listo | **Claude (Anthropic) por API** (`https://api.anthropic.com/v1`, modelo *sonnet*), configurado en Admin → Modelos (override BD). **Nota:** Claude **Max ≠ API**; requiere API key de console.anthropic.com (facturación aparte). |
 | Embeddings prod (`EMBEDDINGS_PROVIDER=open`, `qwen3-embedding`, `4096`) | ✅ Env + deploy | **Re-index pendiente** (docs de prueba); al cargar reales: Documentos → Re-indexar. |
 | Scheduler (`SCHEDULER_ENABLED=true`) | ✅ Listo | Digests/alertas corren solos. |
 | Cifrado prod (`SECRET_KEY` fuerte + `MASTER_KMS_KEY` dedicada) | ✅ Listo | `SECRET_KEY` ya era fuerte; `MASTER_KMS_KEY` distinta. **Rotación de llave invalida lo cifrado antes** → re-guardar NaN ✅ y **reconectar cuentas OAuth** (ver nota). |
