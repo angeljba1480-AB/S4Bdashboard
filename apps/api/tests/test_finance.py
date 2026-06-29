@@ -61,6 +61,26 @@ def test_projects_and_operations(client):
     assert all({"anio", "mes", "costo_bc", "costo_cmi", "costo_timesheet"} <= set(r) for r in cc["by_month"])
 
 
+def test_dataset_upload_override_and_delete(client):
+    import json
+    h = _auth(client)
+    # estado inicial: sin dataset cargado (demo o entorno)
+    st0 = client.get("/finance/dataset/status", headers=h).json()
+    # subir un JSON que cambia el nombre de la compañía (se mezcla sobre el base)
+    payload = json.dumps({"company": {"name": "ACME Pilot", "legalName": "ACME", "period": "2025", "ceo": "", "cfo": ""}})
+    r = client.post("/finance/dataset", headers=h,
+                    files=[("files", ("d.json", payload.encode(), "application/json"))])
+    assert r.status_code == 201 and r.json()["source"] == "json"
+    ov = client.get("/finance/overview?entity=CONS", headers=h).json()
+    assert ov["company"]["name"] == "ACME Pilot" and ov["is_demo"] is False
+    assert client.get("/finance/dataset/status", headers=h).json()["loaded"] is True
+    # borrar → vuelve al base
+    assert client.delete("/finance/dataset", headers=h).json()["ok"] is True
+    ov2 = client.get("/finance/overview?entity=CONS", headers=h).json()
+    assert ov2["company"]["name"] != "ACME Pilot"
+    _ = st0
+
+
 def test_ask_grounded(client, monkeypatch):
     h = _auth(client)
     captured = {}

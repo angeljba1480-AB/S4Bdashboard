@@ -321,6 +321,21 @@ class SftpConnector(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class FinanceDataset(SQLModel, table=True):
+    """Dataset del Tablero Financiero cargado por el cliente (self-service), por tenant.
+
+    El usuario sube su dataset curado (JSON) o sus Excel/zip y la plataforma lo guarda
+    aquí, **cifrado**. El tablero lee de este registro primero; si no existe, cae al
+    dataset inyectado por entorno o al demo. Una fila por tenant (el último cargado)."""
+    __tablename__ = "finance_datasets"
+    tenant_id: str = Field(primary_key=True, foreign_key="tenants.id")
+    payload_enc: str = ""          # JSON del dataset, cifrado
+    source: str = ""              # "json" | "excel" | "excel+json"
+    filename: str = ""            # nombre(s) del/los archivo(s) cargado(s)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_by: str = ""
+
+
 class GeneratedImage(SQLModel, table=True):
     """Imagen generada de texto (text-to-image) vía el proveedor abierto (NaN/FLUX).
     Se guarda una copia en la plataforma (b64) para gobernanza y para que la galería

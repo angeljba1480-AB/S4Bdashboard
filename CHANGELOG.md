@@ -3,6 +3,17 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Tablero Financiero · carga self-service de datos (Excel/zip o JSON) por el usuario**:
+  pantalla **"Cargar datos"** dentro del tablero/Espacio: el cliente (no experto) sube sus
+  **Excel originales** (Resumen por proyecto, Concentrado BC, Timesheet + catálogo de horas,
+  Evaluación de clientes) o un **.json** curado, y la plataforma los **transforma** (Paso 2)
+  y guarda **cifrados por tenant** — sin tocar Render ni configuración. El tablero lee por
+  tenant: lo cargado en la app → dataset por entorno → demo. Reutiliza el cifrado por tenant
+  y el patrón de subida existentes. Nuevo modelo `FinanceDataset`, `app/finance/store.py`
+  (persistencia cifrada), `app/finance/ingest_excel.py` (transformación), y
+  `POST/GET/DELETE /finance/dataset`. Los endpoints del tablero (`/overview`, `/clients`,
+  `/projects`, `/operations`, `/ask`) ahora resuelven el dataset del tenant. El comparativo
+  de costos mantiene `costo_cmi`/`costo_timesheet` pendientes hasta cargar Nómina.
 - **Tablero Financiero · dataset inyectado (no se versionan datos reales) + lógica completa de los documentos**:
   - **Solo inyectado**: los números reales ya no viven en el repo. El dataset se resuelve por
     `FINANCE_DATASET_JSON` (env) → `FINANCE_DATASET_PATH` (secret file, p. ej. Render) →

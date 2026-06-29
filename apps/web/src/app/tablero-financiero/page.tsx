@@ -2,9 +2,9 @@
 
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
-import { AlertTriangle, ChevronLeft, RefreshCw, Send, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronLeft, RefreshCw, Send, Sparkles, Upload } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Overview = Awaited<ReturnType<typeof api.financeOverview>>;
 type Projects = Awaited<ReturnType<typeof api.financeProjects>>;
@@ -44,6 +44,9 @@ export default function TableroFinancieroPage() {
   const [answer, setAnswer] = useState("");
   const [asking, setAsking] = useState(false);
   const [spaceId, setSpaceId] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") setSpaceId(new URLSearchParams(window.location.search).get("space") || "");
@@ -63,6 +66,26 @@ export default function TableroFinancieroPage() {
     try { const r = await api.financeAsk(q.trim(), entity); setAnswer(r.answer); }
     catch (e) { setAnswer(e instanceof Error ? e.message : "Error"); }
     finally { setAsking(false); }
+  }
+
+  async function onUpload(list: FileList | null) {
+    if (!list || !list.length) return;
+    setUploading(true); setUploadMsg("");
+    try {
+      const r = await api.financeUploadDataset(Array.from(list));
+      setUploadMsg(`✓ Datos cargados (${r.source}${r.proyectos ? ` · ${r.proyectos} proyectos` : ""})${r.partial_entities ? " · estados financieros por entidad pendientes" : ""}`);
+      load();
+    } catch (e) {
+      setUploadMsg(e instanceof Error ? `✗ ${e.message}` : "✗ Error al cargar");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+  async function resetData() {
+    if (!confirm("¿Quitar los datos cargados y volver al demo/entorno?")) return;
+    try { await api.financeDeleteDataset(); setUploadMsg("✓ Datos restablecidos"); load(); }
+    catch (e) { setUploadMsg(e instanceof Error ? `✗ ${e.message}` : "✗ Error"); }
   }
 
   if (!ov) return <Shell><div className="p-8 text-sm text-slate-400">Cargando tablero…</div></Shell>;
@@ -91,8 +114,19 @@ export default function TableroFinancieroPage() {
           <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
             <RefreshCw className="h-4 w-4" /> Actualizar
           </button>
-          <span className="ml-auto rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">Datos curados (pilot) · fuente en vivo = conector (Paso 1)</span>
+          <input ref={fileRef} type="file" multiple accept=".json,.xlsx,.zip" className="hidden"
+            onChange={(e) => onUpload(e.target.files)} />
+          <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50">
+            <Upload className="h-4 w-4" /> {uploading ? "Cargando…" : "Cargar datos"}
+          </button>
+          {ov.is_demo
+            ? <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">Demo · carga tus Excel o JSON para ver tus cifras</span>
+            : <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">Fuente: {ov.source}</span>}
+          {!ov.is_demo && <button onClick={resetData} className="text-xs text-slate-400 underline hover:text-slate-600">restablecer</button>}
+          <span className="ml-auto text-xs text-slate-400">Excel/zip o JSON · se transforma y guarda cifrado (Paso 2)</span>
         </div>
+        {uploadMsg && <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{uploadMsg}</div>}
 
         {/* Navegación de vistas (como el mockup) */}
         <div className="mb-5 flex flex-wrap gap-1 border-b border-slate-200">
