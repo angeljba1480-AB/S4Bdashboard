@@ -71,6 +71,15 @@ def _out(c: Connector) -> dict:
             "example": _example_for(c.kind)}
 
 
+def _normalize_url(url: str) -> str:
+    """Acepta URLs sin protocolo (p. ej. pegadas de n8n) y antepone https://.
+    Evita el error 'Request URL is missing an http://' de httpx."""
+    url = (url or "").strip()
+    if url and not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    return url
+
+
 def send_to_connector(session: Session, tenant: Tenant, connector_id: str, payload: dict) -> tuple[str, str]:
     """POST a payload to a tenant connector. Returns (status, detail)."""
     cnx = session.get(Connector, connector_id)
@@ -83,7 +92,7 @@ def send_to_connector(session: Session, tenant: Tenant, connector_id: str, paylo
     if cnx.token_enc:
         headers[cnx.auth_header] = decrypt(cnx.token_enc, tenant.id)
     try:  # pragma: no cover - network
-        r = httpx.post(cnx.base_url, json=payload, headers=headers, timeout=20)
+        r = httpx.post(_normalize_url(cnx.base_url), json=payload, headers=headers, timeout=20)
         r.raise_for_status()
         return "completed", f"{cnx.kind}:{cnx.name} → {r.status_code}"
     except Exception as exc:  # pragma: no cover - network
@@ -112,7 +121,7 @@ def create_connector(
     if not body.name.strip() or not body.base_url.strip():
         raise HTTPException(status_code=422, detail="Nombre y base_url son obligatorios")
     c = Connector(tenant_id=tenant.id, kind=body.kind, name=body.name.strip(),
-                  base_url=body.base_url.strip(), auth_header=body.auth_header.strip() or "Authorization",
+                  base_url=_normalize_url(body.base_url), auth_header=body.auth_header.strip() or "Authorization",
                   token_enc=encrypt(body.token, tenant.id) if body.token else "")
     session.add(c)
     session.commit()
