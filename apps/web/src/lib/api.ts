@@ -522,7 +522,7 @@ export const api = {
   markAllNotificationsRead: () => request<{ ok: boolean; marked: number }>("/notifications/read-all", { method: "POST" }),
   // RAG: re-indexar tras cambiar el proveedor de embeddings
   reindexDocuments: () =>
-    request<{ documents: number; chunks: number }>("/documents/reindex", { method: "POST" }),
+    request<{ documents: number; chunks: number; orphans_purged?: number }>("/documents/reindex", { method: "POST" }),
   // Recetas n8n a la medida (DB / SOAP / apps propias)
   n8nRecipes: () =>
     request<{ id: string; provider: string; name: string; description: string; category: string; webhook_path: string; webhook_url: string; params: string[]; enabled: boolean; created_at: string }[]>("/workflows/recipes"),
