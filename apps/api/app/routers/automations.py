@@ -111,6 +111,58 @@ def _deliver_result(session: Session, tenant: Tenant, owner_id: str | None,
     return ", ".join(sent)
 
 
+def _run_ingesta(session: Session, tenant: Tenant, owner_id: str | None,
+                 source: dict) -> tuple[str, str]:
+    """Ingesta NATIVA: el indexado al RAG vive en MaestroAI, así que la
+    automatización 'ingesta' lo corre aquí mismo (sin viaje a n8n).
+    Indexa los documentos pendientes (`indexed=False`) según la fuente:
+    - new_documents: los no indexados (opcionalmente creados desde `since`).
+    - datasource: primero jala filas frescas de la fuente (que se indexan al
+      importarse) y luego barre lo pendiente.
+    - drive_folder/manual: barre lo pendiente (los archivos de Drive se indexan
+      al importarse desde Documentos)."""
+    from ..ai.rag import index_document
+    from ..models import Document
+
+    kind = (source or {}).get("kind") or "new_documents"
+    extra = ""
+
+    if kind == "datasource" and (source or {}).get("ref"):
+        # Reaprovecha el import de fuentes de datos (consulta SELECT → documento + RAG).
+        try:
+            from ..security.crypto import decrypt
+            from .datasources import _as_text, _import_as_document, _owned, _run_query
+            d = _owned(session, tenant, source["ref"])
+            owner = session.get(User, owner_id) if owner_id else None
+            cols, rows = _run_query(decrypt(d.dsn_enc, tenant.kms_key_id), d.query)
+            _import_as_document(session, tenant, owner, name=d.name,
+                                content=_as_text(cols, rows), area=d.area or "",
+                                category=d.category or "", storage_uri=f"datasource://{d.id}",
+                                rows=len(rows), source_label=f"fuente de datos '{d.name}'")
+            extra = f" · fuente '{d.name}': {len(rows)} filas"
+        except Exception as exc:
+            extra = f" · fuente no disponible: {exc}"
+
+    q = select(Document).where(Document.tenant_id == tenant.id, Document.indexed == False)  # noqa: E712
+    if kind == "new_documents" and (source or {}).get("since"):
+        try:
+            q = q.where(Document.created_at >= datetime.fromisoformat(source["since"]))
+        except Exception:
+            pass
+    docs = session.exec(q).all()
+
+    n_docs = n_chunks = 0
+    for doc in docs:
+        try:
+            n_chunks += index_document(session, doc)
+            n_docs += 1
+        except Exception:
+            continue
+    if n_docs == 0 and not extra:
+        return "completed", "ingesta · no hay documentos nuevos por indexar"
+    return "completed", f"ingesta · {n_docs} documentos indexados ({n_chunks} fragmentos){extra}"
+
+
 def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
          payload: dict | None = None) -> tuple[str, str]:
     """Execute the action. Returns (status, detail)."""
@@ -120,6 +172,11 @@ def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
     # Usuario efectivo: quien ejecuta, o el dueño de la automatización (corridas
     # programadas/por evento no traen usuario, pero la cuenta conectada es del dueño).
     uid = (user.id if user else None) or a.user_id
+    if a.action_type == "workflow" and a.action_ref == "ingesta":
+        # El indexado al RAG vive en MaestroAI → ingesta nativa (sin viaje a n8n).
+        status, detail = _run_ingesta(session, tenant, uid, dict(config.get("source") or {}))
+        delivered = _deliver_result(session, tenant, uid, a.name, detail, config)
+        return status, f"{detail}{f' → enviado a {delivered}' if delivered else ''}"
     if a.action_type == "workflow":
         cfg = resolve_n8n(tenant)
         # Resuelve la fuente (qué procesar) y la manda como entrada al webhook.
@@ -361,11 +418,27 @@ def validate(automation_id: str, tenant: Tenant = Depends(get_current_tenant),
                  conns[0].identifier if conns else "Conecta tu correo en Integraciones", "/integrations")
         else:
             step("Caso listo", True, recipe["name"])
+    elif a.action_type == "workflow" and a.action_ref == "ingesta":
+        # Ingesta nativa: el indexado al RAG corre dentro de MaestroAI (sin n8n).
+        from ..models import Document
+        pending = session.exec(
+            select(Document).where(Document.tenant_id == tenant.id, Document.indexed == False)  # noqa: E712
+        ).all()
+        step("Indexado (nativo)", True,
+             f"Ingesta en MaestroAI · {len(pending)} documento(s) pendiente(s) de indexar")
     elif a.action_type == "workflow":
         cfg = resolve_n8n(tenant)
         step("n8n configurado", cfg.enabled,
              "Conectado" if cfg.enabled else "n8n no configurado → ejecución simulada", "/integrations")
-        # Entrada: qué va a procesar el flujo (carpeta, datasource o docs nuevos).
+    elif a.action_type == "connector":
+        from ..models import DataSource
+        ds = session.exec(select(DataSource).where(DataSource.tenant_id == tenant.id)).first()
+        step("Conector (legado)", bool(ds), ds.name if ds else "Configura un datasource", "/integrations")
+    else:  # notify
+        step("Destino", True, "Notificación interna")
+
+    # 2b. Entrada: qué va a procesar el flujo (común a todos los workflows).
+    if a.action_type == "workflow":
         src = config.get("source") or {}
         kind = src.get("kind")
         if kind and kind in _SOURCE_KINDS:
@@ -376,12 +449,6 @@ def validate(automation_id: str, tenant: Tenant = Depends(get_current_tenant),
             step("Entrada", False,
                  "Elige qué va a procesar (carpeta, fuente de datos o documentos nuevos)",
                  optional=True)
-    elif a.action_type == "connector":
-        from ..models import DataSource
-        ds = session.exec(select(DataSource).where(DataSource.tenant_id == tenant.id)).first()
-        step("Conector (legado)", bool(ds), ds.name if ds else "Configura un datasource", "/integrations")
-    else:  # notify
-        step("Destino", True, "Notificación interna")
 
     # 3. Modelo disponible (para casos que generan con IA)
     from ..ai.adapters import _RUNTIME
