@@ -76,6 +76,9 @@ corre, y **entrega** el resultado a un canal. Todo se ve y configura en el panel
 | **Salida (entrega del resultado)** | ✅ Prod | Canales **Notificación / WhatsApp / Correo** (correo destino opcional). Endpoint `POST /automations/{id}/delivery`; lo entrega `_deliver_result` con remitente de marca blanca (support sender) y queda en el audit log. |
 | **Casos/recetas end-to-end** | ✅ Prod | Una automatización corre `prefill`+`execute` sin paso humano y entrega el `documento` por los canales elegidos (ej. "Resumen diario de correo y agenda"). |
 | **Programar** | ✅ Prod | Diario/Semanal/Mensual tras validar (`POST /automations/{id}/schedule`); las corre `run_due` (cron/scheduler). |
+| **Centro de mando (`mando`) real** | ✅ Prod | MaestroAI calcula un reporte ejecutivo con KPIs reales (`compute_operations`: casos, tokens, costo, apps) + insights de IA (`_run_mando`), lo manda a n8n en `payload.text` (enrutáble en el canvas) y lo entrega. Si n8n no devuelve nada, entrega el reporte calculado. |
+| **Fix n8n BYO 404** | ✅ Prod | `resolve_n8n`: en n8n propio (BYO) usa el prefijo `{tenant_id}/` cuando MaestroAI aprovisionó los flujos (antes llamaba `/webhook/mando` → 404). |
+| **Fix conector URL** | ✅ Prod | `_normalize_url` antepone `https://` a URLs de conectores de salida sin protocolo. |
 
 > **¿Entrega n8n o MaestroAI?** Las dos vías conviven:
 > - *Workflows (n8n)*: pueden entregar **dentro de n8n** con sus nodos Gmail/WhatsApp/Slack (camino idiomático, se ve en el canvas). La entrega de MaestroAI queda como respaldo/gobierno.

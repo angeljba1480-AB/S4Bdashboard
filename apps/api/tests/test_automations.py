@@ -61,6 +61,11 @@ def test_workflow_automation_runs_simulated(client):
     # n8n disabled in tests -> simulated, but the action dispatches successfully
     assert run["status"] in ("simulated", "completed")
     assert "workflow" in run["detail"]
+    # 'mando' es centro de mando: aunque n8n esté simulado, MaestroAI calcula el
+    # reporte real y lo entrega (queda como notificación por defecto).
+    assert "enviado a" in run["detail"]
+    notifs = client.get("/notifications", headers=h).json()
+    assert any(n["event_type"] == "automation" for n in notifs)
 
 
 def test_ingesta_native_indexes_pending_docs(client):

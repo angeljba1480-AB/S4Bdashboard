@@ -163,6 +163,40 @@ def _run_ingesta(session: Session, tenant: Tenant, owner_id: str | None,
     return "completed", f"ingesta · {n_docs} documentos indexados ({n_chunks} fragmentos){extra}"
 
 
+def _run_mando(session: Session, tenant: Tenant) -> str:
+    """Centro de mando: arma un reporte ejecutivo con KPIs REALES de la operación
+    (casos, tokens, costo, apps) + insights de IA. MaestroAI lo calcula y lo pasa
+    a n8n para que el canvas lo enrute (correo/Slack/CRM); también se entrega."""
+    from ..ai.resilience import generate_with_fallback
+    from ..ai.router import route_request
+    from .usage import compute_operations
+
+    ops = compute_operations(session, tenant)
+    casos, tok, cost, apps = ops["cases"], ops["tokens"], ops["cost"], ops["apps"]
+    top = ", ".join(f"{k} ({v})" for k, v in list(casos["by_recipe"].items())[:5]) or "sin casos"
+    ctx = (
+        f"Casos: {casos['total']} (completados {casos['completed']}, en curso {casos['in_progress']}).\n"
+        f"Casos por tipo: {top}.\n"
+        f"Búsquedas/respuestas IA: {ops['searches']}.\n"
+        f"Tokens: {tok['total']} (chat {tok['by_source']['chat']}, casos {tok['by_source']['casos']}, "
+        f"apps {tok['by_source']['apps']}).\n"
+        f"Costo IA acumulado: ${cost['total']}.\n"
+        f"Apps: {apps['built']} construidas, {apps['deployed']} desplegadas."
+    )
+    system = ("Eres el centro de mando operativo de la empresa. Con los KPIs provistos, redacta en "
+              "español un reporte ejecutivo BREVE con: 1) Resumen del día, 2) KPIs clave, 3) Alertas "
+              "o riesgos si los datos los sugieren, 4) Recomendaciones accionables. Usa SOLO los datos "
+              "provistos; no inventes cifras.")
+    prompt = f"KPIs de operación:\n{ctx}\n\nGenera el reporte del centro de mando."
+    try:
+        decision = route_request(tenant, None, prompt, [ctx], task="recipe")
+        gen = generate_with_fallback(decision.route, system, prompt, decision.context or [ctx])
+        report = (gen.response.content or "").strip()
+    except Exception as exc:  # si no hay proveedor, entrega al menos los KPIs
+        report = f"Reporte de operación (KPIs):\n{ctx}\n\n(No se pudo generar el análisis IA: {exc})"
+    return report or f"Reporte de operación (KPIs):\n{ctx}"
+
+
 def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
          payload: dict | None = None) -> tuple[str, str]:
     """Execute the action. Returns (status, detail)."""
@@ -184,9 +218,15 @@ def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
         src = dict(config.get("source") or {})
         if src.get("kind") == "new_documents":
             src["since"] = a.last_run or ""
-        run = trigger_workflow(cfg, a.action_ref, {
-            "automation_id": a.id, "tenant_id": tenant.id, "user_id": uid,
-            "source": src, **config})
+        payload_out = {"automation_id": a.id, "tenant_id": tenant.id, "user_id": uid,
+                       "source": src, **config}
+        # Centro de mando: MaestroAI calcula el reporte real y lo pasa a n8n (el
+        # canvas puede enrutarlo); si n8n no lo devuelve, se entrega este mismo.
+        mando_report = ""
+        if a.action_ref == "mando":
+            mando_report = _run_mando(session, tenant)
+            payload_out["text"] = mando_report
+        run = trigger_workflow(cfg, a.action_ref, payload_out)
         resp = run.response or {}
         content = ""
         if isinstance(resp, dict) and resp:
@@ -194,6 +234,8 @@ def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
                           or resp.get("output") or json.dumps(resp, ensure_ascii=False))
         elif resp:
             content = str(resp)
+        if not content and mando_report:
+            content = mando_report
         delivered = _deliver_result(session, tenant, uid, a.name, content, config)
         extra = f" → enviado a {delivered}" if delivered else ""
         return run.status, f"workflow {a.action_ref} · n8n:{run.source} · {run.detail}{extra}"
