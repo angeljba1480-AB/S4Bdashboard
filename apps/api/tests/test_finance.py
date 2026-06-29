@@ -55,6 +55,10 @@ def test_projects_and_operations(client):
     ops = client.get("/finance/operations", headers=h).json()
     assert 0 <= ops["utilization"]["utilizacion"] <= 1
     assert ops["cost_per_hour"]["by_role"] and ops["client_scoring"]["clients"]
+    # comparativo de costos cableado (RESUMEN_COSTOS): siempre trae costo_bc
+    cc = ops["cost_comparison"]
+    assert cc["by_month"] and "costo_bc" in cc["available"]
+    assert all({"anio", "mes", "costo_bc", "costo_cmi", "costo_timesheet"} <= set(r) for r in cc["by_month"])
 
 
 def test_ask_grounded(client, monkeypatch):

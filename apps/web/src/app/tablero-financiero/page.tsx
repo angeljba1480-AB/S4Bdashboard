@@ -380,31 +380,73 @@ function Costos({ projects, ops }: { projects: Projects | null; ops: Operations 
   const total = items.reduce((s, [, v]) => s + v, 0) || 1;
   const maxC = Math.max(...ops.cost_per_hour.by_role.map((r) => r.costo_hora), 1);
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <Card title="Estructura de costo (cartera de proyectos)">
-        <div className="mb-4 flex h-4 overflow-hidden rounded-full">
-          {items.map(([n, v, c]) => <div key={n} className={c} style={{ width: `${(v / total) * 100}%` }} title={`${n} ${mxn(v)}`} />)}
-        </div>
-        <div className="space-y-2">
-          {items.map(([n, v, c]) => (
-            <div key={n} className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2 text-slate-600"><span className={`h-2.5 w-2.5 rounded-full ${c}`} />{n}</span>
-              <span className="tabular-nums text-slate-800">{mxn(v)} <span className="text-xs text-slate-400">({pct(v / total, 0)})</span></span>
-            </div>
-          ))}
-        </div>
-      </Card>
-      <Card title={`Costo por hora por rol · ${ops.cost_per_hour.year}`}>
-        <div className="space-y-2">
-          {ops.cost_per_hour.by_role.map((r) => (
-            <div key={r.rol}>
-              <div className="mb-0.5 flex justify-between text-xs"><span className="text-slate-600">{r.rol}</span><span className="tabular-nums text-slate-800">${r.costo_hora.toLocaleString()}/h</span></div>
-              <div className="h-2 rounded bg-slate-100"><div className="h-2 rounded bg-violet-500" style={{ width: `${(r.costo_hora / maxC) * 100}%` }} /></div>
-            </div>
-          ))}
-        </div>
-      </Card>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card title="Estructura de costo (cartera de proyectos)">
+          <div className="mb-4 flex h-4 overflow-hidden rounded-full">
+            {items.map(([n, v, c]) => <div key={n} className={c} style={{ width: `${(v / total) * 100}%` }} title={`${n} ${mxn(v)}`} />)}
+          </div>
+          <div className="space-y-2">
+            {items.map(([n, v, c]) => (
+              <div key={n} className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-slate-600"><span className={`h-2.5 w-2.5 rounded-full ${c}`} />{n}</span>
+                <span className="tabular-nums text-slate-800">{mxn(v)} <span className="text-xs text-slate-400">({pct(v / total, 0)})</span></span>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card title={`Costo por hora por rol · ${ops.cost_per_hour.year}`}>
+          <div className="space-y-2">
+            {ops.cost_per_hour.by_role.map((r) => (
+              <div key={r.rol}>
+                <div className="mb-0.5 flex justify-between text-xs"><span className="text-slate-600">{r.rol}</span><span className="tabular-nums text-slate-800">${r.costo_hora.toLocaleString()}/h</span></div>
+                <div className="h-2 rounded bg-slate-100"><div className="h-2 rounded bg-violet-500" style={{ width: `${(r.costo_hora / maxC) * 100}%` }} /></div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+      <CostComparison cc={ops.cost_comparison} />
     </div>
+  );
+}
+
+function CostComparison({ cc }: { cc: Operations["cost_comparison"] }) {
+  if (!cc?.by_month?.length) return null;
+  const years = Array.from(new Set(cc.by_month.map((r) => r.anio))).sort();
+  const year = years[years.length - 1];
+  const rows = cc.by_month.filter((r) => r.anio === year);
+  const hasCmi = rows.some((r) => r.costo_cmi != null);
+  const hasTs = rows.some((r) => r.costo_timesheet != null);
+  const maxV = Math.max(...rows.flatMap((r) => [r.costo_bc, r.costo_cmi, r.costo_timesheet].map((v) => v || 0)), 1);
+  const series: [string, "costo_bc" | "costo_cmi" | "costo_timesheet", string, boolean][] = [
+    ["BC (presupuesto)", "costo_bc", "bg-blue-500", true],
+    ["CMI (nómina)", "costo_cmi", "bg-violet-500", hasCmi],
+    ["Timesheet (aplicado)", "costo_timesheet", "bg-emerald-500", hasTs],
+  ];
+  return (
+    <Card title={`Comparativo de costos · CMI vs BC vs Timesheet · ${year}`}>
+      <p className="mb-3 text-xs text-slate-500">{cc.note}</p>
+      <div className="mb-3 flex flex-wrap gap-2">
+        {series.map(([label, , color, ok]) => (
+          <span key={label} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] ${ok ? "bg-slate-50 text-slate-600" : "bg-amber-50 text-amber-700"}`}>
+            <span className={`h-2 w-2 rounded-full ${ok ? color : "bg-amber-400"}`} />{label}{ok ? "" : " · pendiente (requiere Nómina)"}
+          </span>
+        ))}
+      </div>
+      <div className="flex h-52 items-end gap-2">
+        {rows.map((r) => (
+          <div key={r.mes} className="flex flex-1 flex-col items-center gap-1">
+            <div className="flex w-full items-end justify-center gap-0.5" style={{ height: "180px" }}>
+              {series.filter(([, , , ok]) => ok).map(([label, key, color]) => (
+                <div key={key} className={`w-1/3 rounded-t ${color}`} style={{ height: `${((r[key] || 0) / maxV) * 100}%` }} title={`${label} ${r.mes}: ${mxn(r[key] || 0)}`} />
+              ))}
+            </div>
+            <span className="text-[10px] text-slate-400">{r.mes}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
