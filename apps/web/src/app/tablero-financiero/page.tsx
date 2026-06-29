@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 type Overview = Awaited<ReturnType<typeof api.financeOverview>>;
 type Projects = Awaited<ReturnType<typeof api.financeProjects>>;
+type Operations = Awaited<ReturnType<typeof api.financeOperations>>;
 type Client = { name: string; sector: string; entity: string; revenue: number; margin: number; status: string };
 
 const ENTITIES = [
@@ -20,7 +21,10 @@ const VIEWS = [
   { id: "finanzas", label: "Finanzas (P&L)" },
   { id: "posicion", label: "Posición" },
   { id: "clientes", label: "Clientes" },
+  { id: "evaluacion", label: "Evaluación clientes" },
   { id: "proyectos", label: "Proyectos" },
+  { id: "costos", label: "Costos" },
+  { id: "utilizacion", label: "Utilización" },
   { id: "gobip", label: "Gobierno vs IP" },
   { id: "benchmark", label: "Benchmark" },
   { id: "alertas", label: "Alertas" },
@@ -35,6 +39,7 @@ export default function TableroFinancieroPage() {
   const [ov, setOv] = useState<Overview | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Projects | null>(null);
+  const [ops, setOps] = useState<Operations | null>(null);
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState("");
   const [asking, setAsking] = useState(false);
@@ -48,6 +53,7 @@ export default function TableroFinancieroPage() {
     api.financeOverview(entity).then(setOv).catch(() => {});
     api.financeClients(entity).then(setClients).catch(() => {});
     api.financeProjects().then(setProjects).catch(() => {});
+    api.financeOperations().then(setOps).catch(() => {});
   }
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [entity]);
 
@@ -116,7 +122,10 @@ export default function TableroFinancieroPage() {
         {view === "finanzas" && <Finanzas k={k} />}
         {view === "posicion" && <Posicion k={k} />}
         {view === "clientes" && <Clientes clients={clients} />}
+        {view === "evaluacion" && <Evaluacion ops={ops} />}
         {view === "proyectos" && <Proyectos projects={projects} />}
+        {view === "costos" && <Costos projects={projects} ops={ops} />}
+        {view === "utilizacion" && <Utilizacion ops={ops} />}
         {view === "gobip" && <GobIp ov={ov} />}
         {view === "benchmark" && <Benchmark ov={ov} />}
         {view === "alertas" && <Alertas ov={ov} />}
@@ -283,22 +292,22 @@ function Proyectos({ projects }: { projects: Projects | null }) {
   const maxYear = Math.max(...years.map((y) => projects.trend[y].venta), 1);
   return (
     <div className="space-y-6">
-      {/* KPIs del portafolio real */}
+      {/* KPIs del portafolio */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi label="Venta total" value={mxn(t.venta)} sub={`${t.proyectos} proyectos`} tone="emerald" />
-        <Kpi label="Margen" value={mxn(t.margen)} sub={pct(t.pct_margen)} tone="violet" />
-        <Kpi label="EBITDA" value={mxn(t.ebitda)} sub={pct(t.ebitda / t.venta)} tone="blue" />
-        <Kpi label="Costos" value={mxn(t.costos)} sub="directo + asignado" tone="amber" />
+        <Kpi label="Margen contribución" value={mxn(t.margen)} sub={pct(t.pct_margen)} tone="violet" />
+        <Kpi label="EBITDA real" value={mxn(t.ebitda)} sub={pct(t.pct_ebitda)} tone="blue" />
+        <Kpi label="Desviación vs BC" value={mxn(t.desviacion)} sub={`EBITDA presup. ${mxn(t.ebitda_bc)}`} tone={t.desviacion < 0 ? "amber" : "emerald"} />
       </div>
 
-      {/* Tendencia de venta por año */}
+      {/* Tendencia de venta por año (Gob/IP) */}
       <Card title="Venta por año (cartera de proyectos)">
         <div className="space-y-3">
           {years.map((y) => {
             const d = projects.trend[y]; const tot = d.venta || 1;
             return (
               <div key={y}>
-                <div className="mb-1 flex justify-between text-xs text-slate-500"><span>{y}</span><span className="tabular-nums">{mxn(d.venta)}</span></div>
+                <div className="mb-1 flex justify-between text-xs text-slate-500"><span>{y} · {d.proyectos} proy.</span><span className="tabular-nums">{mxn(d.venta)}</span></div>
                 <div className="flex h-5 overflow-hidden rounded bg-slate-50" style={{ width: `${(d.venta / maxYear) * 100}%`, minWidth: "30%" }}>
                   <div className="bg-blue-600" style={{ width: `${(d.gob / tot) * 100}%` }} title={`Gobierno ${mxn(d.gob)}`} />
                   <div className="bg-emerald-500" style={{ width: `${(d.ip / tot) * 100}%` }} title={`IP ${mxn(d.ip)}`} />
@@ -310,21 +319,149 @@ function Proyectos({ projects }: { projects: Projects | null }) {
         <div className="mt-4 flex gap-4 text-xs"><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-600" /> Gobierno</span><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> IP</span></div>
       </Card>
 
+      {/* Plan vs Real (EBITDA real vs presupuesto BC) por año */}
+      <Card title="Plan vs Real · EBITDA real vs presupuesto (BC)">
+        <table className="w-full text-sm">
+          <thead><tr className="text-left text-[10px] uppercase tracking-wide text-slate-400">
+            <th className="py-2">Año</th><th className="text-right">EBITDA real</th><th className="text-right">Presupuesto (BC)</th><th className="text-right">Desviación</th>
+          </tr></thead>
+          <tbody>
+            {years.map((y) => {
+              const d = projects.trend[y];
+              return (
+                <tr key={y} className="border-t border-slate-100">
+                  <td className="py-2 text-slate-700">{y}</td>
+                  <td className="text-right tabular-nums">{mxn(d.ebitda)}</td>
+                  <td className="text-right tabular-nums text-slate-500">{mxn(d.ebitda_bc)}</td>
+                  <td className={`text-right font-semibold tabular-nums ${d.desviacion < 0 ? "text-red-600" : "text-emerald-600"}`}>{mxn(d.desviacion)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
+
       {/* Detalle de proyectos */}
-      <Card title={`Proyectos (${projects.projects.length} principales de ${t.proyectos})`}>
+      <Card title={`Proyectos (${projects.detail.length} principales de ${t.proyectos})`}>
         <div className="max-h-[480px] overflow-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-white"><tr className="text-left text-[10px] uppercase tracking-wide text-slate-400">
-              <th className="py-2">Cliente / Proyecto</th><th>Tipo</th><th className="text-right">Venta</th><th className="text-right">Margen</th><th className="text-right">EBITDA</th>
+              <th className="py-2">Cliente / Proyecto</th><th>Tipo</th><th className="text-right">Venta</th><th className="text-right">Margen</th><th className="text-right">EBITDA</th><th className="text-right">Desv. BC</th>
             </tr></thead>
             <tbody>
-              {projects.projects.map((p, i) => (
+              {projects.detail.map((p, i) => (
                 <tr key={i} className="border-t border-slate-100">
                   <td className="py-2"><div className="font-medium text-slate-700">{p.cliente}</div><div className="text-[11px] text-slate-400">{p.nombre}</div></td>
                   <td><span className={`rounded-full px-2 py-0.5 text-[11px] ${p.tipo === "Gobierno" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700"}`}>{p.tipo}</span></td>
                   <td className="text-right tabular-nums">{mxn(p.venta)}</td>
                   <td className={`text-right tabular-nums ${p.pct_margen < 0 ? "text-red-600" : "text-slate-500"}`}>{pct(p.pct_margen, 0)}</td>
                   <td className={`text-right tabular-nums ${p.ebitda < 0 ? "text-red-600" : "text-slate-600"}`}>{mxn(p.ebitda)}</td>
+                  <td className={`text-right tabular-nums ${p.desviacion < 0 ? "text-red-600" : "text-emerald-600"}`}>{mxn(p.desviacion)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function Costos({ projects, ops }: { projects: Projects | null; ops: Operations | null }) {
+  if (!projects || !ops) return <div className="text-sm text-slate-400">Cargando costos…</div>;
+  const cm = projects.cost_mix;
+  const items: [string, number, string][] = [
+    ["Nómina", cm.nomina, "bg-violet-500"],
+    ["HW / SW", cm.hw_sw, "bg-blue-500"],
+    ["Costo corporativo", cm.costo_corp, "bg-amber-500"],
+    ["Representación / viáticos", cm.repr_viaticos, "bg-emerald-500"],
+    ["Otros", cm.otros, "bg-slate-400"],
+  ];
+  const total = items.reduce((s, [, v]) => s + v, 0) || 1;
+  const maxC = Math.max(...ops.cost_per_hour.by_role.map((r) => r.costo_hora), 1);
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <Card title="Estructura de costo (cartera de proyectos)">
+        <div className="mb-4 flex h-4 overflow-hidden rounded-full">
+          {items.map(([n, v, c]) => <div key={n} className={c} style={{ width: `${(v / total) * 100}%` }} title={`${n} ${mxn(v)}`} />)}
+        </div>
+        <div className="space-y-2">
+          {items.map(([n, v, c]) => (
+            <div key={n} className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2 text-slate-600"><span className={`h-2.5 w-2.5 rounded-full ${c}`} />{n}</span>
+              <span className="tabular-nums text-slate-800">{mxn(v)} <span className="text-xs text-slate-400">({pct(v / total, 0)})</span></span>
+            </div>
+          ))}
+        </div>
+      </Card>
+      <Card title={`Costo por hora por rol · ${ops.cost_per_hour.year}`}>
+        <div className="space-y-2">
+          {ops.cost_per_hour.by_role.map((r) => (
+            <div key={r.rol}>
+              <div className="mb-0.5 flex justify-between text-xs"><span className="text-slate-600">{r.rol}</span><span className="tabular-nums text-slate-800">${r.costo_hora.toLocaleString()}/h</span></div>
+              <div className="h-2 rounded bg-slate-100"><div className="h-2 rounded bg-violet-500" style={{ width: `${(r.costo_hora / maxC) * 100}%` }} /></div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function Utilizacion({ ops }: { ops: Operations | null }) {
+  if (!ops) return <div className="text-sm text-slate-400">Cargando utilización…</div>;
+  const u = ops.utilization;
+  const maxH = Math.max(...u.by_project.map((p) => p.horas), 1);
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Kpi label={`Utilización ${u.year}`} value={pct(u.utilizacion, 0)} sub="horas reales / capacidad" tone={u.utilizacion < 0.65 ? "amber" : "emerald"} />
+        <Kpi label="Horas reales" value={u.horas_reales.toLocaleString()} sub="timesheet" tone="violet" />
+        <Kpi label="Capacidad" value={u.horas_capacidad.toLocaleString()} sub={`${u.capacidad_emp} h/persona`} tone="blue" />
+        <Kpi label="Personas" value={String(u.empleados)} sub="con registro" tone="blue" />
+      </div>
+      <Card title="Horas por proyecto (timesheet)">
+        <div className="space-y-2">
+          {u.by_project.map((p) => (
+            <div key={p.nombre}>
+              <div className="mb-0.5 flex justify-between text-xs"><span className="text-slate-600">{p.nombre}</span><span className="tabular-nums text-slate-800">{p.horas.toLocaleString()} h</span></div>
+              <div className="h-2.5 rounded bg-slate-100"><div className="h-2.5 rounded bg-emerald-500" style={{ width: `${(p.horas / maxH) * 100}%` }} /></div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function Evaluacion({ ops }: { ops: Operations | null }) {
+  if (!ops) return <div className="text-sm text-slate-400">Cargando evaluación…</div>;
+  const sc = ops.client_scoring;
+  const tierColor = (t: string) => t === "Oro" ? "bg-amber-100 text-amber-700" : t === "Plata" ? "bg-slate-200 text-slate-700" : "bg-orange-100 text-orange-700";
+  return (
+    <div className="space-y-6">
+      <Card title="Criterios de evaluación (ponderación)">
+        <div className="flex flex-wrap gap-2">
+          {sc.criteria.map(([n, w]) => (
+            <span key={n} className="rounded-full bg-violet-50 px-3 py-1 text-xs text-violet-700">{n} <b>{pct(w, 0)}</b></span>
+          ))}
+        </div>
+      </Card>
+      <Card title={`Clientes evaluados (${sc.clients.length})`}>
+        <div className="max-h-[480px] overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-white"><tr className="text-left text-[10px] uppercase tracking-wide text-slate-400">
+              <th className="py-2">Cliente</th><th>Sector</th><th>Facturación</th><th>Rentabilidad</th><th className="text-right">Score</th><th className="text-right">Tier</th>
+            </tr></thead>
+            <tbody>
+              {sc.clients.map((c, i) => (
+                <tr key={i} className="border-t border-slate-100">
+                  <td className="py-2 font-medium text-slate-700">{c.name}</td>
+                  <td><span className={`rounded-full px-2 py-0.5 text-[11px] ${c.sector === "Gobierno" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700"}`}>{c.sector}</span></td>
+                  <td className="text-slate-500">{c.facturacion}</td>
+                  <td className="text-slate-500">{c.rentabilidad}</td>
+                  <td className="text-right font-semibold tabular-nums text-slate-800">{c.score.toFixed(1)}</td>
+                  <td className="text-right"><span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${tierColor(c.tier)}`}>{c.tier}</span></td>
                 </tr>
               ))}
             </tbody>

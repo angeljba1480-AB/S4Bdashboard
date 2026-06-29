@@ -3,6 +3,20 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Tablero Financiero · dataset inyectado (no se versionan datos reales) + lógica completa de los documentos**:
+  - **Solo inyectado**: los números reales ya no viven en el repo. El dataset se resuelve por
+    `FINANCE_DATASET_JSON` (env) → `FINANCE_DATASET_PATH` (secret file, p. ej. Render) →
+    `dataset.local.json` (local, git-ignored) → `demo_dataset.json` (fallback **sintético** versionado).
+    El repositorio solo contiene datos de demostración; el contrato (llaves del JSON) es idéntico en
+    demo y real, así que el tablero no cambia (`app/finance/dataset.py`, `seed.py`). Se eliminó
+    `projects_2025.json` del repo.
+  - **Más allá del mockup** (la regla son los documentos, el mockup solo la forma): se incorporó la
+    lógica del modelo entidad-relación y de todos los archivos fuente —
+    **Resumen por proyecto** (P&L por año 2021-2026, mezcla de costo nómina/HW-SW/corporativo/viáticos,
+    **EBITDA real vs presupuesto BC y desviación**), **Concentrado BC** (costo por hora por rol),
+    **Timesheet + catálogo de horas** (utilización real vs capacidad) y **Evaluación de Clientes**
+    (score ponderado y tier Oro/Plata/Bronce). Nuevas vistas: **Evaluación clientes, Costos,
+    Utilización**, y Proyectos ahora muestra **Plan vs Real** por año. `GET /finance/operations`.
 - **Tablero Financiero · vista Proyectos con datos reales del zip**: nueva pestaña **Proyectos**
   alimentada con el portafolio **real** derivado del archivo *Resumen por proyecto* (zip subido):
   **101 proyectos, venta $378.6M, margen $196.0M (51.8%), EBITDA $139.5M**, tendencia de venta por
