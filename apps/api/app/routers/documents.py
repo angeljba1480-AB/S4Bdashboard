@@ -58,7 +58,30 @@ def reindex_all(
     """Reconstruye chunks + embeddings de TODOS los documentos del tenant. Necesario
     tras cambiar de proveedor de embeddings (p. ej. local→NaN, que cambia la dimensión
     del vector). Solo ADMIN/DEVOPS."""
+    from ..ai.vectorstore import get_vector_store
+
     docs = session.exec(select(Document).where(Document.tenant_id == tenant.id)).all()
+    valid_ids = {d.id for d in docs}
+
+    # Purga de huérfanos: chunks cuyo documento ya no existe (borrados que pudieran
+    # haber dejado rastro en el índice). Así "Re-indexar RAG" también limpia el RAG.
+    all_chunks = session.exec(
+        select(DocumentChunk).where(DocumentChunk.tenant_id == tenant.id)
+    ).all()
+    orphan_doc_ids = {c.document_id for c in all_chunks if c.document_id not in valid_ids}
+    n_orphans = 0
+    for c in all_chunks:
+        if c.document_id not in valid_ids:
+            session.delete(c)
+            n_orphans += 1
+    store = get_vector_store()
+    if store:
+        for did in orphan_doc_ids:
+            try:
+                store.delete_document(tenant.id, did)
+            except Exception:
+                pass
+
     n_docs = n_chunks = 0
     for d in docs:
         try:
@@ -68,9 +91,10 @@ def reindex_all(
             continue
     session.add(AuditEvent(
         tenant_id=tenant.id, user_id=user.id, event_type="reindex", object_type="documents",
-        object_id="all", risk_level="low", reason=f"reindex {n_docs} docs / {n_chunks} chunks"))
+        object_id="all", risk_level="low",
+        reason=f"reindex {n_docs} docs / {n_chunks} chunks · {n_orphans} huérfanos purgados"))
     session.commit()
-    return {"documents": n_docs, "chunks": n_chunks}
+    return {"documents": n_docs, "chunks": n_chunks, "orphans_purged": n_orphans}
 
 
 # --- categories catalog -----------------------------------------------------
