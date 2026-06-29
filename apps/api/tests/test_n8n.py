@@ -44,6 +44,36 @@ def test_resolve_prefers_tenant_override():
     assert cfg.api_key == "tok"  # decrypted
 
 
+def test_resolve_tenant_path_prefix_when_provisioned(monkeypatch):
+    """BYO + workflows aprovisionados por MaestroAI → path con prefijo del tenant
+    ({tenant_id}/{workflow}); BYO con flujos propios → sin prefijo.
+    Esto evitaba el 404 al llamar /webhook/mando sin el prefijo."""
+    from app.integrations.n8n import trigger_workflow
+
+    t = Tenant(name="T")
+    t.n8n_webhook_base_url = "https://n8n.tenant.mx/webhook"
+    # Flujos propios del tenant (no aprovisionados) → sin prefijo.
+    assert resolve_n8n(t).path_prefix == ""
+
+    # MaestroAI aprovisionó los flujos en su n8n → prefijo = tenant.id.
+    t.n8n_provisioned = True
+    cfg = resolve_n8n(t)
+    assert cfg.path_prefix == t.id
+
+    # La URL disparada incluye el prefijo del tenant.
+    captured = {}
+
+    class _Resp:
+        status_code = 200
+        def raise_for_status(self): ...
+        def json(self): return {"ok": True}
+
+    import httpx
+    monkeypatch.setattr(httpx, "post", lambda url, **kw: captured.setdefault("url", url) or _Resp())
+    trigger_workflow(cfg, "mando", {"x": 1})
+    assert captured["url"] == f"https://n8n.tenant.mx/webhook/{t.id}/mando"
+
+
 # --- API tests --------------------------------------------------------------
 def test_run_simulated_when_n8n_disabled(client):
     r = client.post("/workflows/ingesta/run", headers=_auth(client)).json()
