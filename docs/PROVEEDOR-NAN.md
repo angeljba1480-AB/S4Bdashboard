@@ -87,9 +87,20 @@ Formato OpenAI (`{"error": {message, type, param, code}}`). Códigos: `401` auth
   > ⚠️ Implicación para MaestroAI: las microVM son **CPU-only** (sin GPU) → **no sirven
   > para entrenar LoRA**. Confirma que el entrenamiento debe correr en infra propia del
   > cliente (lab MLX / GPU externa), no en NaN.
-- **Apps**: despliegue desde GitHub (Dockerfile en la raíz) dentro de un **Space**
-  (cuota CPU/RAM/disco). Tiers Basic/Medium/Large; Basic gratis con la suscripción de
-  inferencia. Auto-deploy en cada push; dominio público con HTTPS.
+- **Apps**: despliega tus propias apps desde **GitHub** (requiere **Dockerfile** en la raíz)
+  dentro de un **Space** (entorno aislado tuyo con cuota agregada de CPU/RAM/disco). Build de
+  la imagen → entorno aislado → **dominio público HTTPS** (`*.apps.nan.builders`), en un clic.
+  **Auto-deploy** en cada `git push` a la rama. Expone HTTP (indicas el puerto) o corre como
+  *worker* (sin URL). Por app por defecto 500m CPU / 500 MiB RAM (ajustable en *Advanced*);
+  disco persistente vía PVC solo si la marcas *persistent*. Env vars de runtime y build.
+  - **Tiers** (cuota agregada del Space): **Basic** 2 vCPU / 4 GiB / 20 GiB / 5 pods —
+    *gratis con la suscripción de inferencia*, o $6/mes; **Medium** 4 vCPU / 8 GiB / 40 GiB /
+    10 pods — $12/mes; **Large** 4 vCPU / 16 GiB / 80 GiB / 20 pods — $24/mes. Sub/baja de tier
+    en caliente. (Apps y Spaces en **Beta**.)
+  > 💡 Implicación para MaestroAI: un **Space de NaN** es hosting **aislado dentro del mismo
+  > proveedor que ya usamos**. Sirve como alternativa a Render/Vercel para componentes propios
+  > y, para privacidad, para hospedar un **embebedor/servicio on-prem-equivalente** sin túnel a
+  > una Mac (CPU-only: bien para embeddings/API, **no para entrenar LoRA con GPU**).
 
 ---
 

@@ -36,6 +36,7 @@ export default function DocumentsPage() {
   const [driveFiles, setDriveFiles] = useState<{ id: string; name: string; mime_type: string; is_folder: boolean }[]>([]);
   const [driveMsg, setDriveMsg] = useState("");
   const [driveBusy, setDriveBusy] = useState(false);
+  const [driveStack, setDriveStack] = useState<{ id: string; name: string }[]>([]);
   const [reindexing, setReindexing] = useState(false);
 
   async function reindex() {
@@ -48,11 +49,11 @@ export default function DocumentsPage() {
     finally { setReindexing(false); }
   }
 
-  async function loadDrive() {
+  async function loadDrive(folderId?: string) {
     setDriveBusy(true);
     setDriveMsg("");
     try {
-      const r = await api.driveFiles(driveQuery);
+      const r = await api.driveFiles(driveQuery, folderId);
       setDriveFiles(r.files);
       if (!r.files.length) setDriveMsg("Sin resultados.");
     } catch (e) {
@@ -60,6 +61,20 @@ export default function DocumentsPage() {
     } finally {
       setDriveBusy(false);
     }
+  }
+
+  function openFolder(f: { id: string; name: string }) {
+    const stack = [...driveStack, { id: f.id, name: f.name }];
+    setDriveStack(stack);
+    setDriveQuery("");
+    loadDrive(f.id);
+  }
+  function goToCrumb(index: number) {
+    // index = -1 => raíz; si no, navega a esa carpeta del breadcrumb
+    const stack = index < 0 ? [] : driveStack.slice(0, index + 1);
+    setDriveStack(stack);
+    setDriveQuery("");
+    loadDrive(index < 0 ? undefined : stack[stack.length - 1].id);
   }
 
   async function importDrive(f: { id: string; name: string; mime_type: string }) {
@@ -213,16 +228,33 @@ export default function DocumentsPage() {
                 </p>
                 <div className="flex gap-2">
                   <input value={driveQuery} onChange={(e) => setDriveQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && loadDrive()}
+                    onKeyDown={(e) => { if (e.key === "Enter") { setDriveStack([]); loadDrive(); } }}
                     placeholder="Buscar por nombre…" className={`flex-1 ${inputCls}`} />
-                  <button onClick={loadDrive} disabled={driveBusy}
+                  <button onClick={() => { setDriveStack([]); loadDrive(); }} disabled={driveBusy}
                     className="rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white disabled:opacity-50">Buscar</button>
+                </div>
+                {/* Breadcrumb de navegación de carpetas */}
+                <div className="flex flex-wrap items-center gap-1 text-xs text-slate-500">
+                  <button onClick={() => goToCrumb(-1)} className="rounded px-1 hover:text-violet-700">Mi unidad</button>
+                  {driveStack.map((c, i) => (
+                    <span key={c.id} className="flex items-center gap-1">
+                      <span className="text-slate-300">/</span>
+                      <button onClick={() => goToCrumb(i)} className="max-w-[120px] truncate rounded px-1 hover:text-violet-700">{c.name}</button>
+                    </span>
+                  ))}
                 </div>
                 {driveMsg && <div className="text-xs text-slate-500">{driveMsg}</div>}
                 <div className="max-h-64 space-y-1 overflow-auto">
                   {driveFiles.map((f) => (
                     <div key={f.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-2 py-1.5 text-sm">
-                      <span className="truncate text-slate-600">{f.is_folder ? "📁" : "📄"} {f.name}</span>
+                      {f.is_folder ? (
+                        <button onClick={() => openFolder(f)} disabled={driveBusy}
+                          className="flex min-w-0 items-center gap-1 truncate text-left text-slate-600 hover:text-violet-700">
+                          📁 <span className="truncate">{f.name}</span>
+                        </button>
+                      ) : (
+                        <span className="truncate text-slate-600">📄 {f.name}</span>
+                      )}
                       {!f.is_folder && (
                         <button onClick={() => importDrive(f)} disabled={driveBusy}
                           className="ml-2 flex-shrink-0 rounded-md bg-violet-600 px-2 py-1 text-xs font-semibold text-white disabled:opacity-50">Importar</button>
