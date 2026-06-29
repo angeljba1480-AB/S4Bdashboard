@@ -166,7 +166,7 @@ export const api = {
   automationTemplates: () =>
     request<{ id: string; name: string; description: string; trigger: string; schedule: string; event: string; action_type: string }[]>("/automations/templates"),
   automations: () =>
-    request<{ id: string; name: string; description: string; trigger: string; schedule: string; event: string; action_type: string; action_ref: string; enabled: boolean; status: string; last_run: string | null }[]>("/automations"),
+    request<{ id: string; name: string; description: string; trigger: string; schedule: string; event: string; action_type: string; action_ref: string; config: Record<string, unknown>; enabled: boolean; status: string; last_run: string | null }[]>("/automations"),
   createAutomationFromTemplate: (templateId: string) =>
     request<{ id: string; name: string }>("/automations/from-template", { method: "POST", body: JSON.stringify({ template_id: templateId }) }),
   createAutomation: (body: { name: string; trigger: string; schedule?: string; event?: string; action_type: string; action_ref?: string; config?: Record<string, unknown> }) =>
@@ -196,9 +196,13 @@ export const api = {
   deleteAutomation: (id: string) =>
     request<{ ok: boolean }>(`/automations/${id}`, { method: "DELETE" }),
   validateAutomation: (id: string) =>
-    request<{ name: string; ready: boolean; steps: { label: string; status: "ok" | "missing"; detail: string; link: string | null }[] }>(`/automations/${id}/validate`),
+    request<{ name: string; ready: boolean; steps: { label: string; status: "ok" | "missing"; detail: string; link: string | null; optional?: boolean }[] }>(`/automations/${id}/validate`),
   scheduleAutomation: (id: string, frequency: string) =>
     request<{ id: string; trigger: string; schedule: string; enabled: boolean }>(`/automations/${id}/schedule`, { method: "POST", body: JSON.stringify({ frequency }) }),
+  setAutomationDelivery: (id: string, channels: string[], emailTo = "") =>
+    request<{ id: string; config: Record<string, unknown> }>(`/automations/${id}/delivery`, { method: "POST", body: JSON.stringify({ channels, email_to: emailTo }) }),
+  setAutomationSource: (id: string, body: { kind: string; ref?: string; label?: string }) =>
+    request<{ id: string; config: Record<string, unknown> }>(`/automations/${id}/source`, { method: "POST", body: JSON.stringify(body) }),
   // App Studio
   apps: () => request<AppProject[]>("/apps"),
   createApp: (body: { name: string; description: string }) =>

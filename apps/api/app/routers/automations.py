@@ -51,6 +51,66 @@ def _load(session, tenant, user, aid) -> Automation:
     return a
 
 
+_CHANNELS = ("notify", "whatsapp", "email")
+
+# Fuentes de entrada para una automatización (qué va a procesar antes de correr).
+_SOURCE_KINDS = ("new_documents", "drive_folder", "datasource", "manual")
+_SOURCE_LABELS = {
+    "new_documents": "Documentos nuevos",
+    "drive_folder": "Carpeta de Drive",
+    "datasource": "Fuente de datos (legado)",
+    "manual": "Sin entrada (manual)",
+}
+
+
+def _deliver_result(session: Session, tenant: Tenant, owner_id: str | None,
+                    name: str, content: str, config: dict) -> str:
+    """Entrega el resultado de una automatización a los canales elegidos
+    (notificación / WhatsApp / correo). Devuelve los canales a los que se envió."""
+    content = (content or "").strip()
+    if not content:
+        return ""
+    channels = [c for c in (config.get("deliver") or ["notify"]) if c in _CHANNELS]
+    owner = session.get(User, owner_id) if owner_id else None
+    sent: list[str] = []
+
+    if "notify" in channels and owner_id:
+        session.add(Notification(tenant_id=tenant.id, user_id=owner_id, title=name,
+                                 body=content[:8000], event_type="automation"))
+        sent.append("notificación")
+
+    if "whatsapp" in channels and owner and owner.callmebot_phone and owner.callmebot_apikey_enc:
+        try:
+            from ..integrations import whatsapp
+            from ..security.crypto import decrypt
+            ok, _ = whatsapp.send_callmebot(
+                owner.callmebot_phone, decrypt(owner.callmebot_apikey_enc, tenant.kms_key_id),
+                f"{name}\n\n{content}"[:900])
+            sent.append("whatsapp" if ok else "whatsapp✗")
+        except Exception:
+            sent.append("whatsapp✗")
+
+    if "email" in channels:
+        try:
+            from ..integrations import actions_exec, token_store
+            sup = token_store.support_sender(session, tenant)
+            if sup:
+                row, tok = sup
+            else:
+                conns = [c for c in token_store.list_tenant_connections(session, tenant.id)
+                         if c.provider in ("microsoft", "google")]
+                row = conns[0] if conns else None
+                tok = token_store.access_token_for(session, tenant, row) if row else None
+            to = (config.get("email_to") or (owner.email if owner else "") or (row.identifier if row else "")).strip()
+            if row and tok and to:
+                action = "outlook.send" if row.provider == "microsoft" else "gmail.send"
+                actions_exec.execute(action, tok, {"to": to, "subject": name, "body": content[:6000]})
+                sent.append(f"correo→{to}")
+        except Exception:
+            sent.append("correo✗")
+    return ", ".join(sent)
+
+
 def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
          payload: dict | None = None) -> tuple[str, str]:
     """Execute the action. Returns (status, detail)."""
@@ -62,9 +122,24 @@ def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
     uid = (user.id if user else None) or a.user_id
     if a.action_type == "workflow":
         cfg = resolve_n8n(tenant)
+        # Resuelve la fuente (qué procesar) y la manda como entrada al webhook.
+        # Para "documentos nuevos" añade el corte temporal (desde la última corrida).
+        src = dict(config.get("source") or {})
+        if src.get("kind") == "new_documents":
+            src["since"] = a.last_run or ""
         run = trigger_workflow(cfg, a.action_ref, {
-            "automation_id": a.id, "tenant_id": tenant.id, "user_id": uid, **config})
-        return run.status, f"workflow {a.action_ref} · n8n:{run.source} · {run.detail}"
+            "automation_id": a.id, "tenant_id": tenant.id, "user_id": uid,
+            "source": src, **config})
+        resp = run.response or {}
+        content = ""
+        if isinstance(resp, dict) and resp:
+            content = str(resp.get("text") or resp.get("summary") or resp.get("result")
+                          or resp.get("output") or json.dumps(resp, ensure_ascii=False))
+        elif resp:
+            content = str(resp)
+        delivered = _deliver_result(session, tenant, uid, a.name, content, config)
+        extra = f" → enviado a {delivered}" if delivered else ""
+        return run.status, f"workflow {a.action_ref} · n8n:{run.source} · {run.detail}{extra}"
     if a.action_type == "recipe":
         from ..recipes.catalog import execute, prefill
         from .recipes import _resolve
@@ -76,12 +151,12 @@ def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
         draft = prefill(recipe, session, tenant, config, user_id=uid)
         result = execute(recipe, session, tenant.id, config, draft, user_id=uid)
         detail = str(result.get("message") or result.get("output") or draft.get("summary", ""))
-        # Entrega el resultado completo como notificación (si no, el texto se perdería:
-        # la automatización corre sola y nadie ve el documento generado).
+        # Entrega el resultado completo a los canales elegidos (notif/WhatsApp/correo);
+        # si no, el texto se perdería: la automatización corre sola.
         doc = result.get("documento") or (result.get("output") if isinstance(result.get("output"), str) else "")
-        if doc and uid:
-            session.add(Notification(tenant_id=tenant.id, user_id=uid, title=recipe["name"],
-                                     body=str(doc)[:8000], event_type="automation"))
+        delivered = _deliver_result(session, tenant, uid, recipe["name"], doc, config)
+        if delivered:
+            detail = f"{detail} → enviado a {delivered}"
         return "completed", f"caso {recipe['name']}: {detail[:200]}"
     if a.action_type == "connector":
         from .integrations import send_to_connector
@@ -257,10 +332,12 @@ def validate(automation_id: str, tenant: Tenant = Depends(get_current_tenant),
     """Validación previa (tipo workflow): pasos con semáforo de si está todo listo
     para ejecutar — disparador, fuente, destino y modelo."""
     a = _load(session, tenant, user, automation_id)
+    config = json.loads(a.config or "{}")
     steps: list[dict] = []
 
-    def step(label: str, ok: bool, detail: str, link: str | None = None) -> None:
-        steps.append({"label": label, "status": "ok" if ok else "missing", "detail": detail, "link": link})
+    def step(label: str, ok: bool, detail: str, link: str | None = None, optional: bool = False) -> None:
+        steps.append({"label": label, "status": "ok" if ok else "missing",
+                      "detail": detail, "link": link, "optional": optional})
 
     # 1. Disparador
     if a.trigger == "manual":
@@ -288,6 +365,17 @@ def validate(automation_id: str, tenant: Tenant = Depends(get_current_tenant),
         cfg = resolve_n8n(tenant)
         step("n8n configurado", cfg.enabled,
              "Conectado" if cfg.enabled else "n8n no configurado → ejecución simulada", "/integrations")
+        # Entrada: qué va a procesar el flujo (carpeta, datasource o docs nuevos).
+        src = config.get("source") or {}
+        kind = src.get("kind")
+        if kind and kind in _SOURCE_KINDS:
+            desc = _SOURCE_LABELS.get(kind, kind)
+            ref = src.get("label") or src.get("ref")
+            step("Entrada", True, f"{desc}{f': {ref}' if ref else ''}")
+        else:
+            step("Entrada", False,
+                 "Elige qué va a procesar (carpeta, fuente de datos o documentos nuevos)",
+                 optional=True)
     elif a.action_type == "connector":
         from ..models import DataSource
         ds = session.exec(select(DataSource).where(DataSource.tenant_id == tenant.id)).first()
@@ -301,7 +389,14 @@ def validate(automation_id: str, tenant: Tenant = Depends(get_current_tenant),
     open_ok = bool((_RUNTIME.get("open") or {}).get("base_url")) or bool(settings.open_enabled and settings.open_base_url)
     step("Modelo (NaN)", open_ok, "Proveedor abierto activo" if open_ok else "Configura NaN en Admin → Modelos", "/admin")
 
-    return {"name": a.name, "ready": all(s["status"] == "ok" for s in steps), "steps": steps}
+    # 4. Salida: a dónde va el resultado (entrega real de la automatización).
+    deliver = [c for c in (config.get("deliver") or ["notify"]) if c in _CHANNELS]
+    labels = {"notify": "notificación", "whatsapp": "WhatsApp", "email": "correo"}
+    step("Salida", bool(deliver), ", ".join(labels.get(c, c) for c in deliver) if deliver
+         else "Define a dónde mandar el resultado (notificación, WhatsApp o correo)", optional=True)
+
+    ready = all(s["status"] == "ok" or s.get("optional") for s in steps)
+    return {"name": a.name, "ready": ready, "steps": steps}
 
 
 class ScheduleIn(BaseModel):
@@ -320,6 +415,49 @@ def schedule(automation_id: str, body: ScheduleIn, tenant: Tenant = Depends(get_
     session.add(AuditEvent(
         tenant_id=tenant.id, user_id=user.id, event_type="automation", object_type="automation",
         object_id=a.id, risk_level="low", reason=f"programada '{a.name}' · {a.schedule}"))
+    session.commit()
+    session.refresh(a)
+    return _out(a)
+
+
+class DeliveryIn(BaseModel):
+    channels: list[str] = ["notify"]   # notify | whatsapp | email
+    email_to: str = ""
+
+
+@router.post("/{automation_id}/delivery")
+def set_delivery(automation_id: str, body: DeliveryIn, tenant: Tenant = Depends(get_current_tenant),
+                 user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    """Define a dónde va el resultado de la automatización (notificación/WhatsApp/correo)."""
+    a = _load(session, tenant, user, automation_id)
+    cfg = json.loads(a.config or "{}")
+    cfg["deliver"] = [c for c in body.channels if c in _CHANNELS] or ["notify"]
+    if body.email_to.strip():
+        cfg["email_to"] = body.email_to.strip()
+    a.config = json.dumps(cfg)
+    session.add(a)
+    session.commit()
+    session.refresh(a)
+    return _out(a)
+
+
+class SourceIn(BaseModel):
+    kind: str = "new_documents"   # new_documents | drive_folder | datasource | manual
+    ref: str = ""                 # id de carpeta/datasource según el tipo
+    label: str = ""               # nombre legible para mostrar
+
+
+@router.post("/{automation_id}/source")
+def set_source(automation_id: str, body: SourceIn, tenant: Tenant = Depends(get_current_tenant),
+               user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    """Define qué va a procesar la automatización antes de ejecutar (la entrada).
+    Se manda como `source` en el payload del workflow/n8n."""
+    kind = body.kind if body.kind in _SOURCE_KINDS else "new_documents"
+    a = _load(session, tenant, user, automation_id)
+    cfg = json.loads(a.config or "{}")
+    cfg["source"] = {"kind": kind, "ref": body.ref.strip(), "label": body.label.strip()}
+    a.config = json.dumps(cfg)
+    session.add(a)
     session.commit()
     session.refresh(a)
     return _out(a)
