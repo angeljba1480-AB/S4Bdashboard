@@ -46,7 +46,10 @@ def resolve_n8n(tenant: Tenant) -> N8nConfig:
             api_key=decrypt(tenant.n8n_api_key_enc, tenant.id) if tenant.n8n_api_key_enc else "",
             auth_header=tenant.n8n_auth_header or settings.n8n_auth_header,
             source="tenant",
-            path_prefix="",  # their own instance: no prefix
+            # Si MaestroAI aprovisionó los workflows en su propio n8n, viven bajo el
+            # path con prefijo del tenant ({tenant_id}/{workflow}); si el tenant
+            # trajo sus propios flujos con paths simples, no lleva prefijo.
+            path_prefix=tenant.id if tenant.n8n_provisioned else "",
         )
     if settings.n8n_enabled and settings.n8n_webhook_base_url:
         return N8nConfig(
