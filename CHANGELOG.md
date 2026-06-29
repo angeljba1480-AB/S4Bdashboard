@@ -3,6 +3,11 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Autochequeo del sistema · más cobertura de configuración**: el panel *Admin → Autochequeo*
+  (`/admin/readiness`) ahora también revisa **Automatización programada (scheduler)**, **OAuth de
+  correo a nivel plataforma (M365/Google)**, **WhatsApp (CallMeBot)** y **datos del Tablero
+  Financiero (cargado vs demo)** — cada uno con su guía de "cómo resolverlo". Así los pendientes de
+  configuración de MaestroAI quedan visibles en un solo lugar (semáforo 🟢/🟡/🔴), no en un documento.
 - **Tablero Financiero · carga self-service de datos (Excel/zip o JSON) por el usuario**:
   pantalla **"Cargar datos"** dentro del tablero/Espacio: el cliente (no experto) sube sus
   **Excel originales** (Resumen por proyecto, Concentrado BC, Timesheet + catálogo de horas,

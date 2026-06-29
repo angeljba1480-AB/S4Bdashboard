@@ -154,6 +154,55 @@ def run_checks(session, tenant, user) -> dict:
                            ["Define `MASTER_KMS_KEY` (32+ caracteres) en el backend.",
                             "Rota credenciales sensibles tras configurarla."]))
 
+    # 11. Programador (scheduler) — resúmenes de correo y alertas automáticas.
+    if settings.scheduler_enabled:
+        checks.append(_ok("scheduler", "Automatización programada", "Scheduler activo: digests y alertas corren solos."))
+    else:
+        checks.append(_gap("scheduler", "Automatización programada", "warn",
+                           "Scheduler apagado: los resúmenes de correo y las alertas no corren solos (solo manual).",
+                           ["Pon `SCHEDULER_ENABLED=true` en el backend y reinicia.",
+                            "Verifica los horarios en *Resumen de correo* y *Alertas*."],
+                           help="webhooks", link="/mail-digest"))
+
+    # 12. OAuth de correo a nivel plataforma (M365 / Google) — habilita conectar cuentas.
+    oauth_on = [n for n, on in (("Microsoft 365", settings.microsoft_oauth_enabled),
+                                ("Google", settings.google_oauth_enabled)) if on]
+    if oauth_on:
+        checks.append(_ok("oauth_config", "OAuth de correo (plataforma)", f"Habilitado: {', '.join(oauth_on)}."))
+    else:
+        checks.append(_gap("oauth_config", "OAuth de correo (plataforma)", "missing",
+                           "Sin OAuth configurado: nadie puede conectar Outlook/Gmail (resumen de correo y acciones).",
+                           ["Crea una app en Entra (Microsoft) y/o Google Cloud (OAuth).",
+                            "Pon `MICROSOFT_OAUTH_ENABLED=true` + client_id/secret/redirect_uri (y/o las de Google).",
+                            "Para Microsoft son scopes **delegados** (Mail.Read/Send…), distinta de la app-only de SharePoint."],
+                           help="acciones", link="/integrations"))
+
+    # 13. WhatsApp (CallMeBot) — canal de alertas del usuario actual.
+    if getattr(user, "callmebot_phone", "") and getattr(user, "callmebot_apikey_enc", ""):
+        checks.append(_ok("whatsapp", "WhatsApp para alertas", "CallMeBot configurado en tu cuenta."))
+    else:
+        checks.append(_gap("whatsapp", "WhatsApp para alertas", "warn",
+                           "Sin WhatsApp: las alertas no se pueden entregar por ese canal.",
+                           ["Pide tu apikey gratis a CallMeBot (callmebot.com).",
+                            "En *Alertas* / *Mi cuenta* guarda tu número (+52…) y la apikey."],
+                           help="alertas", link="/alerts"))
+
+    # 14. Tablero Financiero — datos cargados (vs demo).
+    try:
+        from .finance import store
+        loaded = store.status(session, tenant).get("loaded")
+    except Exception:
+        loaded = False
+    if loaded:
+        checks.append(_ok("finance_data", "Tablero Financiero (datos)", "Dataset del cliente cargado."))
+    else:
+        checks.append(_gap("finance_data", "Tablero Financiero (datos)", "warn",
+                           "El tablero muestra datos demo: aún no se cargan los del cliente.",
+                           ["Entra a un *Espacio → Tablero Financiero*.",
+                            "Pulsa **Cargar datos** y sube los Excel/zip o el dataset JSON.",
+                            "Más adelante, automatízalo con el conector de SharePoint/BD (Paso 1)."],
+                           help="finanzas", link="/espacios"))
+
     summary = {"ok": 0, "warn": 0, "missing": 0}
     for c in checks:
         summary[c["status"]] = summary.get(c["status"], 0) + 1
