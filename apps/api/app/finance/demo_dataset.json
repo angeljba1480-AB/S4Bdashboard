@@ -698,5 +698,100 @@
     "rentabilidad": "Baja"
    }
   ]
+ },
+ "cost_comparison": {
+  "note": "Comparativo del modelo ER (RESUMEN_COSTOS): costo_cmi (nómina) vs costo_bc (presupuesto) vs costo_timesheet (aplicado por horas). Datos demo.",
+  "available": [
+   "costo_bc",
+   "costo_cmi",
+   "costo_timesheet"
+  ],
+  "pending": [],
+  "by_month": [
+   {
+    "anio": "2025",
+    "mes": "ENE",
+    "costo_bc": 3400000,
+    "costo_cmi": 3808000,
+    "costo_timesheet": 2924000
+   },
+   {
+    "anio": "2025",
+    "mes": "FEB",
+    "costo_bc": 3000000,
+    "costo_cmi": 3360000,
+    "costo_timesheet": 2580000
+   },
+   {
+    "anio": "2025",
+    "mes": "MAR",
+    "costo_bc": 2800000,
+    "costo_cmi": 3136000,
+    "costo_timesheet": 2408000
+   },
+   {
+    "anio": "2025",
+    "mes": "ABR",
+    "costo_bc": 2600000,
+    "costo_cmi": 2912000,
+    "costo_timesheet": 2236000
+   },
+   {
+    "anio": "2025",
+    "mes": "MAY",
+    "costo_bc": 2500000,
+    "costo_cmi": 2800000,
+    "costo_timesheet": 2150000
+   },
+   {
+    "anio": "2025",
+    "mes": "JUN",
+    "costo_bc": 2900000,
+    "costo_cmi": 3248000,
+    "costo_timesheet": 2494000
+   },
+   {
+    "anio": "2025",
+    "mes": "JUL",
+    "costo_bc": 2900000,
+    "costo_cmi": 3248000,
+    "costo_timesheet": 2494000
+   },
+   {
+    "anio": "2025",
+    "mes": "AGO",
+    "costo_bc": 3200000,
+    "costo_cmi": 3584000,
+    "costo_timesheet": 2752000
+   },
+   {
+    "anio": "2025",
+    "mes": "SEP",
+    "costo_bc": 3000000,
+    "costo_cmi": 3360000,
+    "costo_timesheet": 2580000
+   },
+   {
+    "anio": "2025",
+    "mes": "OCT",
+    "costo_bc": 3100000,
+    "costo_cmi": 3472000,
+    "costo_timesheet": 2666000
+   },
+   {
+    "anio": "2025",
+    "mes": "NOV",
+    "costo_bc": 3200000,
+    "costo_cmi": 3584000,
+    "costo_timesheet": 2752000
+   },
+   {
+    "anio": "2025",
+    "mes": "DIC",
+    "costo_bc": 3400000,
+    "costo_cmi": 3808000,
+    "costo_timesheet": 2924000
+   }
+  ]
  }
 }

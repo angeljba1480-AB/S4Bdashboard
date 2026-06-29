@@ -446,6 +446,7 @@ export const api = {
       utilization: { year: string; horas_reales: number; horas_capacidad: number; utilizacion: number; empleados: number; capacidad_emp: number; by_project: { nombre: string; horas: number }[] };
       cost_per_hour: { year: string; by_role: { rol: string; costo_hora: number; registros: number }[] };
       client_scoring: { criteria: [string, number][]; clients: { name: string; sector: string; score: number; tier: string; facturacion: string; rentabilidad: string }[] };
+      cost_comparison: { note: string; available: string[]; pending: string[]; by_month: { anio: string; mes: string; costo_bc: number | null; costo_cmi: number | null; costo_timesheet: number | null }[] };
       is_demo: boolean;
     }>("/finance/operations"),
   // Resumen de correo automatizado

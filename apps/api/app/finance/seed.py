@@ -46,6 +46,16 @@ def client_scoring() -> dict:
     return dataset.load().get("client_scoring", {})
 
 
+def cost_comparison() -> dict:
+    """Comparativo de costos del modelo ER (RESUMEN_COSTOS): costo_cmi (nómina) vs
+    costo_bc (presupuesto) vs costo_timesheet (aplicado por horas), por mes.
+
+    costo_bc se deriva de Concentrado BC; costo_cmi/costo_timesheet requieren la
+    tabla Nómina (cmi_consolidado) — quedan en ``pending`` hasta inyectarla.
+    """
+    return dataset.load().get("cost_comparison", {})
+
+
 def is_demo() -> bool:
     return dataset.is_demo()
 
