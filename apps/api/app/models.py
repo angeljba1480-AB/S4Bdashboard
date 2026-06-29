@@ -53,6 +53,12 @@ class Tenant(SQLModel, table=True):
     brand_logo_url: str = ""
     brand_color: str = ""          # primary hex, e.g. #7c3aed
     brand_tagline: str = ""
+    # Remitente de soporte por tenant: el buzón desde el que SALEN los correos de
+    # las automatizaciones (no la cuenta personal de quien conectó). Vacío -> usa
+    # la conexión del usuario que ejecuta.
+    support_account_id: str = ""   # OAuthToken.id del buzón de soporte
+    support_from: str = ""         # alias "From" opcional (requiere send-as verificado)
+    support_from_name: str = ""    # nombre para mostrar del remitente
     # Subscription: platform is sold as setup + annual prepaid by seats. App
     # Studio production deploys are charged separately (pay-to-prod).
     seats_licensed: int = 5

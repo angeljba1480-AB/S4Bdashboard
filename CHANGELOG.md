@@ -3,6 +3,12 @@
 Formato basado en *Keep a Changelog*. Las versiones se promueven **dev → qa → main (prod)**.
 
 ## [No liberado]
+- **Marca blanca · Remitente de soporte por tenant**: el correo saliente de las automatizaciones
+  ahora puede salir del **buzón de soporte de la empresa** (no de la cuenta personal de quien
+  ejecuta). Se elige en *Configuración de empresa → Remitente de soporte* (buzón conectado +
+  alias *From* opcional con send-as). `GET/PUT /company/support-sender`; nuevos campos en `Tenant`
+  (`support_account_id/from/from_name`); el toolkit de acciones envía con ese buzón. Documentado
+  en `docs/ARQUITECTURA-MCP.md` (modelo de aislamiento por cliente, KEDB de operaciones y marca blanca).
 - **Autochequeo del sistema · más cobertura de configuración**: el panel *Admin → Autochequeo*
   (`/admin/readiness`) ahora también revisa **Automatización programada (scheduler)**, **OAuth de
   correo a nivel plataforma (M365/Google)**, **WhatsApp (CallMeBot)** y **datos del Tablero

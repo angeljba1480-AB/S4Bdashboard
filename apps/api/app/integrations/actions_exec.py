@@ -8,6 +8,7 @@ import base64
 import json
 from datetime import datetime, timedelta
 from email.message import EmailMessage
+from email.utils import formataddr
 from urllib.parse import quote
 
 import httpx
@@ -144,6 +145,8 @@ def execute(action_id: str, token: str, params: dict) -> str:
     if action_id == "gmail.send":
         msg = EmailMessage()
         msg["To"] = p.get("to", "")
+        if p.get("from_addr"):
+            msg["From"] = formataddr((p.get("from_name", ""), p["from_addr"]))
         msg["Subject"] = p.get("subject", "")
         msg.set_content(p.get("body", ""))
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
@@ -175,6 +178,8 @@ def execute(action_id: str, token: str, params: dict) -> str:
     if action_id == "gmail.draft":
         msg = EmailMessage()
         msg["To"] = p.get("to", "")
+        if p.get("from_addr"):
+            msg["From"] = formataddr((p.get("from_name", ""), p["from_addr"]))
         msg["Subject"] = p.get("subject", "")
         msg.set_content(p.get("body", ""))
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
@@ -194,11 +199,14 @@ def execute(action_id: str, token: str, params: dict) -> str:
 
     # --- Microsoft 365 ---
     if action_id == "outlook.send":
-        body = {"message": {
+        message = {
             "subject": p.get("subject", ""),
             "body": {"contentType": "Text", "content": p.get("body", "")},
             "toRecipients": [{"emailAddress": {"address": a.strip()}} for a in str(p.get("to", "")).split(",") if a.strip()],
-        }, "saveToSentItems": True}
+        }
+        if p.get("from_addr"):
+            message["from"] = {"emailAddress": {"address": p["from_addr"], "name": p.get("from_name", "")}}
+        body = {"message": message, "saveToSentItems": True}
         r = httpx.post(f"{GRAPH}/me/sendMail", headers=_auth(token), json=body, timeout=TIMEOUT)
         r.raise_for_status()
         return f"Correo enviado a {p.get('to','')}"
