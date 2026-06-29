@@ -61,6 +61,22 @@ def test_projects_and_operations(client):
     assert all({"anio", "mes", "costo_bc", "costo_cmi", "costo_timesheet"} <= set(r) for r in cc["by_month"])
 
 
+def test_map_rows_to_dataset():
+    """SELECT/CSV (filas) → bloque de proyectos del tablero, vía mapeo."""
+    from app.finance.ingest_tabular import build_projects_from_rows
+    rows = [
+        {"CLIENTE": "IMSS", "PROY": "SOC", "TIPO": "Gobierno", "ANIO": "2025", "VTA": 1000000, "MGN": 300000, "EB": 200000},
+        {"CLIENTE": "ALSEA", "PROY": "Lic", "TIPO": "Privado", "ANIO": "2025", "VTA": 500000, "MGN": 100000, "EB": 80000},
+    ]
+    mapping = {"cliente": "CLIENTE", "nombre": "PROY", "tipo": "TIPO", "anio": "ANIO",
+               "venta": "VTA", "margen": "MGN", "ebitda": "EB"}
+    data = build_projects_from_rows(rows, mapping)
+    t = data["projects"]["totals"]
+    assert t["venta"] == 1500000 and t["proyectos"] == 2
+    assert data["projects"]["detail"][0]["cliente"] == "IMSS"  # ordenado por venta
+    assert data["gob_ip"]["2025"]["gob"] == 1000000 and data["gob_ip"]["2025"]["ip"] == 500000
+
+
 def test_dataset_upload_override_and_delete(client):
     import json
     h = _auth(client)
