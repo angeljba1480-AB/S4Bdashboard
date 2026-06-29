@@ -19,24 +19,24 @@
 ## 🟡 Integraciones
 | Ítem | Estado | Detalle |
 |---|---|---|
-| **Microsoft 365 OAuth** | 🟡 En progreso | App de Entra **"MaestroAI"** (multitenant). Ver sub-pasos abajo. |
+| **Microsoft 365 OAuth** | ✅ Configurado | Entra + Render completos. **Solo falta conectar la cuenta** en Integraciones (acción del usuario, no config). |
 | Google OAuth | ⏳ Siguiente | Gmail/Drive/Calendar/Sheets. |
 | WhatsApp (CallMeBot) | ⏳ Pendiente | Se configura **en la app** (Alertas/Mi cuenta), no en Render. |
-| n8n (workflows) | ⏳ Opcional | Cuando haya instancia n8n. |
+| n8n (workflows) | 🟡 Avanzado | `N8N_API_BASE_URL` ya presente en Render — revisar `N8N_ENABLED` + webhook base. |
 | Zapier NLA | ⏳ Opcional | Catálogo de apps. |
 
 ### Microsoft 365 OAuth — sub-pasos (app "MaestroAI")
 - App: **MaestroAI** (multitenant, "Todos los usuarios de cuentas Microsoft").
   → por ser multitenant, en Render `MICROSOFT_TENANT=common`.
 - [x] **Redirect URI (Web)**: `https://s4bdashboard.onrender.com/oauth/microsoft/callback`
-- [x] **Secreto de cliente** existe (confirmado por el usuario)
-- [ ] **Permisos delegados** (Graph) + **consentimiento admin** (multitenant lo exige):
-      `offline_access User.Read Mail.Read Mail.Send Calendars.ReadWrite ChannelMessage.Send Files.ReadWrite.All Sites.Read.All`
-- [ ] **Habilitar en Render**: `MICROSOFT_OAUTH_ENABLED=true` (+ `MICROSOFT_CLIENT_ID/SECRET/REDIRECT_URI`, `MICROSOFT_TENANT=common`) — revisar Autochequeo por si ya estaban
+- [x] **Secreto de cliente** vigente
+- [x] **Permisos delegados** (Graph) + **consentimiento admin** ✅ (10 permisos en verde)
+- [x] **Habilitado en Render**: `MICROSOFT_OAUTH_ENABLED=true` + `CLIENT_ID/SECRET/REDIRECT_URI/TENANT` (todos presentes)
 - [ ] **Conectar cuenta** en Integraciones → el *Toolkit de acciones* se activa solo al conectar → verificar Autochequeo 🟢
 
 > Nota: no existe un "toggle de toolkit" separado. El toolkit (correo/calendario/Sheets)
 > queda disponible cuando el OAuth está habilitado **y** la cuenta está conectada.
+> **Microsoft a nivel plataforma = LISTO.** Solo resta que cada usuario conecte su cuenta.
 
 ## 🟢 Seguridad / escala
 | Ítem | Estado | Detalle |
