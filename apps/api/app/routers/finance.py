@@ -150,6 +150,40 @@ def delete_dataset(tenant: Tenant = Depends(get_current_tenant),
     return {"ok": store.delete_dataset(session, tenant)}
 
 
+class MapRowsIn(BaseModel):
+    columns: list[str]
+    rows: list[list] = []
+    mapping: dict = {}
+    er_hint: str = ""
+
+
+@router.post("/dataset/propose-mapping")
+def propose_mapping(body: MapRowsIn, tenant: Tenant = Depends(get_current_tenant),
+                    _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS))) -> dict:
+    """Un agente propone el mapeo columna→campo del tablero (para revisar y confirmar)."""
+    from ..finance import ingest_tabular
+    sample = [dict(zip(body.columns, r)) for r in body.rows[:5]]
+    return {"mapping": ingest_tabular.propose_mapping(tenant, body.columns, sample, body.er_hint),
+            "fields": ingest_tabular.TARGET_FIELDS}
+
+
+@router.post("/dataset/from-rows", status_code=201)
+def dataset_from_rows(body: MapRowsIn, tenant: Tenant = Depends(get_current_tenant),
+                      user: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+                      session: Session = Depends(get_session)) -> dict:
+    """Mapea filas (SELECT del conector legado o CSV) al Tablero Financiero y las guarda."""
+    from ..finance import ingest_tabular, store
+    if not body.mapping:
+        raise HTTPException(status_code=422, detail="Falta el mapeo (usa /dataset/propose-mapping para sugerirlo).")
+    rows = [dict(zip(body.columns, r)) for r in body.rows]
+    try:
+        data = ingest_tabular.build_projects_from_rows(rows, body.mapping)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    store.save_dataset(session, tenant, data, source="sql", filename="datasource:sql", user_id=user.id)
+    return {"ok": True, "proyectos": data["projects"]["totals"]["proyectos"], "partial_entities": True}
+
+
 class AskIn(BaseModel):
     question: str
     entity: str = "CONS"
