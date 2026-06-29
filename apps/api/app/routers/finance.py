@@ -88,6 +88,7 @@ def operations(_: User = Depends(get_current_user)) -> dict:
         "utilization": seed.utilization(),
         "cost_per_hour": seed.cost_per_hour(),
         "client_scoring": seed.client_scoring(),
+        "cost_comparison": seed.cost_comparison(),
         "is_demo": seed.is_demo(),
     }
 
@@ -138,6 +139,16 @@ def _context(entity: str) -> str:
         top_sc = sorted(sc["clients"], key=lambda c: -c.get("score", 0))[:5]
         lines.append("Evaluación de clientes (score, tier): " + "; ".join(
             f"{c['name']} {c.get('score')} {c.get('tier', '')}" for c in top_sc))
+    cc = seed.cost_comparison()
+    if cc.get("by_month"):
+        bc = sum(r.get("costo_bc") or 0 for r in cc["by_month"])
+        cmi = sum(r.get("costo_cmi") or 0 for r in cc["by_month"])
+        if cmi:
+            lines.append(f"Comparativo de costos (RESUMEN_COSTOS): costo BC (presupuesto) {m(bc)}, "
+                         f"costo CMI (nómina) {m(cmi)}.")
+        else:
+            lines.append(f"Comparativo de costos: costo BC (presupuesto) {m(bc)}. "
+                         "costo_cmi y costo_timesheet pendientes (requieren tabla Nómina).")
     return "\n".join(lines)
 
 
