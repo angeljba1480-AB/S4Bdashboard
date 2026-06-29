@@ -67,6 +67,7 @@
 ## 🏷️ Pendientes diferidos (mejoras, no bloquean)
 | Ítem | Estado | Detalle |
 |---|---|---|
+| **Privacidad de embeddings** | ✅ Decidido (NaN) / on-prem listo | Hoy todo va a **NaN** (sin retención por su doc). Camino on-prem **construido**: `scripts/onprem/cloudflare-tunnel.sh` + ruta `local`. Mejora pendiente: **embeddings por sensibilidad** (Restringido→privado, resto→NaN). |
 | **Rebranding interno → MaestroAI** | ⏳ Diferido | Quedan referencias/links internos que dicen *"silent dashboard" / "s4bdashboard"*; cambiar a **MaestroAI / plataforma.maestroai.mx**. Incluye el **dominio de la API** (`s4bdashboard.onrender.com`) que está en los **redirect URIs** de Microsoft y Google — si se cambia el dominio, hay que actualizar esos redirect URIs en Entra/Google y las env `*_REDIRECT_URI`. Hacerlo en bloque para no romper OAuth. |
 
 ## Apps de Entra (referencia, sin secretos)

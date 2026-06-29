@@ -34,6 +34,16 @@ MaestroAI (nube/Render) no alcanza `localhost` del cliente. Dos opciones:
    modelo `llama3.2:3b`, **Activo**, Guardar → **Probar conexión** (latencia + muestra).
 4. Listo: los datos **confidenciales/restringidos** ahora se procesan con tu modelo local.
 
+## Estado actual (decisión) y "listo para activar"
+- **Hoy:** la operación (pruebas) va a **NaN** — su documentación indica **sin retención de
+  datos**, aceptable para el piloto. **Cero infra.**
+- **Listo para activar on-prem:** el camino ya está construido. Script turnkey
+  `scripts/onprem/cloudflare-tunnel.sh` (levanta el túnel a Ollama, baja `nomic-embed-text`
+  para embeddings privados, e imprime los pasos para pegar la URL en *Admin → Modelos → Local*).
+  Cuando se quiera que lo **confidencial nunca salga**, se corre ese script y se apunta la ruta
+  `local`. Embeddings privados: `EMBEDDINGS_PROVIDER=local` (todo) o, por sensibilidad
+  (Restringido→privado, resto→NaN), que es una **mejora de código pendiente**.
+
 ## Privacidad
 - El router decide la ruta por sensibilidad; lo **restringido** va a **local** y no sale.
 - PII redactada/minimizada antes de cualquier salida; todo **auditado**.
