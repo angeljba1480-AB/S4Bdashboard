@@ -48,3 +48,7 @@ venv/
 # Finanzas: el dataset real se inyecta (env / secret file), nunca se versiona
 apps/api/app/finance/dataset.local.json
 FINANCE_DATASET*.json
+
+# Artefactos generados (Word/Excel de reportes) — no versionar
+*.docx
+*.xlsx
