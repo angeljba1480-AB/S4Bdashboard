@@ -93,10 +93,29 @@ def run_checks(session, tenant, user) -> dict:
                             "**Re-indexa** los documentos (botón *Re-indexar* en Documentos o `POST /documents/reindex`) para reconstruir los vectores con la nueva dimensión."],
                            help="modelos", link="/documents"))
 
-    # 5. Toolkit de acciones — proveedor conectado (Google/Microsoft).
-    connected = {c.provider for c in token_store.list_connections(session, tenant.id, user.id)}
-    if connected:
-        checks.append(_ok("actions", "Toolkit de acciones", f"Conectado: {', '.join(sorted(connected))}."))
+    # 5. Toolkit de acciones — proveedor conectado Y con token legible (no solo que exista).
+    from .security.crypto import decrypt, is_encrypted
+    conns = token_store.list_connections(session, tenant.id, user.id)
+
+    def _token_ok(c) -> bool:
+        if not c.access_token_enc:
+            return False
+        return not is_encrypted(decrypt(c.access_token_enc, tenant.kms_key_id))
+
+    usable = {c.provider for c in conns if _token_ok(c)}
+    broken = {c.provider for c in conns if not _token_ok(c)}
+    if usable:
+        extra = f" (reconectar: {', '.join(sorted(broken))})" if broken else ""
+        checks.append(_ok("actions", "Toolkit de acciones", f"Conectado: {', '.join(sorted(usable))}.{extra}"))
+    elif broken:
+        # El registro existe pero el token no se puede descifrar (típico tras rotar la llave KMS).
+        checks.append(_gap("actions", "Toolkit de acciones", "missing",
+                           f"Conexión de {', '.join(sorted(broken))} ilegible: el token quedó cifrado con una llave "
+                           "anterior (rotaste MASTER_KMS_KEY/SECRET_KEY). El toolkit no funcionará hasta reconectar.",
+                           ["Entra a *Integraciones*.",
+                            "**Desconecta** la cuenta afectada y **vuelve a conectarla** (re-guarda el token con la llave actual).",
+                            "Repite por cada proveedor marcado."],
+                           help="acciones", link="/integrations"))
     else:
         checks.append(_gap("actions", "Toolkit de acciones", "warn",
                            "Sin Google/Microsoft conectado: el agente no puede ejecutar correo/calendario/Sheets.",
@@ -190,11 +209,20 @@ def run_checks(session, tenant, user) -> dict:
     # 14. Tablero Financiero — datos cargados (vs demo).
     try:
         from .finance import store
-        loaded = store.status(session, tenant).get("loaded")
+        row_exists = store.status(session, tenant).get("loaded")
+        data = store.get_dataset(session, tenant) if row_exists else None
     except Exception:
-        loaded = False
-    if loaded:
+        row_exists, data = False, None
+    if data:
         checks.append(_ok("finance_data", "Tablero Financiero (datos)", "Dataset del cliente cargado."))
+    elif row_exists:
+        # Hay registro pero no se pudo descifrar (rotación de llave KMS).
+        checks.append(_gap("finance_data", "Tablero Financiero (datos)", "missing",
+                           "El dataset cargado quedó ilegible: se cifró con una llave anterior (rotaste la llave KMS). "
+                           "Hay que volver a subirlo.",
+                           ["Entra a *Espacio → Tablero Financiero*.",
+                            "Pulsa **Cargar datos** y vuelve a subir los Excel/zip o el JSON."],
+                           help="finanzas", link="/espacios"))
     else:
         checks.append(_gap("finance_data", "Tablero Financiero (datos)", "warn",
                            "El tablero muestra datos demo: aún no se cargan los del cliente.",
