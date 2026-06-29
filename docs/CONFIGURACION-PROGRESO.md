@@ -14,13 +14,19 @@
 | Proveedor IA — NaN Builders (ruta `open`) | ✅ Listo | Admin → Modelos. Probar conexión OK · `qwen3.6`. Re-guardada tras cambiar llave. |
 | Embeddings prod (`EMBEDDINGS_PROVIDER=open`, `qwen3-embedding`, `4096`) | ✅ Env + deploy | **Re-index pendiente** (docs de prueba); al cargar reales: Documentos → Re-indexar. |
 | Scheduler (`SCHEDULER_ENABLED=true`) | ✅ Listo | Digests/alertas corren solos. |
-| Cifrado prod (`SECRET_KEY` fuerte + `MASTER_KMS_KEY` dedicada) | ✅ Listo | `SECRET_KEY` ya era fuerte; `MASTER_KMS_KEY` distinta. NaN re-guardada después. |
+| Cifrado prod (`SECRET_KEY` fuerte + `MASTER_KMS_KEY` dedicada) | ✅ Listo | `SECRET_KEY` ya era fuerte; `MASTER_KMS_KEY` distinta. **Rotación de llave invalida lo cifrado antes** → re-guardar NaN ✅ y **reconectar cuentas OAuth** (ver nota). |
+
+> ⚠️ **Nota de rotación de llave (importante):** al cambiar `MASTER_KMS_KEY`/`SECRET_KEY`,
+> todo lo cifrado con la llave anterior deja de leerse y hay que **recapturarlo**:
+> API key de NaN (✅ hecho), **tokens OAuth → reconectar cuentas**, CallMeBot,
+> credenciales de datasources y dataset financiero (si existían). Por eso el toolkit
+> de acciones falló hasta reconectar.
 
 ## 🟡 Integraciones
 | Ítem | Estado | Detalle |
 |---|---|---|
 | **Microsoft 365 OAuth** | ✅ Configurado | Entra + Render completos. **Solo falta conectar la cuenta** en Integraciones (acción del usuario, no config). |
-| Google OAuth | ⏳ Siguiente | Gmail/Drive/Calendar/Sheets. |
+| Google OAuth | 🟡 Casi listo | Cliente "MaestroAI Web" creado en Google Cloud (Client ID `761853734028-…`, redirect `…/oauth/google/callback`, secreto **Habilitada**). Falta: verificar env `GOOGLE_*` en Render + pantalla de consentimiento (scopes/Internal o test users) + conectar cuenta. |
 | WhatsApp (CallMeBot) | ⏳ Pendiente | Se configura **en la app** (Alertas/Mi cuenta), no en Render. |
 | n8n (workflows) | 🟡 Avanzado | `N8N_API_BASE_URL` ya presente en Render — revisar `N8N_ENABLED` + webhook base. |
 | Zapier NLA | ⏳ Opcional | Catálogo de apps. |
