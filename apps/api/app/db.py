@@ -41,6 +41,7 @@ def _ensure_columns() -> None:
         "n8n_recipes": {"provider": "'n8n'", "webhook_url": "''"},
         "alert_rules": {"schedule": "''", "last_digest_at": "''"},
         "company_profiles": {"org_type": "'privada'", "gov_tramites": "''"},
+        "tenants": {"support_account_id": "''", "support_from": "''", "support_from_name": "''"},
     }
     with engine.begin() as conn:
         for table, cols in plan.items():

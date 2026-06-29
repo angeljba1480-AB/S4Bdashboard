@@ -236,6 +236,10 @@ export const api = {
     request<{ ok: boolean; identifier: string }>("/oauth/imap", { method: "POST", body: JSON.stringify(body) }),
   // Company configuration (onboarding workflow)
   companyProfile: () => request<CompanyProfile>("/company/profile"),
+  supportSender: () =>
+    request<{ account_id: string; from_addr: string; from_name: string; connections: { id: string; provider: string; email: string }[] }>("/company/support-sender"),
+  setSupportSender: (body: { account_id: string; from_addr: string; from_name: string }) =>
+    request<{ account_id: string; from_addr: string; from_name: string }>("/company/support-sender", { method: "PUT", body: JSON.stringify(body) }),
   saveCompanyProfile: (body: Partial<CompanyProfile>) =>
     request<CompanyProfile>("/company/profile", { method: "PUT", body: JSON.stringify(body) }),
   recipes: (params?: { category?: string; q?: string }) => {
