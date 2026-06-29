@@ -66,13 +66,17 @@ def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
             "automation_id": a.id, "tenant_id": tenant.id, "user_id": uid, **config})
         return run.status, f"workflow {a.action_ref} · n8n:{run.source} · {run.detail}"
     if a.action_type == "recipe":
-        from ..recipes.catalog import prefill
+        from ..recipes.catalog import execute, prefill
         from .recipes import _resolve
         recipe = _resolve(session, tenant.id, a.action_ref)
         if not recipe:
             return "failed", f"receta {a.action_ref} no encontrada"
+        # Una automatización corre el caso END-TO-END (sin paso de aprobación humana):
+        # prefill arma el plan, execute lo genera con datos reales.
         draft = prefill(recipe, session, tenant, config, user_id=uid)
-        return "completed", f"caso {recipe['name']}: {str(draft.get('summary', ''))[:160]}"
+        result = execute(recipe, session, tenant.id, config, draft, user_id=uid)
+        detail = str(result.get("message") or result.get("output") or draft.get("summary", ""))
+        return "completed", f"caso {recipe['name']}: {detail[:200]}"
     if a.action_type == "connector":
         from .integrations import send_to_connector
         return send_to_connector(session, tenant, a.action_ref, {
