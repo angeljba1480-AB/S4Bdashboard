@@ -57,7 +57,9 @@ def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
     config = json.loads(a.config or "{}")
     if payload:
         config = {**config, **payload}
-    uid = user.id if user else None
+    # Usuario efectivo: quien ejecuta, o el dueño de la automatización (corridas
+    # programadas/por evento no traen usuario, pero la cuenta conectada es del dueño).
+    uid = (user.id if user else None) or a.user_id
     if a.action_type == "workflow":
         cfg = resolve_n8n(tenant)
         run = trigger_workflow(cfg, a.action_ref, {
@@ -69,7 +71,7 @@ def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
         recipe = _resolve(session, tenant.id, a.action_ref)
         if not recipe:
             return "failed", f"receta {a.action_ref} no encontrada"
-        draft = prefill(recipe, session, tenant, config)
+        draft = prefill(recipe, session, tenant, config, user_id=uid)
         return "completed", f"caso {recipe['name']}: {str(draft.get('summary', ''))[:160]}"
     if a.action_type == "connector":
         from .integrations import send_to_connector
