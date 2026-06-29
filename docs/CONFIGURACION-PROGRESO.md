@@ -26,7 +26,7 @@
 | Ítem | Estado | Detalle |
 |---|---|---|
 | **Microsoft 365 OAuth** | ✅ Configurado | Entra + Render completos. **Solo falta conectar la cuenta** en Integraciones (acción del usuario, no config). |
-| Google OAuth | 🟡 Casi listo | Cliente "MaestroAI Web" creado en Google Cloud (Client ID `761853734028-…`, redirect `…/oauth/google/callback`, secreto **Habilitada**). Falta: verificar env `GOOGLE_*` en Render + pantalla de consentimiento (scopes/Internal o test users) + conectar cuenta. |
+| Google OAuth | ✅ Listo | Cliente "MaestroAI Web" + 4 APIs habilitadas (Gmail/Calendar/Drive/Sheets) + 7 scopes en consentimiento + cuenta conectada. |
 | WhatsApp (CallMeBot) | ⏳ Pendiente | Se configura **en la app** (Alertas/Mi cuenta), no en Render. |
 | n8n (workflows) | 🟡 Avanzado | `N8N_API_BASE_URL` ya presente en Render — revisar `N8N_ENABLED` + webhook base. |
 | Zapier NLA | ⏳ Opcional | Catálogo de apps. |
@@ -62,6 +62,11 @@
 | Conector SharePoint (Paso 1) | ⏳ Pendiente | App **"MaestroAI-Finanzas"** (app-only, Sites/Files.Read.All) creada; **falta construir el conector** que liste `Proyectos Finanzas` y alimente `ingest_excel`. |
 | Conector BD directa (Paso 1) | ⏳ Esperando accesos | `/datasources` soporta DB de solo lectura. |
 | Nómina + Catálogo de CC | ⏳ Pendiente | Para cerrar el comparativo (ver `MaestroAI_Auditoria_Esquemas_Finanzas.docx`). |
+
+## 🏷️ Pendientes diferidos (mejoras, no bloquean)
+| Ítem | Estado | Detalle |
+|---|---|---|
+| **Rebranding interno → MaestroAI** | ⏳ Diferido | Quedan referencias/links internos que dicen *"silent dashboard" / "s4bdashboard"*; cambiar a **MaestroAI / plataforma.maestroai.mx**. Incluye el **dominio de la API** (`s4bdashboard.onrender.com`) que está en los **redirect URIs** de Microsoft y Google — si se cambia el dominio, hay que actualizar esos redirect URIs en Entra/Google y las env `*_REDIRECT_URI`. Hacerlo en bloque para no romper OAuth. |
 
 ## Apps de Entra (referencia, sin secretos)
 - **MaestroAI** — OAuth de correo (delegada, multitenant). client_id `6cde3a0a-…`, tenant `a972e859-…`.
