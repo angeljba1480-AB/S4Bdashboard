@@ -134,6 +134,38 @@ def list_connections(session: Session, tenant_id: str, user_id: str) -> list[OAu
     ).all()
 
 
+def list_tenant_connections(session: Session, tenant_id: str) -> list[OAuthToken]:
+    """Todas las conexiones activas del tenant (de cualquier usuario) — para elegir
+    el buzón de soporte del tenant, no solo el del usuario actual."""
+    return session.exec(
+        select(OAuthToken).where(
+            OAuthToken.tenant_id == tenant_id,
+            OAuthToken.status == "active",
+        ).order_by(OAuthToken.updated_at.desc())
+    ).all()
+
+
+def support_sender(session: Session, tenant: Tenant):
+    """Devuelve (row, access_token) del buzón de soporte del tenant, o None.
+
+    Es el remitente por defecto de las automatizaciones (correo sale desde ese
+    buzón, no desde la cuenta personal de quien ejecuta)."""
+    acc = getattr(tenant, "support_account_id", "")
+    if not acc:
+        return None
+    row = session.exec(
+        select(OAuthToken).where(
+            OAuthToken.tenant_id == tenant.id,
+            OAuthToken.id == acc,
+            OAuthToken.status == "active",
+        )
+    ).first()
+    if not row:
+        return None
+    tok = access_token_for(session, tenant, row)
+    return (row, tok) if tok else None
+
+
 def resolve_connection(session: Session, tenant_id: str, user_id: str,
                        prefer: str = "") -> OAuthToken | None:
     """Pick a connection for the use case. `prefer` may be a connection id or an

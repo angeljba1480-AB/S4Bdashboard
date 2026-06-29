@@ -206,6 +206,8 @@ export default function CompanyPage() {
               </Field>
             </Section>
 
+            <SupportSenderCard canEdit={canEdit} />
+
             {canEdit && (
               <div className="flex items-center gap-3">
                 <button onClick={save} disabled={busy}
@@ -228,6 +230,70 @@ export default function CompanyPage() {
 
 const inp =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-500";
+
+function SupportSenderCard({ canEdit }: { canEdit: boolean }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof api.supportSender>> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => { api.supportSender().then(setData).catch(() => {}); }, []);
+
+  async function save() {
+    if (!data) return;
+    setBusy(true); setSaved(false); setMsg("");
+    try {
+      await api.setSupportSender({ account_id: data.account_id, from_addr: data.from_addr, from_name: data.from_name });
+      setSaved(true);
+    } catch (e) { setMsg(e instanceof Error ? e.message : "No se pudo guardar"); }
+    finally { setBusy(false); }
+  }
+  if (!data) return null;
+  return (
+    <Section title="Remitente de soporte (correo saliente)">
+      <p className="text-sm text-slate-500">
+        Elige el buzón desde el que tu empresa envía correos de soporte (automatizaciones y acciones).
+        Si lo dejas vacío, se usa la cuenta de quien ejecuta.
+      </p>
+      <Field label="Buzón de soporte">
+        <select className={inp} disabled={!canEdit} value={data.account_id}
+          onChange={(e) => { setData({ ...data, account_id: e.target.value }); setSaved(false); }}>
+          <option value="">— Usar la cuenta del usuario —</option>
+          {data.connections.map((c) => (
+            <option key={c.id} value={c.id}>{c.email || c.id} ({c.provider})</option>
+          ))}
+        </select>
+      </Field>
+      {!data.connections.length && (
+        <p className="text-xs text-amber-600">
+          No hay cuentas conectadas. Conecta el buzón de soporte en <b>Integraciones</b> y aquí podrás elegirlo.
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Nombre para mostrar (opcional)">
+          <input className={inp} disabled={!canEdit} value={data.from_name}
+            placeholder="Soporte · Empresa"
+            onChange={(e) => { setData({ ...data, from_name: e.target.value }); setSaved(false); }} />
+        </Field>
+        <Field label="Alias From (opcional, requiere send-as verificado)">
+          <input className={inp} disabled={!canEdit} value={data.from_addr}
+            placeholder="soporte@empresa.com"
+            onChange={(e) => { setData({ ...data, from_addr: e.target.value }); setSaved(false); }} />
+        </Field>
+      </div>
+      {canEdit && (
+        <div className="flex items-center gap-3">
+          <button onClick={save} disabled={busy}
+            className="flex items-center gap-2 rounded-lg border border-violet-300 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 disabled:opacity-50">
+            <Save className="h-4 w-4" /> {busy ? "Guardando…" : "Guardar remitente"}
+          </button>
+          {saved && <span className="flex items-center gap-1 text-sm text-emerald-600"><CheckCircle2 className="h-4 w-4" /> Guardado</span>}
+          {msg && <span className="text-sm text-red-600">{msg}</span>}
+        </div>
+      )}
+    </Section>
+  );
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

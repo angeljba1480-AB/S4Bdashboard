@@ -62,6 +62,9 @@ def list_actions(
     return out
 
 
+_EMAIL_SEND = {"gmail.send", "outlook.send"}
+
+
 def _token(session: Session, tenant: Tenant, user: User, provider: str) -> str:
     tok = token_store.get_valid_access_token(session, tenant, user.id, provider)
     if not tok:
@@ -77,8 +80,21 @@ def _execute(session: Session, tenant: Tenant, user: User, req: ActionRequest) -
             req.result = f"workflow {res['status']} ({res['source']}) · {res['detail']}"[:240]
             req.status = "executed"
         else:
-            token = _token(session, tenant, user, req.provider)
-            req.result = actions_exec.execute(req.action, token, json.loads(req.params or "{}"))
+            params = json.loads(req.params or "{}")
+            action = req.action
+            # Remitente de soporte por tenant: si está configurado, los correos salen
+            # desde ese buzón (no la cuenta personal de quien ejecuta).
+            sup = token_store.support_sender(session, tenant) if action in _EMAIL_SEND else None
+            if sup:
+                row, tok = sup
+                action = "gmail.send" if row.provider == "google" else "outlook.send"
+                if tenant.support_from:
+                    params["from_addr"] = tenant.support_from
+                    params["from_name"] = tenant.support_from_name or ""
+                req.result = actions_exec.execute(action, tok, params)
+            else:
+                token = _token(session, tenant, user, req.provider)
+                req.result = actions_exec.execute(action, token, params)
             req.status = "executed"
     except HTTPException:
         raise
