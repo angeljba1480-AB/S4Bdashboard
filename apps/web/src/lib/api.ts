@@ -327,9 +327,14 @@ export const api = {
     request<{ ok: boolean }>(`/documents/${id}`, { method: "DELETE" }),
   updateDocument: (id: string, body: { area?: string; category?: string; sensitivity?: string }) =>
     request<DocumentItem>(`/documents/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-  driveFiles: (query?: string) =>
-    request<{ files: { id: string; name: string; mime_type: string; is_folder: boolean; modified: string }[] }>(
-      `/drive/files${query ? `?query=${encodeURIComponent(query)}` : ""}`),
+  driveFiles: (query?: string, folder?: string) => {
+    const qs = new URLSearchParams();
+    if (query) qs.set("query", query);
+    if (folder) qs.set("folder", folder);
+    const s = qs.toString();
+    return request<{ files: { id: string; name: string; mime_type: string; is_folder: boolean; modified: string }[] }>(
+      `/drive/files${s ? `?${s}` : ""}`);
+  },
   driveImport: (body: { file_id: string; name: string; mime_type: string; area?: string; category?: string }) =>
     request<{ id: string; filename: string }>("/drive/import", { method: "POST", body: JSON.stringify(body) }),
   // Memory + tags

@@ -52,6 +52,8 @@ def list_files(
     clauses = ["trashed = false"]
     if folder:
         clauses.append(f"'{folder.replace(chr(39), ' ')}' in parents")
+    elif not query:
+        clauses.append("'root' in parents")   # vista inicial = nivel superior (no volcado plano)
     if query:
         safe = query.replace("'", " ")
         clauses.append(f"name contains '{safe}'")
