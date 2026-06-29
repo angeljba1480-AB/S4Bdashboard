@@ -18,6 +18,7 @@ export default function AutomationsPage() {
   const [recipes, setRecipes] = useState<{ id: string; name: string }[]>([]);
   const [connectors, setConnectors] = useState<{ id: string; name: string }[]>([]);
   const [custom, setCustom] = useState({ name: "", trigger: "manual", schedule: "daily", event: "document_uploaded", action_type: "workflow", action_ref: "", message: "" });
+  const [valid, setValid] = useState<Record<string, Awaited<ReturnType<typeof api.validateAutomation>>>>({});
 
   function load() {
     api.automations().then(setList).catch(() => {});
@@ -66,6 +67,16 @@ export default function AutomationsPage() {
   async function remove(a: Automation) {
     await api.deleteAutomation(a.id);
     load();
+  }
+  async function doValidate(a: Automation) {
+    setMsg("");
+    try { const r = await api.validateAutomation(a.id); setValid((v) => ({ ...v, [a.id]: r })); }
+    catch (e) { setMsg(e instanceof Error ? e.message : "No se pudo validar"); }
+  }
+  async function doSchedule(a: Automation, frequency: string) {
+    setMsg("");
+    try { await api.scheduleAutomation(a.id, frequency); setMsg(`✓ «${a.name}» programada · ${frequency}`); load(); }
+    catch (e) { setMsg(e instanceof Error ? e.message : "No se pudo programar"); }
   }
 
   return (
@@ -150,27 +161,57 @@ export default function AutomationsPage() {
           ) : (
             <div className="space-y-2">
               {list.map((a) => (
-                <div key={a.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
-                  <div>
-                    <div className="font-medium text-slate-800">{a.name}</div>
-                    <div className="text-xs text-slate-400">
-                      {TRIGGER_LABEL[a.trigger]}{a.schedule ? ` · ${a.schedule}` : ""}{a.event ? ` · ${a.event}` : ""} ·
-                      acción: {a.action_type} {a.action_ref && `(${a.action_ref})`}
-                      {a.last_run && ` · última: ${a.status}`}
+                <div key={a.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-slate-800">{a.name}</div>
+                      <div className="text-xs text-slate-400">
+                        {TRIGGER_LABEL[a.trigger]}{a.schedule ? ` · ${a.schedule}` : ""}{a.event ? ` · ${a.event}` : ""} ·
+                        acción: {a.action_type} {a.action_ref && `(${a.action_ref})`}
+                        {a.last_run && ` · última: ${a.status}`}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => toggle(a)}
+                        className={`rounded-full px-2 py-0.5 text-xs ${a.enabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                        {a.enabled ? "Activa" : "Pausada"}
+                      </button>
+                      <button onClick={() => doValidate(a)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                        Validar
+                      </button>
+                      <button onClick={() => run(a)} className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white">
+                        <Play className="h-3.5 w-3.5" /> Ejecutar
+                      </button>
+                      <button onClick={() => remove(a)} className="text-slate-400 hover:text-red-600">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => toggle(a)}
-                      className={`rounded-full px-2 py-0.5 text-xs ${a.enabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
-                      {a.enabled ? "Activa" : "Pausada"}
-                    </button>
-                    <button onClick={() => run(a)} className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white">
-                      <Play className="h-3.5 w-3.5" /> Ejecutar
-                    </button>
-                    <button onClick={() => remove(a)} className="text-slate-400 hover:text-red-600">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                  {valid[a.id] && (
+                    <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                      <div className="mb-2 text-xs font-semibold text-slate-500">
+                        {valid[a.id].ready ? "✓ Todo listo para ejecutar" : "Faltan requisitos:"}
+                      </div>
+                      <ol className="space-y-1">
+                        {valid[a.id].steps.map((s, i) => (
+                          <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
+                            <span className={s.status === "ok" ? "text-emerald-600" : "text-red-600"}>{s.status === "ok" ? "✓" : "✗"}</span>
+                            <b>{s.label}:</b> {s.detail}
+                            {s.status !== "ok" && s.link && <a href={s.link} className="text-violet-600 underline">configurar</a>}
+                          </li>
+                        ))}
+                      </ol>
+                      <div className="mt-3 flex items-center gap-2 border-t border-slate-200 pt-2">
+                        <span className="text-xs text-slate-500">Programar:</span>
+                        {["daily", "weekly", "monthly"].map((f) => (
+                          <button key={f} onClick={() => doSchedule(a, f)}
+                            className="rounded-md border border-slate-300 px-2 py-1 text-xs hover:bg-white">
+                            {f === "daily" ? "Diario" : f === "weekly" ? "Semanal" : "Mensual"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

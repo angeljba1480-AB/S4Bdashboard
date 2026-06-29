@@ -241,6 +241,80 @@ def run_now(
     return {"id": a.id, "status": status, "detail": detail, "last_run": a.last_run}
 
 
+@router.get("/{automation_id}/validate")
+def validate(automation_id: str, tenant: Tenant = Depends(get_current_tenant),
+             user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    """Validación previa (tipo workflow): pasos con semáforo de si está todo listo
+    para ejecutar — disparador, fuente, destino y modelo."""
+    a = _load(session, tenant, user, automation_id)
+    steps: list[dict] = []
+
+    def step(label: str, ok: bool, detail: str, link: str | None = None) -> None:
+        steps.append({"label": label, "status": "ok" if ok else "missing", "detail": detail, "link": link})
+
+    # 1. Disparador
+    if a.trigger == "manual":
+        step("Disparador", True, "Manual (lo ejecutas tú)")
+    elif a.trigger == "schedule":
+        step("Disparador", bool(a.schedule), f"Programado · {a.schedule or 'sin frecuencia'}")
+    else:
+        step("Disparador", bool(a.event), f"Por evento · {a.event or 'sin evento'}")
+
+    # 2. Fuente según la acción
+    if a.action_type == "recipe":
+        from ..integrations import token_store
+        from .recipes import _resolve
+        recipe = _resolve(session, tenant.id, a.action_ref)
+        if not recipe:
+            step("Caso", False, f"Caso '{a.action_ref}' no encontrado", "/recipes")
+        elif recipe.get("handler") == "correo_agenda":
+            conns = [c for c in token_store.list_tenant_connections(session, tenant.id)
+                     if c.provider in ("microsoft", "google", "imap")]
+            step("Correo conectado", bool(conns),
+                 conns[0].identifier if conns else "Conecta tu correo en Integraciones", "/integrations")
+        else:
+            step("Caso listo", True, recipe["name"])
+    elif a.action_type == "workflow":
+        cfg = resolve_n8n(tenant)
+        step("n8n configurado", cfg.enabled,
+             "Conectado" if cfg.enabled else "n8n no configurado → ejecución simulada", "/integrations")
+    elif a.action_type == "connector":
+        from ..models import DataSource
+        ds = session.exec(select(DataSource).where(DataSource.tenant_id == tenant.id)).first()
+        step("Conector (legado)", bool(ds), ds.name if ds else "Configura un datasource", "/integrations")
+    else:  # notify
+        step("Destino", True, "Notificación interna")
+
+    # 3. Modelo disponible (para casos que generan con IA)
+    from ..ai.adapters import _RUNTIME
+    from ..config import settings
+    open_ok = bool((_RUNTIME.get("open") or {}).get("base_url")) or bool(settings.open_enabled and settings.open_base_url)
+    step("Modelo (NaN)", open_ok, "Proveedor abierto activo" if open_ok else "Configura NaN en Admin → Modelos", "/admin")
+
+    return {"name": a.name, "ready": all(s["status"] == "ok" for s in steps), "steps": steps}
+
+
+class ScheduleIn(BaseModel):
+    frequency: str = "daily"   # daily | weekly | monthly
+
+
+@router.post("/{automation_id}/schedule")
+def schedule(automation_id: str, body: ScheduleIn, tenant: Tenant = Depends(get_current_tenant),
+             user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    """Programa la automatización (la deja activa con la frecuencia indicada)."""
+    a = _load(session, tenant, user, automation_id)
+    a.trigger = "schedule"
+    a.schedule = body.frequency.strip() or "daily"
+    a.enabled = True
+    session.add(a)
+    session.add(AuditEvent(
+        tenant_id=tenant.id, user_id=user.id, event_type="automation", object_type="automation",
+        object_id=a.id, risk_level="low", reason=f"programada '{a.name}' · {a.schedule}"))
+    session.commit()
+    session.refresh(a)
+    return _out(a)
+
+
 @router.delete("/{automation_id}")
 def delete_automation(
     automation_id: str,

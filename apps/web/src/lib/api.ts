@@ -195,6 +195,10 @@ export const api = {
     request<{ id: string; status: string; detail: string; last_run: string }>(`/automations/${id}/run`, { method: "POST" }),
   deleteAutomation: (id: string) =>
     request<{ ok: boolean }>(`/automations/${id}`, { method: "DELETE" }),
+  validateAutomation: (id: string) =>
+    request<{ name: string; ready: boolean; steps: { label: string; status: "ok" | "missing"; detail: string; link: string | null }[] }>(`/automations/${id}/validate`),
+  scheduleAutomation: (id: string, frequency: string) =>
+    request<{ id: string; trigger: string; schedule: string; enabled: boolean }>(`/automations/${id}/schedule`, { method: "POST", body: JSON.stringify({ frequency }) }),
   // App Studio
   apps: () => request<AppProject[]>("/apps"),
   createApp: (body: { name: string; description: string }) =>
