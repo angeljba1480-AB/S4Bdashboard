@@ -71,6 +71,17 @@ def test_connector_crud(client):
     assert client.delete(f"/integrations/connectors/{c['id']}", headers=h).json()["ok"] is True
 
 
+def test_connector_url_normalized(client):
+    """URL pegada sin protocolo (típico de n8n) → se guarda con https://."""
+    from app.routers.integrations import _normalize_url
+    assert _normalize_url("n8n.midominio.com/webhook/abc") == "https://n8n.midominio.com/webhook/abc"
+    assert _normalize_url("http://local:5678/webhook/x") == "http://local:5678/webhook/x"
+    h = _auth(client)
+    c = client.post("/integrations/connectors", headers=h, json={
+        "kind": "custom", "name": "N8N", "base_url": "n8n.midominio.com/webhook/abc"}).json()
+    assert c["base_url"] == "https://n8n.midominio.com/webhook/abc"
+
+
 def test_event_triggers_automation_via_v1(client):
     h = _auth(client)
     # an event automation that just notifies
