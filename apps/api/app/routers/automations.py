@@ -17,7 +17,7 @@ from ..automations.catalog import TEMPLATES, get_template
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
 from ..integrations.n8n import resolve_n8n, trigger_workflow
-from ..models import Automation, AuditEvent, Tenant, User
+from ..models import Automation, AuditEvent, Notification, Tenant, User
 
 router = APIRouter(prefix="/automations", tags=["automations"])
 
@@ -76,6 +76,12 @@ def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
         draft = prefill(recipe, session, tenant, config, user_id=uid)
         result = execute(recipe, session, tenant.id, config, draft, user_id=uid)
         detail = str(result.get("message") or result.get("output") or draft.get("summary", ""))
+        # Entrega el resultado completo como notificación (si no, el texto se perdería:
+        # la automatización corre sola y nadie ve el documento generado).
+        doc = result.get("documento") or (result.get("output") if isinstance(result.get("output"), str) else "")
+        if doc and uid:
+            session.add(Notification(tenant_id=tenant.id, user_id=uid, title=recipe["name"],
+                                     body=str(doc)[:8000], event_type="automation"))
         return "completed", f"caso {recipe['name']}: {detail[:200]}"
     if a.action_type == "connector":
         from .integrations import send_to_connector
