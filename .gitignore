@@ -44,3 +44,7 @@ venv/
 *.sln
 *.sw?
 *.tsbuildinfo
+
+# Finanzas: el dataset real se inyecta (env / secret file), nunca se versiona
+apps/api/app/finance/dataset.local.json
+FINANCE_DATASET*.json

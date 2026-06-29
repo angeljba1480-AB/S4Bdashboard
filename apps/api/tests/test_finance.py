@@ -29,10 +29,12 @@ def test_overview_consolidado_and_entity(client):
     h = _auth(client)
     cons = client.get("/finance/overview?entity=CONS", headers=h).json()
     assert cons["entity"] == "CONS"
-    assert cons["kpis"]["revenue"] > 5e8  # S4B + S4C
-    assert len(cons["monthly"]) == 12 and cons["segments"] and cons["alerts"]
+    # CONS = S4B + S4C (agnóstico al dataset: demo o real inyectado)
     s4b = client.get("/finance/overview?entity=S4B", headers=h).json()
-    assert s4b["kpis"]["revenue"] == 467909597
+    s4c = client.get("/finance/overview?entity=S4C", headers=h).json()
+    assert cons["kpis"]["revenue"] == s4b["kpis"]["revenue"] + s4c["kpis"]["revenue"]
+    assert cons["kpis"]["revenue"] > 0
+    assert len(cons["monthly"]) == 12 and cons["segments"] and cons["alerts"]
     # entidad inválida cae a CONS
     assert client.get("/finance/overview?entity=ZZZ", headers=h).json()["entity"] == "CONS"
 
@@ -43,6 +45,16 @@ def test_clients_filtered_by_entity(client):
     assert allc and allc[0]["revenue"] >= allc[-1]["revenue"]  # ordenado desc
     s4c = client.get("/finance/clients?entity=S4C", headers=h).json()
     assert s4c and all(c["entity"] == "S4C" for c in s4c)
+
+
+def test_projects_and_operations(client):
+    h = _auth(client)
+    pr = client.get("/finance/projects", headers=h).json()
+    assert pr["totals"]["proyectos"] > 0 and pr["trend"] and pr["detail"]
+    assert "ebitda_bc" in pr["totals"] and "desviacion" in pr["totals"]  # plan vs real
+    ops = client.get("/finance/operations", headers=h).json()
+    assert 0 <= ops["utilization"]["utilizacion"] <= 1
+    assert ops["cost_per_hour"]["by_role"] and ops["client_scoring"]["clients"]
 
 
 def test_ask_grounded(client, monkeypatch):

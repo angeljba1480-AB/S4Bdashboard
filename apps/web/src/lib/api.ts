@@ -435,11 +435,19 @@ export const api = {
   financeProjects: () =>
     request<{
       source: string;
-      totals: { venta: number; costos: number; margen: number; ebitda: number; pct_margen: number; proyectos: number };
-      trend: Record<string, { venta: number; gob: number; ip: number }>;
+      totals: { venta: number; costos: number; margen: number; ebitda: number; ebitda_bc: number; pct_margen: number; pct_ebitda: number; desviacion: number; proyectos: number };
+      trend: Record<string, { venta: number; gob: number; ip: number; ebitda: number; ebitda_bc: number; margen: number; proyectos: number; desviacion: number }>;
+      cost_mix: { nomina: number; hw_sw: number; costo_corp: number; repr_viaticos: number; otros: number };
       clients: { name: string; sector: string; revenue: number; margin: number; status: string }[];
-      projects: { cliente: string; nombre: string; tipo: string; venta: number; costos: number; margen: number; pct_margen: number; ebitda: number }[];
+      detail: { cliente: string; nombre: string; tipo: string; venta: number; costos: number; margen: number; pct_margen: number; ebitda: number; ebitda_bc: number; desviacion: number }[];
     }>("/finance/projects"),
+  financeOperations: () =>
+    request<{
+      utilization: { year: string; horas_reales: number; horas_capacidad: number; utilizacion: number; empleados: number; capacidad_emp: number; by_project: { nombre: string; horas: number }[] };
+      cost_per_hour: { year: string; by_role: { rol: string; costo_hora: number; registros: number }[] };
+      client_scoring: { criteria: [string, number][]; clients: { name: string; sector: string; score: number; tier: string; facturacion: string; rentabilidad: string }[] };
+      is_demo: boolean;
+    }>("/finance/operations"),
   // Resumen de correo automatizado
   mailDigestConfig: () =>
     request<{ id: string; enabled: boolean; account_id: string; schedule: string; channels: string[]; email_to: string; language: string; notes: string; discard_propaganda: boolean; pending_enabled: boolean; pending_days: number; last_run_at: string }>("/mail-digest/config"),

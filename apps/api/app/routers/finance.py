@@ -70,11 +70,26 @@ def clients(entity: str = "CONS", _: User = Depends(get_current_user)) -> list[d
 
 @router.get("/projects")
 def projects(_: User = Depends(get_current_user)) -> dict:
-    """Portafolio real de proyectos (derivado del zip 'Resumen por proyecto').
+    """Portafolio de proyectos (Resumen por proyecto): totales, tendencia, mezcla de
+    costo, plan vs real (EBITDA presupuesto BC vs real) y detalle.
 
     Paso 1: este dataset lo entrega el conector a la BD; el contrato no cambia.
     """
     return seed.projects()
+
+
+@router.get("/operations")
+def operations(_: User = Depends(get_current_user)) -> dict:
+    """Datos operativos derivados de los documentos del cliente:
+    utilización (timesheet vs capacidad), costo por hora por rol (Concentrado BC)
+    y evaluación/score de clientes (modelo ponderado del equipo).
+    """
+    return {
+        "utilization": seed.utilization(),
+        "cost_per_hour": seed.cost_per_hour(),
+        "client_scoring": seed.client_scoring(),
+        "is_demo": seed.is_demo(),
+    }
 
 
 class AskIn(BaseModel):
@@ -99,13 +114,30 @@ def _context(entity: str) -> str:
     if pr.get("totals"):
         t = pr["totals"]
         lines.append(
-            f"Portafolio de proyectos {pr.get('source', '')}: {t.get('proyectos')} proyectos, "
+            f"Portafolio de proyectos ({pr.get('source', '')}): {t.get('proyectos')} proyectos, "
             f"venta {m(t.get('venta', 0))}, margen {m(t.get('margen', 0))} ({t.get('pct_margen', 0)*100:.1f}%), "
-            f"EBITDA {m(t.get('ebitda', 0))}.")
-        top = pr.get("projects", [])[:8]
+            f"EBITDA real {m(t.get('ebitda', 0))} vs EBITDA presupuesto (BC) {m(t.get('ebitda_bc', 0))} "
+            f"→ desviación {m(t.get('desviacion', 0))}.")
+        cm = pr.get("cost_mix") or {}
+        if cm:
+            lines.append("Estructura de costo: " + "; ".join(
+                f"{k.replace('_', '/')} {m(v)}" for k, v in cm.items() if v))
+        top = pr.get("detail", [])[:8]
         if top:
             lines.append("Proyectos principales: " + "; ".join(
-                f"{p['cliente']} {m(p['venta'])} (margen {p['pct_margen']*100:.0f}%)" for p in top))
+                f"{p['cliente']} {m(p['venta'])} (margen {p['pct_margen']*100:.0f}%, desv EBITDA {m(p.get('desviacion', 0))})"
+                for p in top))
+    u = seed.utilization()
+    if u.get("utilizacion"):
+        lines.append(
+            f"Utilización {u.get('year', '')}: {u['utilizacion']*100:.0f}% "
+            f"({u.get('horas_reales', 0):,} horas reales de {u.get('horas_capacidad', 0):,} de capacidad, "
+            f"{u.get('empleados', 0)} personas).")
+    sc = seed.client_scoring()
+    if sc.get("clients"):
+        top_sc = sorted(sc["clients"], key=lambda c: -c.get("score", 0))[:5]
+        lines.append("Evaluación de clientes (score, tier): " + "; ".join(
+            f"{c['name']} {c.get('score')} {c.get('tier', '')}" for c in top_sc))
     return "\n".join(lines)
 
 

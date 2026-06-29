@@ -1,0 +1,702 @@
+{
+ "company": {
+  "name": "Empresa Demo",
+  "legalName": "Empresa Demo (datos sintéticos)",
+  "period": "2025 demo · sin datos reales",
+  "ceo": "—",
+  "cfo": "—"
+ },
+ "headcount": {
+  "S4B": 60,
+  "S4C": 30,
+  "CONS": 100
+ },
+ "fy": {
+  "S4B": {
+   "revenue": 300000000,
+   "costos": 195000000,
+   "ub": 105000000,
+   "ebitda": 54000000,
+   "neta": 39000000,
+   "activo": 240000000,
+   "capital": 120000000,
+   "pasivo": 120000000,
+   "cash": 90000000,
+   "ar": 42000000,
+   "ap": 78000000,
+   "wc": 54000000,
+   "margen_bruto": 0.35,
+   "margen_ebitda": 0.18,
+   "margen_neto": 0.13,
+   "dso": 51,
+   "dpo": 146,
+   "ccc": -95,
+   "roe": 0.33,
+   "endeudamiento": 0.5
+  },
+  "S4C": {
+   "revenue": 24000000,
+   "costos": 15000000,
+   "ub": 9000000,
+   "ebitda": 2100000,
+   "neta": 1000000,
+   "activo": 21000000,
+   "capital": 3000000,
+   "pasivo": 18000000,
+   "cash": 2400000,
+   "ar": 15000000,
+   "ap": 2100000,
+   "wc": 2500000,
+   "margen_bruto": 0.375,
+   "margen_ebitda": 0.088,
+   "margen_neto": 0.042,
+   "dso": 228,
+   "dpo": 51,
+   "ccc": 177,
+   "roe": 0.33,
+   "endeudamiento": 0.857
+  },
+  "CONS": {
+   "revenue": 324000000,
+   "costos": 210000000,
+   "ub": 114000000,
+   "ebitda": 56100000,
+   "neta": 40000000,
+   "activo": 261000000,
+   "capital": 123000000,
+   "pasivo": 138000000,
+   "cash": 92400000,
+   "ar": 57000000,
+   "ap": 80100000,
+   "wc": 56500000,
+   "margen_bruto": 0.352,
+   "margen_ebitda": 0.173,
+   "margen_neto": 0.123,
+   "dso": 64,
+   "dpo": 139,
+   "ccc": -75,
+   "roe": 0.325,
+   "endeudamiento": 0.529
+  }
+ },
+ "fy_2024": {
+  "S4B": {
+   "revenue": 210000000,
+   "ebitda": 40000000
+  },
+  "S4C": {
+   "revenue": 13000000,
+   "ebitda": 700000
+  },
+  "CONS": {
+   "revenue": 223000000,
+   "ebitda": 40700000
+  }
+ },
+ "monthly": {
+  "S4B": [
+   {
+    "mes": "Ene",
+    "ingresos": 20.0,
+    "ebitda": 3.0
+   },
+   {
+    "mes": "Feb",
+    "ingresos": 20.8,
+    "ebitda": 3.12
+   },
+   {
+    "mes": "Mar",
+    "ingresos": 21.6,
+    "ebitda": 3.24
+   },
+   {
+    "mes": "Abr",
+    "ingresos": 22.4,
+    "ebitda": 3.36
+   },
+   {
+    "mes": "May",
+    "ingresos": 23.2,
+    "ebitda": 3.48
+   },
+   {
+    "mes": "Jun",
+    "ingresos": 24.0,
+    "ebitda": 3.6
+   },
+   {
+    "mes": "Jul",
+    "ingresos": 24.8,
+    "ebitda": 3.72
+   },
+   {
+    "mes": "Ago",
+    "ingresos": 25.6,
+    "ebitda": 3.84
+   },
+   {
+    "mes": "Sep",
+    "ingresos": 26.4,
+    "ebitda": 3.96
+   },
+   {
+    "mes": "Oct",
+    "ingresos": 27.2,
+    "ebitda": 4.08
+   },
+   {
+    "mes": "Nov",
+    "ingresos": 28.0,
+    "ebitda": 4.2
+   },
+   {
+    "mes": "Dic",
+    "ingresos": 28.8,
+    "ebitda": 4.32
+   }
+  ],
+  "S4C": [
+   {
+    "mes": "Ene",
+    "ingresos": 1.5,
+    "ebitda": 0.1
+   },
+   {
+    "mes": "Feb",
+    "ingresos": 2.3,
+    "ebitda": 0.22
+   },
+   {
+    "mes": "Mar",
+    "ingresos": 3.1,
+    "ebitda": 0.34
+   },
+   {
+    "mes": "Abr",
+    "ingresos": 3.9,
+    "ebitda": 0.46
+   },
+   {
+    "mes": "May",
+    "ingresos": 4.7,
+    "ebitda": 0.58
+   },
+   {
+    "mes": "Jun",
+    "ingresos": 5.5,
+    "ebitda": 0.7
+   },
+   {
+    "mes": "Jul",
+    "ingresos": 6.3,
+    "ebitda": 0.82
+   },
+   {
+    "mes": "Ago",
+    "ingresos": 7.1,
+    "ebitda": 0.94
+   },
+   {
+    "mes": "Sep",
+    "ingresos": 7.9,
+    "ebitda": 1.06
+   },
+   {
+    "mes": "Oct",
+    "ingresos": 8.7,
+    "ebitda": 1.18
+   },
+   {
+    "mes": "Nov",
+    "ingresos": 9.5,
+    "ebitda": 1.3
+   },
+   {
+    "mes": "Dic",
+    "ingresos": 10.3,
+    "ebitda": 1.42
+   }
+  ],
+  "CONS": [
+   {
+    "mes": "Ene",
+    "ingresos": 21.5,
+    "ebitda": 3.1
+   },
+   {
+    "mes": "Feb",
+    "ingresos": 23.1,
+    "ebitda": 3.34
+   },
+   {
+    "mes": "Mar",
+    "ingresos": 24.7,
+    "ebitda": 3.58
+   },
+   {
+    "mes": "Abr",
+    "ingresos": 26.3,
+    "ebitda": 3.82
+   },
+   {
+    "mes": "May",
+    "ingresos": 27.9,
+    "ebitda": 4.06
+   },
+   {
+    "mes": "Jun",
+    "ingresos": 29.5,
+    "ebitda": 4.3
+   },
+   {
+    "mes": "Jul",
+    "ingresos": 31.1,
+    "ebitda": 4.54
+   },
+   {
+    "mes": "Ago",
+    "ingresos": 32.7,
+    "ebitda": 4.78
+   },
+   {
+    "mes": "Sep",
+    "ingresos": 34.3,
+    "ebitda": 5.02
+   },
+   {
+    "mes": "Oct",
+    "ingresos": 35.9,
+    "ebitda": 5.26
+   },
+   {
+    "mes": "Nov",
+    "ingresos": 37.5,
+    "ebitda": 5.5
+   },
+   {
+    "mes": "Dic",
+    "ingresos": 39.1,
+    "ebitda": 5.74
+   }
+  ]
+ },
+ "segments": {
+  "S4B": [
+   {
+    "name": "Servicio Administrado",
+    "revenue": 120000000,
+    "margin": 0.45,
+    "tipo": "Recurrente"
+   },
+   {
+    "name": "Infraestructura",
+    "revenue": 135000000,
+    "margin": 0.08,
+    "tipo": "Infraestructura"
+   },
+   {
+    "name": "Ciberseguridad",
+    "revenue": 27000000,
+    "margin": 0.35,
+    "tipo": "Proyecto"
+   },
+   {
+    "name": "Consultoría",
+    "revenue": 18000000,
+    "margin": 0.3,
+    "tipo": "Proyecto"
+   }
+  ],
+  "S4C": [
+   {
+    "name": "Servicio Administrado",
+    "revenue": 3000000,
+    "margin": 0.45,
+    "tipo": "Recurrente"
+   },
+   {
+    "name": "Infraestructura",
+    "revenue": 9000000,
+    "margin": 0.08,
+    "tipo": "Infraestructura"
+   },
+   {
+    "name": "Ciberseguridad",
+    "revenue": 3000000,
+    "margin": 0.35,
+    "tipo": "Proyecto"
+   }
+  ],
+  "CONS": [
+   {
+    "name": "Servicio Administrado",
+    "revenue": 120000000,
+    "margin": 0.45,
+    "tipo": "Recurrente"
+   },
+   {
+    "name": "Infraestructura",
+    "revenue": 135000000,
+    "margin": 0.08,
+    "tipo": "Infraestructura"
+   },
+   {
+    "name": "Ciberseguridad",
+    "revenue": 27000000,
+    "margin": 0.35,
+    "tipo": "Proyecto"
+   },
+   {
+    "name": "Consultoría",
+    "revenue": 18000000,
+    "margin": 0.3,
+    "tipo": "Proyecto"
+   }
+  ]
+ },
+ "gob_ip": {
+  "2023": {
+   "gob": 90000000,
+   "ip": 30000000
+  },
+  "2024": {
+   "gob": 150000000,
+   "ip": 55000000
+  },
+  "2025": {
+   "gob": 190000000,
+   "ip": 110000000
+  }
+ },
+ "benchmarks": [
+  {
+   "metric": "Crecimiento YoY",
+   "s4b": 0.43,
+   "industry": 0.135,
+   "topQ": 0.24,
+   "format": "pct",
+   "higherBetter": true
+  },
+  {
+   "metric": "Margen bruto",
+   "s4b": 0.35,
+   "industry": 0.555,
+   "topQ": 0.62,
+   "format": "pct",
+   "higherBetter": true
+  },
+  {
+   "metric": "Margen EBITDA",
+   "s4b": 0.18,
+   "industry": 0.18,
+   "topQ": 0.27,
+   "format": "pct",
+   "higherBetter": true
+  },
+  {
+   "metric": "Regla del 40",
+   "s4b": 0.61,
+   "industry": 0.315,
+   "topQ": 0.5,
+   "format": "pct",
+   "higherBetter": true
+  },
+  {
+   "metric": "DSO (días)",
+   "s4b": 64,
+   "industry": 62,
+   "topQ": 45,
+   "format": "days",
+   "higherBetter": false
+  }
+ ],
+ "alerts": [
+  {
+   "level": "high",
+   "area": "Concentración",
+   "msg": "Una línea concentra ~44% del top-line (dato demo).",
+   "impact": 100000000
+  },
+  {
+   "level": "med",
+   "area": "Cartera",
+   "msg": "DSO elevado en una entidad (dato demo).",
+   "impact": 15000000
+  },
+  {
+   "level": "low",
+   "area": "Recurrencia",
+   "msg": "% ingresos recurrentes por debajo del benchmark (dato demo).",
+   "impact": null
+  }
+ ],
+ "top_clients": [
+  {
+   "name": "Cliente Gobierno A",
+   "sector": "Gobierno",
+   "entity": "S4B",
+   "revenue": 80000000,
+   "margin": 0.2,
+   "status": "green"
+  },
+  {
+   "name": "Cliente Gobierno B",
+   "sector": "Gobierno",
+   "entity": "S4B",
+   "revenue": 60000000,
+   "margin": 0.2,
+   "status": "amber"
+  },
+  {
+   "name": "Cliente IP C",
+   "sector": "IP",
+   "entity": "S4B",
+   "revenue": 40000000,
+   "margin": 0.28,
+   "status": "green"
+  },
+  {
+   "name": "Cliente IP D",
+   "sector": "IP",
+   "entity": "S4C",
+   "revenue": 8000000,
+   "margin": 0.28,
+   "status": "green"
+  }
+ ],
+ "projects": {
+  "source": "Datos sintéticos de demostración",
+  "totals": {
+   "venta": 300000000,
+   "costos": 240000000,
+   "margen": 120000000,
+   "ebitda": 60000000,
+   "ebitda_bc": 90000000,
+   "pct_margen": 0.4,
+   "pct_ebitda": 0.2,
+   "desviacion": -30000000,
+   "proyectos": 80
+  },
+  "trend": {
+   "2023": {
+    "venta": 40000000,
+    "gob": 32000000,
+    "ip": 8000000,
+    "ebitda": 4000000,
+    "ebitda_bc": 7000000,
+    "margen": 12000000,
+    "proyectos": 10,
+    "desviacion": -3000000
+   },
+   "2024": {
+    "venta": 180000000,
+    "gob": 150000000,
+    "ip": 30000000,
+    "ebitda": 18000000,
+    "ebitda_bc": 24000000,
+    "margen": 54000000,
+    "proyectos": 28,
+    "desviacion": -6000000
+   },
+   "2025": {
+    "venta": 300000000,
+    "gob": 190000000,
+    "ip": 110000000,
+    "ebitda": 60000000,
+    "ebitda_bc": 90000000,
+    "margen": 120000000,
+    "proyectos": 80,
+    "desviacion": -30000000
+   }
+  },
+  "cost_mix": {
+   "nomina": 120000000,
+   "hw_sw": 80000000,
+   "costo_corp": 20000000,
+   "repr_viaticos": 12000000,
+   "otros": 8000000
+  },
+  "clients": [
+   {
+    "name": "Cliente Gobierno A",
+    "sector": "Gobierno",
+    "revenue": 80000000,
+    "margin": 0.25,
+    "status": "green"
+   },
+   {
+    "name": "Cliente Gobierno B",
+    "sector": "Gobierno",
+    "revenue": 60000000,
+    "margin": 0.4,
+    "status": "green"
+   },
+   {
+    "name": "Cliente IP C",
+    "sector": "IP",
+    "revenue": 40000000,
+    "margin": 0.18,
+    "status": "green"
+   },
+   {
+    "name": "Cliente IP D",
+    "sector": "IP",
+    "revenue": 20000000,
+    "margin": -0.1,
+    "status": "red"
+   }
+  ],
+  "detail": [
+   {
+    "cliente": "Cliente Gobierno A",
+    "nombre": "Servicio administrado (demo)",
+    "tipo": "Gobierno",
+    "venta": 80000000,
+    "costos": 60000000,
+    "margen": 20000000,
+    "pct_margen": 0.25,
+    "ebitda": 14000000,
+    "ebitda_bc": 18000000,
+    "desviacion": -4000000
+   },
+   {
+    "cliente": "Cliente Gobierno B",
+    "nombre": "Proyecto integral (demo)",
+    "tipo": "Gobierno",
+    "venta": 60000000,
+    "costos": 36000000,
+    "margen": 24000000,
+    "pct_margen": 0.4,
+    "ebitda": 20000000,
+    "ebitda_bc": 22000000,
+    "desviacion": -2000000
+   },
+   {
+    "cliente": "Cliente IP D",
+    "nombre": "Renovación (demo)",
+    "tipo": "Privado",
+    "venta": 20000000,
+    "costos": 22000000,
+    "margen": -2000000,
+    "pct_margen": -0.1,
+    "ebitda": -2500000,
+    "ebitda_bc": 1000000,
+    "desviacion": -3500000
+   }
+  ]
+ },
+ "utilization": {
+  "year": "2025",
+  "horas_reales": 120000,
+  "horas_capacidad": 200000,
+  "utilizacion": 0.6,
+  "empleados": 100,
+  "capacidad_emp": 2000,
+  "by_project": [
+   {
+    "nombre": "Operación interna",
+    "horas": 30000
+   },
+   {
+    "nombre": "Cliente Gobierno A",
+    "horas": 18000
+   },
+   {
+    "nombre": "Cliente Gobierno B",
+    "horas": 12000
+   },
+   {
+    "nombre": "Cliente IP C",
+    "horas": 8000
+   }
+  ]
+ },
+ "cost_per_hour": {
+  "year": "2025",
+  "by_role": [
+   {
+    "rol": "Consultor Sr",
+    "costo_hora": 3000,
+    "registros": 10
+   },
+   {
+    "rol": "Ingeniero en Sitio",
+    "costo_hora": 2200,
+    "registros": 8
+   },
+   {
+    "rol": "SOC/NOC Nivel 2",
+    "costo_hora": 1200,
+    "registros": 20
+   },
+   {
+    "rol": "SOC/NOC Nivel 1",
+    "costo_hora": 600,
+    "registros": 15
+   }
+  ]
+ },
+ "client_scoring": {
+  "criteria": [
+   [
+    "Monto de facturación",
+    0.4
+   ],
+   [
+    "Recurrencia",
+    0.15
+   ],
+   [
+    "Antigüedad",
+    0.15
+   ],
+   [
+    "Rentabilidad",
+    0.15
+   ],
+   [
+    "Días de pago",
+    0.1
+   ],
+   [
+    "Tamaño de empresa",
+    0.05
+   ]
+  ],
+  "clients": [
+   {
+    "name": "Cliente Gobierno A",
+    "sector": "Gobierno",
+    "score": 7.4,
+    "tier": "Oro",
+    "facturacion": "Alto",
+    "rentabilidad": "Media"
+   },
+   {
+    "name": "Cliente Gobierno B",
+    "sector": "Gobierno",
+    "score": 6.8,
+    "tier": "Plata",
+    "facturacion": "Alto",
+    "rentabilidad": "Media"
+   },
+   {
+    "name": "Cliente IP C",
+    "sector": "IP",
+    "score": 6.2,
+    "tier": "Plata",
+    "facturacion": "Medio",
+    "rentabilidad": "Alta"
+   },
+   {
+    "name": "Cliente IP D",
+    "sector": "IP",
+    "score": 5.4,
+    "tier": "Bronce",
+    "facturacion": "Medio",
+    "rentabilidad": "Baja"
+   }
+  ]
+ }
+}
