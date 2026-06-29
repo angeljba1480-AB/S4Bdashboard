@@ -715,6 +715,20 @@ def _prefill_licitacion(session: Session, tenant_id: str, inputs: dict, recipe: 
     }
 
 
+def _tenant_mail_conn(token_store, session, tenant_id: str, prefer: str = ""):
+    """Cualquier cuenta de correo conectada del tenant (prefiere `prefer` por id/email).
+    Para corridas de automatización sin usuario o cuando la cuenta es del dueño."""
+    conns = [c for c in token_store.list_tenant_connections(session, tenant_id)
+             if c.provider in ("microsoft", "google") or c.provider == "imap"]
+    if not conns:
+        return None
+    if prefer:
+        for c in conns:
+            if c.id == prefer or (c.identifier or "").lower() == prefer.lower():
+                return c
+    return conns[0]
+
+
 def _prefill_correo_agenda(session: Session, tenant: Tenant, user_id: str | None, inputs: dict) -> dict:
     from ..integrations import token_store
     output = inputs.get("output") or "Resumen diario"
@@ -726,6 +740,8 @@ def _prefill_correo_agenda(session: Session, tenant: Tenant, user_id: str | None
 
     prefer = inputs.get("account") or inputs.get("email", "")
     conn = token_store.resolve_connection(session, tenant.id, user_id, prefer) if user_id else None
+    if not conn:  # fallback: cualquier cuenta conectada del tenant (corridas sin usuario)
+        conn = _tenant_mail_conn(token_store, session, tenant.id, prefer)
     if conn:
         return {
             "tipo": "correo_agenda", "account": conn.id, "output": output,
@@ -767,6 +783,8 @@ def _execute_correo_agenda(session: Session, tenant_id: str, user_id: str | None
     base = {"tipo": "correo_agenda", "output": output, "account": prefer, "items": []}
 
     conn = token_store.resolve_connection(session, tenant_id, user_id, prefer) if user_id else None
+    if not conn:  # fallback: cualquier cuenta conectada del tenant (corridas sin usuario)
+        conn = _tenant_mail_conn(token_store, session, tenant_id, prefer)
     if not conn:
         return {**base, "message": ("Conecta tu correo en Integraciones → «Conectar correo» y "
                                     "vuelve a ejecutar este caso.")}
