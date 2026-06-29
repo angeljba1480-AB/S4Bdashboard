@@ -1,0 +1,62 @@
+# MaestroAI · Progreso de configuración (estado vivo)
+
+> **Regla de trabajo:** antes de tocar algo, **revisar aquí + el Autochequeo**
+> (Admin → "Autochequeo del sistema", `GET /admin/readiness`) para no retrabajar.
+> El Autochequeo es la fuente de verdad en runtime; este doc registra además los
+> sub-pasos de Entra/Render/cuentas que el Autochequeo no puede ver.
+>
+> **Nunca** se anotan secretos aquí (solo estado e IDs no sensibles).
+> Última actualización: 2026-06-29.
+
+## 🔴 Núcleo
+| Ítem | Estado | Detalle |
+|---|---|---|
+| Proveedor IA — NaN Builders (ruta `open`) | ✅ Listo | Admin → Modelos. Probar conexión OK · `qwen3.6`. Re-guardada tras cambiar llave. |
+| Embeddings prod (`EMBEDDINGS_PROVIDER=open`, `qwen3-embedding`, `4096`) | ✅ Env + deploy | **Re-index pendiente** (docs de prueba); al cargar reales: Documentos → Re-indexar. |
+| Scheduler (`SCHEDULER_ENABLED=true`) | ✅ Listo | Digests/alertas corren solos. |
+| Cifrado prod (`SECRET_KEY` fuerte + `MASTER_KMS_KEY` dedicada) | ✅ Listo | `SECRET_KEY` ya era fuerte; `MASTER_KMS_KEY` distinta. NaN re-guardada después. |
+
+## 🟡 Integraciones
+| Ítem | Estado | Detalle |
+|---|---|---|
+| **Microsoft 365 OAuth** | 🟡 En progreso | App de Entra **"MaestroAI"** (multitenant). Ver sub-pasos abajo. |
+| Google OAuth | ⏳ Siguiente | Gmail/Drive/Calendar/Sheets. |
+| WhatsApp (CallMeBot) | ⏳ Pendiente | Se configura **en la app** (Alertas/Mi cuenta), no en Render. |
+| n8n (workflows) | ⏳ Opcional | Cuando haya instancia n8n. |
+| Zapier NLA | ⏳ Opcional | Catálogo de apps. |
+
+### Microsoft 365 OAuth — sub-pasos (app "MaestroAI")
+- App: **MaestroAI** (multitenant, "Todos los usuarios de cuentas Microsoft").
+  → por ser multitenant, en Render `MICROSOFT_TENANT=common`.
+- [x] **Redirect URI (Web)**: `https://s4bdashboard.onrender.com/oauth/microsoft/callback`
+- [x] **Secreto de cliente** existe (confirmado por el usuario)
+- [ ] **Permisos delegados** (Graph) + **consentimiento admin** (multitenant lo exige):
+      `offline_access User.Read Mail.Read Mail.Send Calendars.ReadWrite ChannelMessage.Send Files.ReadWrite.All Sites.Read.All`
+- [ ] **Habilitar en Render**: `MICROSOFT_OAUTH_ENABLED=true` (+ `MICROSOFT_CLIENT_ID/SECRET/REDIRECT_URI`, `MICROSOFT_TENANT=common`) — revisar Autochequeo por si ya estaban
+- [ ] **Conectar cuenta** en Integraciones → el *Toolkit de acciones* se activa solo al conectar → verificar Autochequeo 🟢
+
+> Nota: no existe un "toggle de toolkit" separado. El toolkit (correo/calendario/Sheets)
+> queda disponible cuando el OAuth está habilitado **y** la cuenta está conectada.
+
+## 🟢 Seguridad / escala
+| Ítem | Estado | Detalle |
+|---|---|---|
+| Antivirus (ClamAV) | ✅/⏳ | `ANTIVIRUS_ENABLED` on por defecto; `CLAMAV_HOST` opcional. |
+| Qdrant (vector store) | ⏳ Opcional | Para escala de RAG. |
+| SSO/OIDC | ⏳ Opcional | Login corporativo. |
+| Fine-tuning (LoRA) | ⏳ Opcional | Trainer en lab propio; pesos solo local. |
+
+## 📊 Tablero Financiero (caso de uso)
+| Ítem | Estado | Detalle |
+|---|---|---|
+| Tablero + vistas + RAG | ✅ Prod | Resumen, P&L, Posición, Clientes, Evaluación, Proyectos, Costos, Utilización, Gob/IP, Benchmark, Alertas. |
+| Carga self-service (Excel/zip o JSON) cifrada por tenant | ✅ Prod | Botón "Cargar datos" en el Espacio. |
+| Cargar datos reales del cliente | ⏳ Pendiente | Subir Excel/zip o JSON desde la app. |
+| Comparativo de costos (CMI vs BC vs Timesheet) | 🟡 Cableado | `costo_bc` listo; `costo_cmi`/`costo_timesheet` requieren **Nómina**. |
+| Conector SharePoint (Paso 1) | ⏳ Pendiente | App **"MaestroAI-Finanzas"** (app-only, Sites/Files.Read.All) creada; **falta construir el conector** que liste `Proyectos Finanzas` y alimente `ingest_excel`. |
+| Conector BD directa (Paso 1) | ⏳ Esperando accesos | `/datasources` soporta DB de solo lectura. |
+| Nómina + Catálogo de CC | ⏳ Pendiente | Para cerrar el comparativo (ver `MaestroAI_Auditoria_Esquemas_Finanzas.docx`). |
+
+## Apps de Entra (referencia, sin secretos)
+- **MaestroAI** — OAuth de correo (delegada, multitenant). client_id `6cde3a0a-…`, tenant `a972e859-…`.
+- **MaestroAI-Finanzas** — conector SharePoint (app-only: `Sites.Read.All`, `Files.Read.All`).
