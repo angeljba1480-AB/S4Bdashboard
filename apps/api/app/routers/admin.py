@@ -489,18 +489,33 @@ def update_efficiency(
 
 
 @router.get("/routes")
-def model_routes(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS))) -> list[dict]:
-    """Which model routes are enabled (real provider vs mock fallback)."""
-    return [
-        {"route": ModelRoute.LOCAL.value, "provider": "Self-hosted (Ollama)", "enabled": settings.local_enabled,
-         "model": settings.local_model, "mode": "real" if settings.local_enabled else "mock"},
-        {"route": ModelRoute.VPC.value, "provider": "VPC (vLLM/TGI)", "enabled": settings.vpc_enabled,
-         "model": settings.vpc_model, "mode": "real" if settings.vpc_enabled else "mock"},
-        {"route": ModelRoute.OPEN.value, "provider": settings.open_provider_name, "enabled": settings.open_enabled,
-         "model": settings.open_model, "mode": "real" if settings.open_enabled else "mock"},
-        {"route": ModelRoute.PREMIUM.value, "provider": "Premium externo", "enabled": settings.premium_enabled,
-         "model": settings.premium_model, "mode": "real" if settings.premium_enabled else "mock"},
-    ]
+def model_routes(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+                 session: Session = Depends(get_session)) -> list[dict]:
+    """Qué rutas están en proveedor real vs mock. Refleja la config **efectiva**:
+    override de Admin (BD) → env → mock (igual que `get_adapter`)."""
+    from ..models import ProviderSetting
+
+    rows = {r.route: r for r in session.exec(select(ProviderSetting)).all()}
+    env = {
+        "local": (settings.local_enabled, settings.local_model, "Self-hosted (Ollama)"),
+        "vpc": (settings.vpc_enabled, settings.vpc_model, "VPC (vLLM/TGI)"),
+        "open": (settings.open_enabled, settings.open_model, settings.open_provider_name),
+        "premium": (settings.premium_enabled, settings.premium_model, "Premium externo"),
+    }
+    out = []
+    for route in _PROVIDER_ROUTES:
+        en_enabled, en_model, label = env[route]
+        r = rows.get(route)
+        if r and r.enabled and r.base_url:          # override del Admin (UI)
+            out.append({"route": route, "provider": label, "enabled": True,
+                        "model": r.model or en_model, "mode": "real", "source": "ui"})
+        elif en_enabled:                            # configurado por env
+            out.append({"route": route, "provider": label, "enabled": True,
+                        "model": en_model, "mode": "real", "source": "env"})
+        else:
+            out.append({"route": route, "provider": label, "enabled": False,
+                        "model": (r.model if r else "") or en_model, "mode": "mock", "source": ""})
+    return out
 
 
 @router.get("/security")
