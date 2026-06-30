@@ -30,7 +30,9 @@
 | Google OAuth | ✅ Listo | Cliente "MaestroAI Web" + 4 APIs habilitadas (Gmail/Calendar/Drive/Sheets) + 7 scopes en consentimiento + cuenta conectada. |
 | WhatsApp (CallMeBot) | ⏳ Pendiente | Se configura **en la app** (Alertas/Mi cuenta), no en Render. |
 | n8n (workflows) | 🟡 Avanzado | `N8N_API_BASE_URL` ya presente en Render — revisar `N8N_ENABLED` + webhook base. |
-| Zapier NLA | ⏳ Opcional | Catálogo de apps. |
+| Zapier / **Make** / Webhook (salida) | ✅ Prod | Conectores de salida con plantilla. Make: escenario con *Custom webhook* → pega su URL. |
+| **Subida de cualquier archivo** | ✅ Prod | `extract_text` soporta PDF, DOCX, **XLSX, PPTX, ZIP (recursivo), imágenes (OCR)**; binario desconocido se cataloga sin meter basura al RAG. Frontend acepta cualquier tipo (antes solo .txt/.md/.csv/.json), con tope de tamaño (`max_upload_mb`, def. 25). |
+| **Nombre de documento autollenado** | ✅ Prod | Al elegir archivo, el nombre se llena solo (editable); se confirma la subida (no se sube a ciegas). El nombre editado gana sobre el del archivo. |
 
 ### Microsoft 365 OAuth — sub-pasos (app "MaestroAI")
 - App: **MaestroAI** (multitenant, "Todos los usuarios de cuentas Microsoft").

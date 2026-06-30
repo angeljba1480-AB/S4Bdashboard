@@ -20,6 +20,7 @@ export default function DocumentsPage() {
   const [areas, setAreas] = useState<string[]>([]);
   // upload form
   const [filename, setFilename] = useState("nota.txt");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [text, setText] = useState("");
   const [upArea, setUpArea] = useState("");
   const [upCat, setUpCat] = useState("");
@@ -118,16 +119,26 @@ export default function DocumentsPage() {
     }
   }
 
-  async function uploadFile(e: React.ChangeEvent<HTMLInputElement>) {
+  // Al elegir un archivo NO se sube de inmediato: autollena el nombre (editable)
+  // y espera confirmación, para que el usuario pueda ajustarlo si quiere.
+  function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPendingFile(file);
+    setFilename(file.name);
+    e.target.value = "";
+  }
+
+  async function confirmUpload() {
+    if (!pendingFile) return;
     setBusy(true);
     try {
-      await api.uploadFile(file, meta());
+      await api.uploadFile(pendingFile, { ...meta(), name: filename.trim() || pendingFile.name });
+      setPendingFile(null);
+      setFilename("nota.txt");
       load();
     } finally {
       setBusy(false);
-      e.target.value = "";
     }
   }
 
@@ -194,7 +205,9 @@ export default function DocumentsPage() {
           <form onSubmit={uploadText} className="rounded-2xl border border-slate-200 bg-white p-5">
             <h3 className="mb-3 font-semibold text-slate-800">Cargar documento</h3>
 
-            <label className="mb-1 block text-xs font-medium text-slate-500">Nombre</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500">
+              Nombre {pendingFile && <span className="text-violet-500">(autollenado · puedes editarlo)</span>}
+            </label>
             <input value={filename} onChange={(e) => setFilename(e.target.value)} className={`mb-3 w-full ${inputCls}`} placeholder="nombre.txt" />
 
             <label className="mb-1 block text-xs font-medium text-slate-500">Área</label>
@@ -225,10 +238,29 @@ export default function DocumentsPage() {
             <button disabled={busy} className="mb-3 w-full rounded-lg bg-violet-600 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50">
               Clasificar y cargar
             </button>
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 py-2 text-sm text-slate-500 hover:bg-slate-50">
-              <Upload className="h-4 w-4" /> Subir archivo
-              <input type="file" className="hidden" onChange={uploadFile} accept=".txt,.md,.csv,.json" />
-            </label>
+            {pendingFile ? (
+              <div className="rounded-lg border border-violet-200 bg-violet-50 p-3">
+                <p className="mb-2 truncate text-xs text-slate-600">
+                  Archivo listo: <b>{pendingFile.name}</b> · {(pendingFile.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+                <div className="flex gap-2">
+                  <button type="button" disabled={busy} onClick={confirmUpload}
+                    className="flex-1 rounded-lg bg-violet-600 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50">
+                    Subir «{filename || pendingFile.name}»
+                  </button>
+                  <button type="button" onClick={() => { setPendingFile(null); setFilename("nota.txt"); }}
+                    className="rounded-lg border border-slate-300 px-3 text-sm text-slate-600">Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 py-2 text-sm text-slate-500 hover:bg-slate-50">
+                <Upload className="h-4 w-4" /> Subir archivo
+                <input type="file" className="hidden" onChange={pickFile} />
+              </label>
+            )}
+            <p className="mt-2 text-center text-[11px] text-slate-400">
+              Cualquier tipo de archivo (PDF, Word, Excel, PPT, ZIP, imágenes con OCR…). Se extrae el texto cuando es posible; límite de tamaño por archivo.
+            </p>
           </form>
 
           {/* Google Drive as context */}

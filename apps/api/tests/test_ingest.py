@@ -65,6 +65,30 @@ def test_extract_plain_text_fallback():
     assert "hola mundo" in out
 
 
+def test_extract_xlsx():
+    import openpyxl
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["Cliente", "Venta"]); ws.append(["IMSS", 1000])
+    buf = io.BytesIO(); wb.save(buf)
+    out = extract_text(buf.getvalue(), "datos.xlsx")
+    assert "Cliente" in out and "IMSS" in out and "1000" in out
+
+
+def test_extract_zip_expands_inner_files():
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("a.txt", "contenido alpha")
+        z.writestr("b.csv", "x,y\n1,2")
+    out = extract_text(buf.getvalue(), "paquete.zip")
+    assert "alpha" in out and "a.txt" in out and "b.csv" in out
+
+
+def test_unknown_binary_returns_empty_not_garbage():
+    blob = bytes([0, 1, 2, 3, 255, 254]) + b"\x00basura"
+    assert extract_text(blob, "raro.bin", "application/octet-stream") == ""
+
+
 def test_upload_pdf_indexes_text(client):
     h = _auth(client)
     pdf = _make_pdf("Contenido extraido de un PDF de prueba para el RAG.")
