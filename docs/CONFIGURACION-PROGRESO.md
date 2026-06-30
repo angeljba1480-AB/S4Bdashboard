@@ -121,7 +121,8 @@ corre, y **entrega** el resultado a un canal. Todo se ve y configura en el panel
 | Pieza | Estado | Detalle |
 |---|---|---|
 | **Módulo KEDB (gateado)** | ✅ Prod | Solo para tenants con **perfil de ciberseguridad** (`CompanyProfile.industry` con keywords ciber/cyber/seguridad/security/soc). `me.kedb_enabled` controla el nav; el router devuelve 403 si no aplica. Modelo `KnownError` (scope tenant/shared), endpoints `/kedb` (CRUD + `/analyze`), página con análisis de síntoma + alta + lista. `scope='shared'` = errores cross-cliente curados/sanitizados por el operador (visibles a todos los tenants cyber). |
-| Cross-cliente automático (extracción + aprobación) | ⏳ Futuro | Hoy 'shared' se cura a mano (ADMIN). Falta: extracción automática desde documentos/SOC + flujo de aprobación + sanitización asistida. |
+| **Cross-cliente (promover + aprobar)** | ✅ Prod | `POST /kedb/{id}/promote`: copia **sanitizada por IA** (quita cliente/IP/host/usuarios) con `scope=shared, status=pending`. El **operador (SUPER_ADMIN)** la ve en `GET /kedb/proposals` y la **aprueba/rechaza** (`/approve`, `/reject`); al aprobar queda `published` y visible para todos los tenants cyber. Pendientes ocultas de la lista normal. UI: botón **Compartir** por error + sección de **propuestas** para el operador. |
+| **Extracción asistida (IA)** | ✅ Prod | `POST /kedb/extract`: del texto de un log/incidente la IA propone un error estructurado (borrador), que el usuario revisa y da de alta. |
 
 ## 🏷️ Pendientes diferidos (mejoras, no bloquean)
 | Ítem | Estado | Detalle |
