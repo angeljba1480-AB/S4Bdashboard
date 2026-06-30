@@ -76,7 +76,7 @@ corre, y **entrega** el resultado a un canal. Todo se ve y configura en el panel
 | **Salida (entrega del resultado)** | ✅ Prod | Canales **Notificación / WhatsApp / Correo** (correo destino opcional). Endpoint `POST /automations/{id}/delivery`; lo entrega `_deliver_result` con remitente de marca blanca (support sender) y queda en el audit log. |
 | **Casos/recetas end-to-end** | ✅ Prod | Una automatización corre `prefill`+`execute` sin paso humano y entrega el `documento` por los canales elegidos (ej. "Resumen diario de correo y agenda"). |
 | **Programar** | ✅ Prod | Diario/Semanal/Mensual tras validar (`POST /automations/{id}/schedule`); las corre `run_due` (cron/scheduler). |
-| **Centro de mando (`mando`) real** | ✅ Prod | MaestroAI calcula un reporte ejecutivo con KPIs reales (`compute_operations`: casos, tokens, costo, apps) + insights de IA (`_run_mando`), lo manda a n8n en `payload.text` (enrutáble en el canvas) y lo entrega. Si n8n no devuelve nada, entrega el reporte calculado. |
+| **Centro de mando (`mando`) real** | ✅ Prod | MaestroAI calcula un reporte ejecutivo con KPIs reales (`compute_operations`: casos, tokens, costo, apps) + insights de IA (`_run_mando`), en **texto plano legible** (secciones RESUMEN/KPIS/ALERTAS/RECOMENDACIONES, viñetas `•`, sin markdown). Entrega el reporte **limpio** (no el eco JSON de n8n; `_content_from_response` extrae solo el campo útil, también bajo `body`). La notificación respeta saltos de línea (`whitespace-pre-wrap`). Se puede enviar por WhatsApp/correo vía el panel de Salida. |
 | **Fix n8n BYO 404** | ✅ Prod | `resolve_n8n`: en n8n propio (BYO) usa el prefijo `{tenant_id}/` cuando MaestroAI aprovisionó los flujos (antes llamaba `/webhook/mando` → 404). |
 | **Fix conector URL** | ✅ Prod | `_normalize_url` antepone `https://` a URLs de conectores de salida sin protocolo. |
 
@@ -98,7 +98,8 @@ corre, y **entrega** el resultado a un canal. Todo se ve y configura en el panel
 | Pieza | Estado | Detalle |
 |---|---|---|
 | Conector de salida SAP (push) | ✅ Prod | Plantillas en Integraciones: **SAP S/4HANA (OData)** (Basic auth; escritura requiere `X-CSRF-Token`) y **SAP Business One (Service Layer)** (login → cookie `B1SESSION`). |
-| Lectura SAP → tablero/RAG (pull) | ⏳ Pendiente | OData es HTTP GET. Camino recomendado hoy: **n8n** (HTTP Request OData GET → maneja CSRF/paginación → POST a MaestroAI). Alternativa futura: lector OData nativo (CSRF + `$batch` + paginación). |
+| **Lectura SAP → repositorio/RAG (nativo)** | ✅ Prod | Lector OData nativo (`app/integrations/odata.py` + modelo `OdataSource` + UI `OdataPanel`): GET a un Entity Set (v2/v4), auth Basic/Bearer, `$filter`/`$select`/`$top`, paginación `__next`/`@odata.nextLink`. Importa al repositorio + RAG (clasificado/cifrado). Solo lectura (no necesita CSRF). Endpoints `/datasources/odata`. |
+| Lectura SAP vía n8n (alternativa) | ✅ Documentado | n8n HTTP Request OData GET (maneja CSRF/paginación) → POST a MaestroAI. Útil para escrituras o transformaciones en el canvas. |
 
 > **Nota CSRF (SAP OData):** las escrituras OData v2 piden un token: primero `GET` con header `X-CSRF-Token: Fetch` → usar el token devuelto en el `POST`. El conector genérico hace POST directo; para escrituras con CSRF conviene **n8n** o un handler dedicado.
 

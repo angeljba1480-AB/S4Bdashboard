@@ -553,6 +553,17 @@ export const api = {
     request<{ imported: number; documents: { id: string; filename: string }[] }>(`/datasources/sftp/${id}/import`, { method: "POST" }),
   deleteSftp: (id: string) =>
     request<{ ok: boolean }>(`/datasources/sftp/${id}`, { method: "DELETE" }),
+  // Conector OData (SAP S/4HANA, solo lectura) → import al RAG
+  odataSources: () =>
+    request<{ id: string; name: string; base_url: string; auth_type: string; username: string; odata_filter: string; select: string; top: number; area: string; category: string }[]>("/datasources/odata"),
+  createOdata: (body: { name: string; base_url: string; auth_type?: string; username?: string; secret?: string; odata_filter?: string; select?: string; top?: number; area?: string; category?: string }) =>
+    request<{ id: string; name: string }>("/datasources/odata", { method: "POST", body: JSON.stringify(body) }),
+  testOdata: (id: string) =>
+    request<{ ok: boolean; columns: string[]; total_preview: number }>(`/datasources/odata/${id}/test`, { method: "POST" }),
+  importOdata: (id: string) =>
+    request<{ id: string; filename: string; rows: number }>(`/datasources/odata/${id}/import`, { method: "POST" }),
+  deleteOdata: (id: string) =>
+    request<{ ok: boolean }>(`/datasources/odata/${id}`, { method: "DELETE" }),
   // Fine-tuning ligero (LoRA)
   ftBaseModels: () =>
     request<{ name: string; mlx_model: string; family: string }[]>("/finetune/base-models"),

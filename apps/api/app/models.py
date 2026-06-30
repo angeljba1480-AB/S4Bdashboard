@@ -328,6 +328,26 @@ class SftpConnector(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class OdataSource(SQLModel, table=True):
+    """Fuente OData de SOLO lectura (SAP S/4HANA y compatibles): hace GET a un Entity
+    Set, trae las filas y las importa al repositorio + RAG. Credencial cifrada.
+    Las lecturas no requieren X-CSRF-Token (eso es solo para escrituras)."""
+    __tablename__ = "odata_sources"
+    id: str = Field(default_factory=lambda: _uuid("odata"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    name: str = ""
+    base_url: str = ""             # URL del Entity Set, e.g. https://host/sap/opu/odata/sap/SRV/Set
+    auth_type: str = "basic"       # basic | bearer
+    username: str = ""
+    secret_enc: str = ""          # password (basic) o token (bearer), cifrado
+    odata_filter: str = ""         # $filter opcional
+    select: str = ""              # $select opcional
+    top: int = 0                   # $top opcional (0 = por defecto)
+    area: str = ""
+    category: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class FinanceDataset(SQLModel, table=True):
     """Dataset del Tablero Financiero cargado por el cliente (self-service), por tenant.
 
