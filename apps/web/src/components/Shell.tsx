@@ -93,6 +93,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     api.me().then(setMe).catch(() => router.push("/login"));
@@ -111,9 +112,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-slate-50" style={{ ["--brand" as string]: brand }}>
       <aside className="flex w-64 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
         <div className="flex items-center gap-2.5 border-b border-slate-200 px-5 py-5">
-          {me?.brand_logo_url ? (
+          {me?.brand_logo_url && !logoError ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={me.brand_logo_url} alt={brandName} className="h-9 w-9 rounded-lg object-contain" />
+            <img src={me.brand_logo_url} alt={brandName} onError={() => setLogoError(true)}
+              className="h-9 w-9 rounded-lg object-contain" />
           ) : (
             <div
               className="flex h-9 w-9 items-center justify-center rounded-lg"
