@@ -62,7 +62,8 @@
 | Carga self-service (Excel/zip o JSON) cifrada por tenant | ✅ Prod | Botón "Cargar datos" en el Espacio. |
 | Cargar datos reales del cliente | ⏳ Pendiente | Subir Excel/zip o JSON desde la app. |
 | Comparativo de costos (CMI vs BC vs Timesheet) | 🟡 Cableado | `costo_bc` listo; `costo_cmi`/`costo_timesheet` requieren **Nómina**. |
-| Conector SharePoint | ✅ Prod (delegado) | `app/integrations/sharepoint.py` + modelo `SharepointSource` + endpoints `/datasources/sharepoint` (crear/list/test/import) + UI `SharepointPanel`. Resuelve el sitio por URL, lista una carpeta (ej. `Proyectos Finanzas`) y la importa a documentos + RAG. Usa la **cuenta MS conectada del usuario** (delegado, `Sites.Read.All`). App-only con la app "MaestroAI-Finanzas" queda como alternativa futura (requiere token client-credentials). |
+| **Explorador SharePoint (tipo Drive)** | ✅ Prod | En **Documentos → "Importar de SharePoint"**: navega sitios → carpetas → archivos e importa (igual que el de Google Drive). Router `/sharepoint` (sites/files/import) + componente `SharepointBrowser`. Usa la cuenta MS conectada. **Es la vía recomendada para uso manual.** |
+| Conector SharePoint (carpeta fija) | ✅ Prod (delegado) | `/datasources/sharepoint` + `SharepointPanel`: carpeta fija por URL para **imports programados/automáticos** (no navegación). Mismo backend (`integrations/sharepoint.py`). App-only ("MaestroAI-Finanzas") = alternativa futura. |
 | Conector BD directa (Paso 1) | ⏳ Esperando accesos | `/datasources` soporta DB de solo lectura. |
 | Nómina + Catálogo de CC | ⏳ Pendiente | Para cerrar el comparativo (ver `MaestroAI_Auditoria_Esquemas_Finanzas.docx`). |
 

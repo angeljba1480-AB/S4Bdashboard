@@ -46,6 +46,52 @@ def list_files(token: str, site_url: str, folder: str = "") -> list[dict]:
         return out
 
 
+def list_sites(token: str, query: str = "") -> list[dict]:
+    """Lista sitios de SharePoint accesibles (búsqueda por nombre)."""
+    import httpx
+    search = query.strip() or "*"
+    with httpx.Client() as client:
+        r = client.get(f"{GRAPH}/sites", headers=_auth(token),
+                       params={"search": search}, timeout=TIMEOUT)
+        r.raise_for_status()
+        return [{"id": s.get("id"), "name": s.get("displayName") or s.get("name") or "(sitio)",
+                 "web_url": s.get("webUrl", "")} for s in r.json().get("value", [])]
+
+
+def list_children(token: str, site_id: str, item_id: str = "") -> list[dict]:
+    """Lista carpetas/archivos de un sitio (raíz o dentro de un item carpeta)."""
+    import httpx
+    if item_id:
+        url = f"{GRAPH}/sites/{site_id}/drive/items/{item_id}/children"
+    else:
+        url = f"{GRAPH}/sites/{site_id}/drive/root/children"
+    with httpx.Client() as client:
+        r = client.get(url, headers=_auth(token), timeout=TIMEOUT)
+        r.raise_for_status()
+        out = []
+        for it in r.json().get("value", []):
+            out.append({"id": it.get("id"), "name": it.get("name"),
+                        "is_folder": "folder" in it, "size": it.get("size", 0),
+                        "download": it.get("@microsoft.graph.downloadUrl", "")})
+        return out
+
+
+def fetch_item(token: str, site_id: str, item_id: str) -> tuple[str, bytes]:
+    """Descarga un archivo por id → (nombre, bytes)."""
+    import httpx
+    with httpx.Client(follow_redirects=True) as client:
+        meta = client.get(f"{GRAPH}/sites/{site_id}/drive/items/{item_id}",
+                          headers=_auth(token), timeout=TIMEOUT)
+        meta.raise_for_status()
+        j = meta.json()
+        url = j.get("@microsoft.graph.downloadUrl")
+        if not url:
+            raise ValueError("El elemento no es descargable (¿es una carpeta?)")
+        r = client.get(url, timeout=TIMEOUT)
+        r.raise_for_status()
+        return j.get("name", "archivo"), r.content
+
+
 def fetch(token: str, site_url: str, folder: str = "", max_files: int = 50) -> list[tuple[str, bytes]]:
     """Descarga los archivos (no carpetas) de la carpeta indicada → [(nombre, bytes)]."""
     import httpx

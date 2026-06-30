@@ -595,6 +595,16 @@ export const api = {
     request<{ imported: number; documents: { id: string; filename: string }[] }>(`/datasources/sharepoint/${id}/import`, { method: "POST" }),
   deleteSharepoint: (id: string) =>
     request<{ ok: boolean }>(`/datasources/sharepoint/${id}`, { method: "DELETE" }),
+  // Explorador SharePoint (tipo Drive): navegar sitios/carpetas/archivos e importar
+  sharepointSites: (query = "") =>
+    request<{ sites: { id: string; name: string; web_url: string }[] }>(`/sharepoint/sites${query ? `?query=${encodeURIComponent(query)}` : ""}`),
+  sharepointBrowse: (site: string, folder = "") => {
+    const qs = new URLSearchParams({ site });
+    if (folder) qs.set("folder", folder);
+    return request<{ files: { id: string; name: string; is_folder: boolean; size: number }[] }>(`/sharepoint/files?${qs}`);
+  },
+  sharepointImportItem: (body: { site: string; item_id: string; name?: string; area?: string; category?: string }) =>
+    request<{ id: string; filename: string }>("/sharepoint/import", { method: "POST", body: JSON.stringify(body) }),
   // Fine-tuning ligero (LoRA)
   ftBaseModels: () =>
     request<{ name: string; mlx_model: string; family: string }[]>("/finetune/base-models"),

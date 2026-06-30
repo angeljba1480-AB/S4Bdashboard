@@ -38,6 +38,13 @@ def test_sharepoint_crud_and_requires_ms_account(client):
     assert client.delete(f"/datasources/sharepoint/{s['id']}", headers=h).json()["ok"] is True
 
 
+def test_sharepoint_browser_requires_ms_account(client):
+    """El explorador (tipo Drive) pide cuenta MS conectada (400, no 500)."""
+    h = _auth(client)
+    assert client.get("/sharepoint/sites", headers=h).status_code == 400
+    assert client.get("/sharepoint/files?site=abc", headers=h).status_code == 400
+
+
 def test_sharepoint_site_url_parsing():
     from app.integrations.sharepoint import _children_url
     assert _children_url("SID", "") == "https://graph.microsoft.com/v1.0/sites/SID/drive/root/children"
