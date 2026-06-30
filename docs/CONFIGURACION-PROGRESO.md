@@ -51,7 +51,7 @@
 | Ítem | Estado | Detalle |
 |---|---|---|
 | Antivirus (ClamAV) | ✅/⏳ | `ANTIVIRUS_ENABLED` on por defecto; `CLAMAV_HOST` opcional. |
-| Qdrant (vector store) | ⏳ Opcional | Para escala de RAG. |
+| Vector store a escala (Qdrant / pgvector) | ✅ Llave en mano | Código listo (bug de id de Qdrant corregido) + Autochequeo lo valida. **Activar:** ver receta abajo. Hoy corre in-process (sin infra); súbelo cuando un cliente crezca. |
 | SSO/OIDC | ⏳ Opcional | Login corporativo. |
 | Fine-tuning (LoRA) | ⏳ Opcional | Trainer en lab propio; pesos solo local. |
 
@@ -91,6 +91,22 @@ corre, y **entrega** el resultado a un canal. Todo se ve y configura en el panel
 > - *Workflows (n8n)*: pueden entregar **dentro de n8n** con sus nodos Gmail/WhatsApp/Slack (camino idiomático, se ve en el canvas). La entrega de MaestroAI queda como respaldo/gobierno.
 > - *Casos/recetas*: corren **dentro de MaestroAI** (no hay n8n) → la entrega la hace `_deliver_result`. Sin esto, el resultado se perdía.
 > En ambos casos MaestroAI centraliza **auditoría, redacción PII y remitente de marca blanca**.
+
+## 🚀 Upgrade de RAG a escala (Qdrant o pgvector)
+El RAG corre **in-process** por defecto (vectores en la BD, coseno en Python) — cero infra.
+Para mucho volumen, súbelo con una variable, sin cambiar código:
+
+**Opción A — pgvector (recomendada, sin servidor nuevo):** usa tu propio Postgres.
+- Postgres con extensión `vector` (Supabase la trae; en otros: `CREATE EXTENSION vector`).
+- Env: `VECTOR_STORE=pgvector`, `EMBEDDINGS_DIM=4096` (igual a qwen3-embedding).
+
+**Opción B — Qdrant (servidor dedicado, máxima escala):**
+- Provisiona Qdrant; `pip install qdrant-client` en la imagen de la API.
+- Env: `VECTOR_STORE=qdrant`, `QDRANT_URL=…`, `QDRANT_API_KEY=…`, `EMBEDDINGS_DIM=4096`.
+
+**Después (ambas):** re-indexa para poblar el store → `POST /documents/reindex` (o botón
+*Re-indexar* en Documentos). El **Autochequeo** muestra "Vector store (escala)" en verde
+si quedó bien, o el detalle del error si falta algo.
 
 ## 🏷️ Marca blanca (white-label)
 | Pieza | Estado | Detalle |
