@@ -222,6 +222,17 @@ export const api = {
   deleteKnownError: (id: string) => request<{ ok: boolean }>(`/kedb/${id}`, { method: "DELETE" }),
   analyzeKedb: (symptom: string, product = "") =>
     request<{ matches: { id: string; title: string; symptom: string; cause: string; resolution: string; product: string; severity: string }[]; is_known: boolean; suggestion: string }>("/kedb/analyze", { method: "POST", body: JSON.stringify({ symptom, product }) }),
+  // KEDB cross-cliente: promover (sanitizado) → aprobar (operador) + extraer
+  promoteKnownError: (id: string) =>
+    request<{ id: string; scope: string; status: string }>(`/kedb/${id}/promote`, { method: "POST" }),
+  kedbProposals: () =>
+    request<{ id: string; title: string; symptom: string; cause: string; resolution: string; product: string; severity: string; source: string }[]>("/kedb/proposals"),
+  approveKedbProposal: (id: string) =>
+    request<{ id: string; status: string }>(`/kedb/proposals/${id}/approve`, { method: "POST" }),
+  rejectKedbProposal: (id: string) =>
+    request<{ ok: boolean }>(`/kedb/proposals/${id}/reject`, { method: "POST" }),
+  extractKedb: (text: string) =>
+    request<{ draft: { title: string; symptom: string; cause: string; resolution: string; product: string; tags: string } }>("/kedb/extract", { method: "POST", body: JSON.stringify({ text }) }),
   // App Studio
   apps: () => request<AppProject[]>("/apps"),
   createApp: (body: { name: string; description: string }) =>

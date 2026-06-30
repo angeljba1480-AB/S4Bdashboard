@@ -55,3 +55,31 @@ def test_kedb_crud_and_analyze(client):
     assert an["is_known"] is True and an["matches"]
 
     assert client.delete(f"/kedb/{k['id']}", headers=h).json()["ok"] is True
+
+
+def test_kedb_cross_client_promote_approve_flow(client):
+    # admin@maestroai.mx es SUPER_ADMIN (el operador) tras ensure_super_admin.
+    h = _auth(client)
+    client.put("/company/profile", headers=h, json={"industry": "Ciberseguridad"})
+    k = client.post("/kedb", headers=h, json={
+        "title": "Bloqueo VPN tras rotación de cert", "symptom": "clientes no conectan a la VPN",
+        "resolution": "renovar cadena de confianza", "product": "VPN"}).json()
+    # Promover → propuesta cross-cliente (shared, pending), sanitizada.
+    cand = client.post(f"/kedb/{k['id']}/promote", headers=h).json()
+    assert cand["scope"] == "shared"
+    # Pendiente: NO aparece en la lista normal, SÍ en /proposals (operador).
+    assert not any(x["id"] == cand["id"] for x in client.get("/kedb", headers=h).json())
+    props = client.get("/kedb/proposals", headers=h).json()
+    assert any(p["id"] == cand["id"] for p in props)
+    # Aprobar → queda publicado y visible en la lista como 'shared'.
+    appr = client.post(f"/kedb/proposals/{cand['id']}/approve", headers=h).json()
+    assert appr["status"] == "published"
+    lst = client.get("/kedb", headers=h).json()
+    assert any(x["id"] == cand["id"] and x["scope"] == "shared" for x in lst)
+
+
+def test_kedb_extract_from_text(client):
+    h = _auth(client)
+    client.put("/company/profile", headers=h, json={"industry": "Ciberseguridad"})
+    r = client.post("/kedb/extract", headers=h, json={"text": "El EDR bloqueó un binario firmado tras el parche; se excluyó el hash."})
+    assert r.status_code == 200 and "draft" in r.json()
