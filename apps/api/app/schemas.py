@@ -35,6 +35,7 @@ class MeResponse(BaseModel):
     country: str = "MX"
     country_name: str = "México"
     gov_enabled: bool = False      # ¿mostrar contenido de gobierno (Trámites/recetas públicas)?
+    kedb_enabled: bool = False     # ¿perfil de ciberseguridad? → módulo KEDB
 
 
 # --- Agents -----------------------------------------------------------------

@@ -19,6 +19,7 @@ export interface Me {
   country?: string;
   country_name?: string;
   gov_enabled?: boolean;
+  kedb_enabled?: boolean;
 }
 
 export interface Agent {

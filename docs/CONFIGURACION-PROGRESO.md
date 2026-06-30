@@ -109,6 +109,12 @@ corre, y **entrega** el resultado a un canal. Todo se ve y configura en el panel
 
 > **Nota CSRF (SAP OData):** las escrituras OData v2 piden un token: primero `GET` con header `X-CSRF-Token: Fetch` → usar el token devuelto en el `POST`. El conector genérico hace POST directo; para escrituras con CSRF conviene **n8n** o un handler dedicado.
 
+## 🛡️ KEDB — base de errores conocidos (módulo cyber)
+| Pieza | Estado | Detalle |
+|---|---|---|
+| **Módulo KEDB (gateado)** | ✅ Prod | Solo para tenants con **perfil de ciberseguridad** (`CompanyProfile.industry` con keywords ciber/cyber/seguridad/security/soc). `me.kedb_enabled` controla el nav; el router devuelve 403 si no aplica. Modelo `KnownError` (scope tenant/shared), endpoints `/kedb` (CRUD + `/analyze`), página con análisis de síntoma + alta + lista. `scope='shared'` = errores cross-cliente curados/sanitizados por el operador (visibles a todos los tenants cyber). |
+| Cross-cliente automático (extracción + aprobación) | ⏳ Futuro | Hoy 'shared' se cura a mano (ADMIN). Falta: extracción automática desde documentos/SOC + flujo de aprobación + sanitización asistida. |
+
 ## 🏷️ Pendientes diferidos (mejoras, no bloquean)
 | Ítem | Estado | Detalle |
 |---|---|---|
