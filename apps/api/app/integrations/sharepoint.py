@@ -47,12 +47,16 @@ def list_files(token: str, site_url: str, folder: str = "") -> list[dict]:
 
 
 def list_sites(token: str, query: str = "") -> list[dict]:
-    """Lista sitios de SharePoint accesibles (búsqueda por nombre)."""
+    """Lista sitios de SharePoint. Con texto, busca por nombre (`/sites?search=`);
+    sin texto, devuelve los sitios que SIGUE el usuario (`/me/followedSites`) — Graph
+    NO acepta `search=*` y devuelve 400."""
     import httpx
-    search = query.strip() or "*"
+    q = query.strip()
     with httpx.Client() as client:
-        r = client.get(f"{GRAPH}/sites", headers=_auth(token),
-                       params={"search": search}, timeout=TIMEOUT)
+        if q:
+            r = client.get(f"{GRAPH}/sites", headers=_auth(token), params={"search": q}, timeout=TIMEOUT)
+        else:
+            r = client.get(f"{GRAPH}/me/followedSites", headers=_auth(token), timeout=TIMEOUT)
         r.raise_for_status()
         return [{"id": s.get("id"), "name": s.get("displayName") or s.get("name") or "(sitio)",
                  "web_url": s.get("webUrl", "")} for s in r.json().get("value", [])]
