@@ -4,6 +4,7 @@ import { PageHeader, Shell } from "@/components/Shell";
 import { N8nRecipesPanel } from "@/components/N8nRecipesPanel";
 import { OdataPanel } from "@/components/OdataPanel";
 import { SftpPanel } from "@/components/SftpPanel";
+import { SharepointPanel } from "@/components/SharepointPanel";
 import { api } from "@/lib/api";
 import { CheckCircle2, Eye, EyeOff, HelpCircle, Info, KeyRound, Link2, Mail, Trash2, Webhook } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -168,6 +169,8 @@ export default function IntegrationsPage() {
         <SftpPanel />
 
         <OdataPanel />
+
+        <SharepointPanel />
 
         {/* Mailbox connect (OAuth) */}
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
