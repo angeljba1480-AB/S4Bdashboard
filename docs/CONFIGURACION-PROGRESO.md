@@ -85,6 +85,23 @@ corre, y **entrega** el resultado a un canal. Todo se ve y configura en el panel
 > - *Casos/recetas*: corren **dentro de MaestroAI** (no hay n8n) → la entrega la hace `_deliver_result`. Sin esto, el resultado se perdía.
 > En ambos casos MaestroAI centraliza **auditoría, redacción PII y remitente de marca blanca**.
 
+## 🏷️ Marca blanca (white-label)
+| Pieza | Estado | Detalle |
+|---|---|---|
+| Branding (nombre/logo/color/tagline) | ✅ Prod | Por tenant, aplicado en la web (`Shell.tsx`). `GET/PUT /admin/branding`. |
+| Remitente de soporte por tenant | ✅ Prod | Los correos salen del buzón del cliente (`support_from`/`from_name`), no del personal. `GET/PUT /company/support-sender`. |
+| **Dominio propio** (`custom_domain`) | ✅ Prod (código) / ⏳ DNS | Campo por tenant + validación + UI en Admin → Marca. Falta la parte de infra: apuntar **CNAME** del dominio a Render/Vercel y agregarlo como dominio personalizado ahí. Helper `branding.base_url()`. |
+| **Correos con marca del cliente** | ✅ Prod | `branding.email_footer()` / `with_signature()` agrega pie con nombre+tagline+dominio del tenant; si no hay marca, **no estampa MaestroAI**. Aplicado en `_deliver_result` (entrega por correo). |
+| Rebranding interno (código) | ⏳ Diferido | Referencias internas *"s4bdashboard"* → MaestroAI; ver nota en Pendientes. |
+
+## 🔌 SAP (ERP) — OData / S/4HANA
+| Pieza | Estado | Detalle |
+|---|---|---|
+| Conector de salida SAP (push) | ✅ Prod | Plantillas en Integraciones: **SAP S/4HANA (OData)** (Basic auth; escritura requiere `X-CSRF-Token`) y **SAP Business One (Service Layer)** (login → cookie `B1SESSION`). |
+| Lectura SAP → tablero/RAG (pull) | ⏳ Pendiente | OData es HTTP GET. Camino recomendado hoy: **n8n** (HTTP Request OData GET → maneja CSRF/paginación → POST a MaestroAI). Alternativa futura: lector OData nativo (CSRF + `$batch` + paginación). |
+
+> **Nota CSRF (SAP OData):** las escrituras OData v2 piden un token: primero `GET` con header `X-CSRF-Token: Fetch` → usar el token devuelto en el `POST`. El conector genérico hace POST directo; para escrituras con CSRF conviene **n8n** o un handler dedicado.
+
 ## 🏷️ Pendientes diferidos (mejoras, no bloquean)
 | Ítem | Estado | Detalle |
 |---|---|---|

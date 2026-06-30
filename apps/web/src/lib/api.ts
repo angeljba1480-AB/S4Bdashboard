@@ -220,11 +220,11 @@ export const api = {
     return { payment_required: false, app: data };
   },
   getBranding: () =>
-    request<{ brand_name: string; brand_logo_url: string; brand_color: string; brand_tagline: string; tenant_name: string; country: string }>(
+    request<{ brand_name: string; brand_logo_url: string; brand_color: string; brand_tagline: string; custom_domain: string; tenant_name: string; country: string }>(
       "/admin/branding",
     ),
-  setBranding: (body: { brand_name: string; brand_logo_url: string; brand_color: string; brand_tagline: string; country?: string }) =>
-    request<{ brand_name: string; brand_color: string }>("/admin/branding", {
+  setBranding: (body: { brand_name: string; brand_logo_url: string; brand_color: string; brand_tagline: string; custom_domain?: string; country?: string }) =>
+    request<{ brand_name: string; brand_color: string; custom_domain?: string }>("/admin/branding", {
       method: "PUT",
       body: JSON.stringify(body),
     }),
