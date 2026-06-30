@@ -744,6 +744,23 @@ export const api = {
   },
   exportConversation: (id: string, format: "pdf" | "md") =>
     api.download(`/export/conversation/${id}?format=${format}`, `conversacion.${format}`),
+  // Export de reportes a archivo (pdf/docx/pptx/xlsx/md) o a la nube (Google/MS)
+  async exportReport(title: string, content: string, format: "pdf" | "docx" | "pptx" | "xlsx" | "md") {
+    const res = await fetch(`${API_BASE}/export/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) },
+      body: JSON.stringify({ title, content, format }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "No se pudo exportar");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const ext = format === "docx" ? "docx" : format === "pptx" ? "pptx" : format === "xlsx" ? "xlsx" : format;
+    a.href = url; a.download = `${title || "reporte"}.${ext}`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  },
+  exportToCloud: (title: string, content: string, provider: "google" | "microsoft") =>
+    request<{ ok: boolean; provider: string; detail: string }>("/export/to-cloud", { method: "POST", body: JSON.stringify({ title, content, provider }) }),
   conversations: () =>
     request<{ id: string; title: string; agent_id: string; agent_name: string; messages: number; created_at: string }[]>("/chat/conversations"),
   conversation: (id: string) =>

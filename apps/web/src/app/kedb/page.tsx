@@ -1,5 +1,6 @@
 "use client";
 
+import { ExportMenu } from "@/components/ExportMenu";
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
 import { Search, ShieldAlert, Trash2 } from "lucide-react";
@@ -65,7 +66,13 @@ export default function KedbPage() {
           </div>
           {analysis && (
             <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm">
-              <div className="mb-1 font-semibold text-slate-700">{analysis.is_known ? "✓ Coincide con error(es) conocido(s)" : "Sin coincidencia clara"}</div>
+              <div className="mb-1 flex items-center justify-between font-semibold text-slate-700">
+                <span>{analysis.is_known ? "✓ Coincide con error(es) conocido(s)" : "Sin coincidencia clara"}</span>
+                {(analysis.suggestion || analysis.matches.length > 0) && (
+                  <ExportMenu compact title={`Diagnóstico — ${symptom.slice(0, 40)}`}
+                    content={`Síntoma: ${symptom}\n\n${analysis.suggestion}\n\nErrores conocidos relacionados:\n` + analysis.matches.map((m) => `• ${m.title}: ${m.resolution}`).join("\n")} />
+                )}
+              </div>
               {analysis.suggestion && <p className="mb-2 whitespace-pre-wrap text-xs text-slate-600">{analysis.suggestion}</p>}
               {analysis.matches.map((m) => (
                 <div key={m.id} className="mt-1 border-t border-slate-200 pt-1 text-xs text-slate-500">
