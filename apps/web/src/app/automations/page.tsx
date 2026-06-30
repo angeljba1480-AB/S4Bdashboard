@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader, Shell } from "@/components/Shell";
+import { StepsCanvas } from "@/components/StepsCanvas";
 import { WorkflowCanvas } from "@/components/WorkflowCanvas";
 import { api } from "@/lib/api";
 import { Clock, Play, Plus, Trash2, Zap } from "lucide-react";
@@ -26,6 +27,7 @@ export default function AutomationsPage() {
   const [datasources, setDatasources] = useState<{ id: string; name: string }[]>([]);
   const [driveFolders, setDriveFolders] = useState<{ id: string; name: string }[]>([]);
   const [editor, setEditor] = useState<Record<string, string>>({});   // nodo en edición por automatización
+  const [builder, setBuilder] = useState<string>("");                  // automatización con el constructor multi-paso abierto
 
   function editNode(aid: string, key: string) {
     setEditor((e) => ({ ...e, [aid]: e[aid] === key ? "" : key }));
@@ -224,6 +226,9 @@ export default function AutomationsPage() {
                         className={`rounded-full px-2 py-0.5 text-xs ${a.enabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                         {a.enabled ? "Activa" : "Pausada"}
                       </button>
+                      <button onClick={() => setBuilder((b) => (b === a.id ? "" : a.id))} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                        Constructor
+                      </button>
                       <button onClick={() => doValidate(a)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
                         Validar
                       </button>
@@ -235,6 +240,13 @@ export default function AutomationsPage() {
                       </button>
                     </div>
                   </div>
+                  {builder === a.id && (
+                    <div className="mt-3">
+                      <StepsCanvas automationId={a.id}
+                        lists={{ workflows, recipes, connectors, datasources }}
+                        onClose={() => setBuilder("")} />
+                    </div>
+                  )}
                   {valid[a.id] && (
                     <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
                       <div className="mb-3">
