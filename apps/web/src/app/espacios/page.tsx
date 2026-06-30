@@ -40,8 +40,8 @@ export default function EspaciosPage() {
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="mb-3 font-semibold text-slate-800">Nuevo espacio (proyecto)</h2>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre del proyecto (ej. Tablero Financiero S4B)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-                <input value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} placeholder="Cliente (ej. Silent4Business)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre del proyecto (ej. Tablero Financiero)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                <input value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} placeholder="Cliente (ej. Acme, Grupo XYZ)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
               </div>
               <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Descripción (opcional)" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
               <div className="mt-3 flex gap-2">
