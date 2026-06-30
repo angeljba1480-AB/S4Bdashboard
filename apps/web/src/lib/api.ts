@@ -584,6 +584,17 @@ export const api = {
     request<{ id: string; filename: string; rows: number }>(`/datasources/odata/${id}/import`, { method: "POST" }),
   deleteOdata: (id: string) =>
     request<{ ok: boolean }>(`/datasources/odata/${id}`, { method: "DELETE" }),
+  // Conector SharePoint (Microsoft Graph, solo lectura) → import al RAG
+  sharepointSources: () =>
+    request<{ id: string; name: string; site_url: string; folder: string; area: string; category: string }[]>("/datasources/sharepoint"),
+  createSharepoint: (body: { name: string; site_url: string; folder?: string; area?: string; category?: string }) =>
+    request<{ id: string; name: string }>("/datasources/sharepoint", { method: "POST", body: JSON.stringify(body) }),
+  testSharepoint: (id: string) =>
+    request<{ ok: boolean; files: { name: string; is_folder: boolean }[]; count: number }>(`/datasources/sharepoint/${id}/test`, { method: "POST" }),
+  importSharepoint: (id: string) =>
+    request<{ imported: number; documents: { id: string; filename: string }[] }>(`/datasources/sharepoint/${id}/import`, { method: "POST" }),
+  deleteSharepoint: (id: string) =>
+    request<{ ok: boolean }>(`/datasources/sharepoint/${id}`, { method: "DELETE" }),
   // Fine-tuning ligero (LoRA)
   ftBaseModels: () =>
     request<{ name: string; mlx_model: string; family: string }[]>("/finetune/base-models"),

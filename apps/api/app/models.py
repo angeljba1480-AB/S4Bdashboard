@@ -328,6 +328,21 @@ class SftpConnector(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class SharepointSource(SQLModel, table=True):
+    """Conector SharePoint (solo lectura) vía Microsoft Graph con la cuenta MS
+    conectada del usuario (delegado): lista archivos de un sitio/carpeta y los
+    importa al repositorio + RAG. Útil para Finanzas (carpeta 'Proyectos Finanzas')."""
+    __tablename__ = "sharepoint_sources"
+    id: str = Field(default_factory=lambda: _uuid("sp"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    name: str = ""
+    site_url: str = ""             # https://contoso.sharepoint.com/sites/Finanzas
+    folder: str = ""              # ruta relativa dentro del drive (ej. "Proyectos Finanzas")
+    area: str = ""
+    category: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class KnownError(SQLModel, table=True):
     """KEDB — base de errores conocidos (operación de ciberseguridad/SOC).
 
