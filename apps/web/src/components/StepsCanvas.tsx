@@ -40,6 +40,7 @@ export function StepsCanvas({ automationId, lists, onClose }: {
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const [msg, setMsg] = useState("");
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
 
   useEffect(() => {
     api.automationSteps(automationId).then((r) => setSteps((r.steps as Step[]) || [])).catch(() => {});
@@ -61,6 +62,11 @@ export function StepsCanvas({ automationId, lists, onClose }: {
     setEditIdx(null);
   }
   function remove(i: number) { setSteps((s) => s.filter((_, j) => j !== i)); setEditIdx(null); }
+  function drop(target: number) {
+    if (dragIdx === null || dragIdx === target) { setDragIdx(null); return; }
+    setSteps((s) => { const n = [...s]; const [m] = n.splice(dragIdx, 1); n.splice(target, 0, m); return n; });
+    setDragIdx(null); setEditIdx(null);
+  }
   async function save() {
     setMsg("");
     try { await api.setAutomationSteps(automationId, steps); setMsg("✓ Pipeline guardado"); }
@@ -70,7 +76,7 @@ export function StepsCanvas({ automationId, lists, onClose }: {
   return (
     <div className="rounded-xl border border-violet-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Constructor de pasos (pipeline)</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Constructor de pasos (pipeline) <span className="font-normal normal-case text-slate-300">· arrastra o usa ←→ para reordenar</span></span>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
       </div>
 
@@ -82,8 +88,14 @@ export function StepsCanvas({ automationId, lists, onClose }: {
           const Icon = meta.icon;
           const active = editIdx === i;
           return (
-            <div key={s.id || i} className="flex items-stretch gap-1">
-              <div className={`flex w-44 shrink-0 flex-col rounded-xl border-2 bg-white p-3 shadow-sm ${active ? "border-violet-500 ring-2 ring-violet-200" : "border-slate-200"}`}>
+            <div key={s.id || i} className="flex items-stretch gap-1"
+              onDragOver={(e) => e.preventDefault()} onDrop={() => drop(i)}>
+              <div
+                draggable
+                onDragStart={() => setDragIdx(i)}
+                onDragEnd={() => setDragIdx(null)}
+                title="Arrastra para reordenar"
+                className={`flex w-44 shrink-0 cursor-move flex-col rounded-xl border-2 bg-white p-3 shadow-sm transition ${active ? "border-violet-500 ring-2 ring-violet-200" : "border-slate-200"} ${dragIdx === i ? "opacity-40" : ""}`}>
                 <div className="mb-1 flex items-center gap-2">
                   <Icon className={`h-4 w-4 ${meta.color}`} />
                   <span className="text-[10px] font-semibold uppercase text-slate-400">paso {i + 1}</span>
