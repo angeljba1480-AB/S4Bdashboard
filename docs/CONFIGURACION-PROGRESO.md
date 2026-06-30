@@ -109,6 +109,13 @@ corre, y **entrega** el resultado a un canal. Todo se ve y configura en el panel
 
 > **Nota CSRF (SAP OData):** las escrituras OData v2 piden un token: primero `GET` con header `X-CSRF-Token: Fetch` → usar el token devuelto en el `POST`. El conector genérico hace POST directo; para escrituras con CSRF conviene **n8n** o un handler dedicado.
 
+## 📤 Exportación de reportes (descarga + nube)
+| Pieza | Estado | Detalle |
+|---|---|---|
+| Descargar PDF/Word/PPT/Excel/MD | ✅ Prod | `POST /export/report` (ya renderizaba con branding) expuesto en UI vía `ExportMenu`. |
+| Guardar en la nube (Google/MS) | ✅ Prod | `POST /export/to-cloud` → **Google Docs** (`gdocs.create`) u **OneDrive** (`onedrive.upload`) con la cuenta conectada del usuario (toolkit Google/Microsoft). |
+| Dónde aparece | ✅ Prod | `ExportMenu` en notificaciones de automatización (reportes mando/sow/cyber) y en el diagnóstico del KEDB. Recetas ya tenían export propio. |
+
 ## 🛡️ KEDB — base de errores conocidos (módulo cyber)
 | Pieza | Estado | Detalle |
 |---|---|---|
