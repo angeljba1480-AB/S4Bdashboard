@@ -381,6 +381,41 @@ def export_report(
                    tenant=tenant, meta={"Preparado por": user.name})
 
 
+class ToCloudRequest(BaseModel):
+    title: str
+    content: str
+    provider: str = "google"   # google | microsoft
+
+
+@router.post("/to-cloud")
+def export_to_cloud(
+    body: ToCloudRequest,
+    user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_current_tenant),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Guarda el reporte en la nube del cliente: Google Docs (gdocs.create) u
+    OneDrive (onedrive.upload), usando su cuenta conectada (toolkit Google/MS)."""
+    from ..integrations import actions_exec, token_store
+    prov = "microsoft" if body.provider == "microsoft" else "google"
+    conns = [c for c in token_store.list_tenant_connections(session, tenant.id) if c.provider == prov]
+    row = next((c for c in conns if c.user_id == user.id), conns[0] if conns else None)
+    if not row:
+        raise HTTPException(status_code=400,
+                            detail=f"No hay cuenta {prov} conectada. Conéctala en Integraciones.")
+    tok = token_store.access_token_for(session, tenant, row)
+    if not tok:
+        raise HTTPException(status_code=400, detail="No se pudo obtener el token; reconecta la cuenta.")
+    name = (body.title or "Reporte MaestroAI").strip()
+    action = "gdocs.create" if prov == "google" else "onedrive.upload"
+    params = {"title": name, "name": f"{name}.txt", "content": body.content}
+    try:
+        detail = actions_exec.execute(action, tok, params)
+    except Exception as exc:  # pragma: no cover - red/credenciales
+        raise HTTPException(status_code=400, detail=f"No se pudo crear en {prov}: {exc}")
+    return {"ok": True, "provider": prov, "detail": detail}
+
+
 @router.get("/conversation/{conversation_id}")
 def export_conversation(
     conversation_id: str,

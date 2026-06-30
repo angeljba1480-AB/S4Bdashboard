@@ -1,10 +1,11 @@
 "use client";
 
 import { api } from "@/lib/api";
+import { ExportMenu } from "@/components/ExportMenu";
 import { Bell, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 
-type Ntf = { id: string; title: string; body: string; level: string; read: boolean; created_at: string };
+type Ntf = { id: string; title: string; body: string; level: string; event_type: string; read: boolean; created_at: string };
 
 export function NotificationBell() {
   const [count, setCount] = useState(0);
@@ -66,6 +67,9 @@ export function NotificationBell() {
                     )}
                   </div>
                   {n.body && <p className="mt-0.5 max-h-60 overflow-y-auto whitespace-pre-wrap text-xs text-slate-500">{n.body}</p>}
+                  {n.event_type === "automation" && n.body && n.body.length > 120 && (
+                    <div className="mt-1.5"><ExportMenu title={n.title} content={n.body} compact /></div>
+                  )}
                 </div>
               ))}
             </div>
