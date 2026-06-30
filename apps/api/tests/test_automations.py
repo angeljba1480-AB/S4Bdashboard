@@ -68,6 +68,38 @@ def test_workflow_automation_runs_simulated(client):
     assert any(n["event_type"] == "automation" for n in notifs)
 
 
+def test_multistep_pipeline_runs_in_order_and_delivers(client):
+    """Pipeline multi-paso: notify (genera contenido) → ai (transforma) → deliver."""
+    h = _auth(client)
+    a = client.post("/automations", headers=h, json={
+        "name": "Pipeline demo", "trigger": "manual", "action_type": "notify"}).json()
+    steps = [
+        {"type": "notify", "message": "Cobranza: 3 clientes con saldo vencido.", "label": "Datos"},
+        {"type": "ai", "prompt": "Redacta un recordatorio breve.", "label": "Redactar"},
+        {"type": "deliver", "channels": ["notify"], "label": "Avisar"},
+    ]
+    put = client.put(f"/automations/{a['id']}/steps", headers=h, json={"steps": steps}).json()
+    assert len(put["config"]["steps"]) == 3
+    got = client.get(f"/automations/{a['id']}/steps", headers=h).json()
+    assert [s["type"] for s in got["steps"]] == ["notify", "ai", "deliver"]
+
+    run = client.post(f"/automations/{a['id']}/run", headers=h).json()
+    assert run["status"] == "completed"
+    # corrió los 3 pasos en orden y entregó algo
+    assert "1." in run["detail"] and "3." in run["detail"] and "enviado a" in run["detail"]
+    notifs = client.get("/notifications", headers=h).json()
+    assert any(n["event_type"] == "automation" for n in notifs)
+
+
+def test_steps_rejects_unknown_type(client):
+    h = _auth(client)
+    a = client.post("/automations", headers=h, json={"name": "X", "action_type": "notify"}).json()
+    put = client.put(f"/automations/{a['id']}/steps", headers=h,
+                     json={"steps": [{"type": "hack"}, {"type": "notify", "message": "ok"}]}).json()
+    # el tipo desconocido se descarta; queda solo el válido
+    assert [s["type"] for s in put["config"]["steps"]] == ["notify"]
+
+
 def test_ingesta_native_indexes_pending_docs(client):
     """La automatización 'ingesta' indexa DENTRO de MaestroAI (sin n8n)."""
     h = _auth(client)
