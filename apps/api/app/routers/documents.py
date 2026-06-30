@@ -179,7 +179,8 @@ async def upload(
     """
     if file is not None:
         raw = await file.read()
-        name = file.filename or filename or "documento.txt"
+        # El nombre explícito (editado por el usuario) gana sobre el del archivo.
+        name = (filename or "").strip() or file.filename or "documento.txt"
         mime = file.content_type or "text/plain"
         # Antivirus + tope de tamaño antes de procesar (blueprint: upload → antivirus).
         from ..security.antivirus import scan
