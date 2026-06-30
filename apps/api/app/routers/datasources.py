@@ -23,8 +23,11 @@ from ..auth import get_current_tenant, get_current_user, require_roles
 from ..db import get_session
 from ..integrations import odata as odata_client
 from ..integrations import sftp as sftp_conn
+from ..integrations import sharepoint as sp_client
+from ..integrations import token_store
 from ..ingest import extract_text
-from ..models import AuditEvent, DataSource, Document, OdataSource, Role, SftpConnector, Tenant, User
+from ..models import (AuditEvent, DataSource, Document, OdataSource, Role,
+                      SftpConnector, SharepointSource, Tenant, User)
 from ..security.crypto import decrypt, encrypt
 
 router = APIRouter(prefix="/datasources", tags=["datasources"])
@@ -492,6 +495,109 @@ def delete_odata(oid: str, _: User = Depends(require_roles(Role.ADMIN, Role.DEVO
                  session: Session = Depends(get_session)) -> dict:
     o = _owned_odata(session, tenant, oid)
     session.delete(o)
+    session.commit()
+    return {"ok": True}
+
+
+# --- SharePoint (Microsoft Graph, delegado) → repositorio + RAG --------------
+def _owned_sp(session: Session, tenant: Tenant, sid: str) -> SharepointSource:
+    s = session.get(SharepointSource, sid)
+    if not s or s.tenant_id != tenant.id:
+        raise HTTPException(status_code=404, detail="Fuente SharePoint no encontrada")
+    return s
+
+
+def _ms_token(session: Session, tenant: Tenant, user: User) -> str:
+    """Token Microsoft de la cuenta conectada (preferente la del usuario)."""
+    conns = [c for c in token_store.list_tenant_connections(session, tenant.id) if c.provider == "microsoft"]
+    row = next((c for c in conns if c.user_id == user.id), conns[0] if conns else None)
+    if not row:
+        raise HTTPException(status_code=400, detail="Conecta una cuenta Microsoft en Integraciones.")
+    tok = token_store.access_token_for(session, tenant, row)
+    if not tok:
+        raise HTTPException(status_code=400, detail="No se pudo obtener el token MS; reconecta la cuenta.")
+    return tok
+
+
+def _sp_out(s: SharepointSource) -> dict:
+    return {"id": s.id, "name": s.name, "site_url": s.site_url, "folder": s.folder,
+            "area": s.area, "category": s.category}
+
+
+class SharepointIn(BaseModel):
+    name: str
+    site_url: str
+    folder: str = ""
+    area: str = ""
+    category: str = ""
+
+
+@router.get("/sharepoint")
+def list_sp(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+            tenant: Tenant = Depends(get_current_tenant),
+            session: Session = Depends(get_session)) -> list[dict]:
+    rows = session.exec(select(SharepointSource).where(SharepointSource.tenant_id == tenant.id)).all()
+    return [_sp_out(s) for s in rows]
+
+
+@router.post("/sharepoint", status_code=201)
+def create_sp(body: SharepointIn, _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+              tenant: Tenant = Depends(get_current_tenant),
+              session: Session = Depends(get_session)) -> dict:
+    if not body.name.strip() or not body.site_url.strip():
+        raise HTTPException(status_code=422, detail="Nombre y URL del sitio son obligatorios")
+    s = SharepointSource(tenant_id=tenant.id, name=body.name.strip(), site_url=body.site_url.strip(),
+                         folder=body.folder.strip(), area=body.area.strip(), category=body.category.strip())
+    session.add(s)
+    session.commit()
+    session.refresh(s)
+    return _sp_out(s)
+
+
+@router.post("/sharepoint/{sid}/test")
+def test_sp(sid: str, user: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+            tenant: Tenant = Depends(get_current_tenant),
+            session: Session = Depends(get_session)) -> dict:
+    s = _owned_sp(session, tenant, sid)
+    tok = _ms_token(session, tenant, user)
+    try:
+        files = sp_client.list_files(tok, s.site_url, s.folder)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"No se pudo listar SharePoint: {exc}")
+    return {"ok": True, "files": [{"name": f["name"], "is_folder": f["is_folder"]} for f in files[:20]],
+            "count": len(files)}
+
+
+@router.post("/sharepoint/{sid}/import", status_code=201)
+def import_sp(sid: str, user: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+              tenant: Tenant = Depends(get_current_tenant),
+              session: Session = Depends(get_session)) -> dict:
+    s = _owned_sp(session, tenant, sid)
+    tok = _ms_token(session, tenant, user)
+    try:
+        files = sp_client.fetch(tok, s.site_url, s.folder)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"No se pudo descargar de SharePoint: {exc}")
+    if not files:
+        raise HTTPException(status_code=422, detail="No se encontraron archivos en la carpeta indicada.")
+    imported = []
+    for filename, raw in files:
+        text = extract_text(raw, filename, "")
+        if not (text or "").strip():
+            continue
+        imported.append(_import_as_document(
+            session, tenant, user, name=filename, content=text, area=s.area or "",
+            category=s.category or "", storage_uri=f"sharepoint://{s.id}/{filename}",
+            rows=0, source_label=f"SharePoint '{s.name}' ({filename})"))
+    return {"imported": len(imported), "documents": imported}
+
+
+@router.delete("/sharepoint/{sid}")
+def delete_sp(sid: str, _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+              tenant: Tenant = Depends(get_current_tenant),
+              session: Session = Depends(get_session)) -> dict:
+    s = _owned_sp(session, tenant, sid)
+    session.delete(s)
     session.commit()
     return {"ok": True}
 

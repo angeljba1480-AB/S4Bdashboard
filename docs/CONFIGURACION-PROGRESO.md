@@ -62,7 +62,7 @@
 | Carga self-service (Excel/zip o JSON) cifrada por tenant | ✅ Prod | Botón "Cargar datos" en el Espacio. |
 | Cargar datos reales del cliente | ⏳ Pendiente | Subir Excel/zip o JSON desde la app. |
 | Comparativo de costos (CMI vs BC vs Timesheet) | 🟡 Cableado | `costo_bc` listo; `costo_cmi`/`costo_timesheet` requieren **Nómina**. |
-| Conector SharePoint (Paso 1) | ⏳ Pendiente | App **"MaestroAI-Finanzas"** (app-only, Sites/Files.Read.All) creada; **falta construir el conector** que liste `Proyectos Finanzas` y alimente `ingest_excel`. |
+| Conector SharePoint | ✅ Prod (delegado) | `app/integrations/sharepoint.py` + modelo `SharepointSource` + endpoints `/datasources/sharepoint` (crear/list/test/import) + UI `SharepointPanel`. Resuelve el sitio por URL, lista una carpeta (ej. `Proyectos Finanzas`) y la importa a documentos + RAG. Usa la **cuenta MS conectada del usuario** (delegado, `Sites.Read.All`). App-only con la app "MaestroAI-Finanzas" queda como alternativa futura (requiere token client-credentials). |
 | Conector BD directa (Paso 1) | ⏳ Esperando accesos | `/datasources` soporta DB de solo lectura. |
 | Nómina + Catálogo de CC | ⏳ Pendiente | Para cerrar el comparativo (ver `MaestroAI_Auditoria_Esquemas_Finanzas.docx`). |
 
