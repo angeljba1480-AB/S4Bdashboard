@@ -60,7 +60,7 @@
 |---|---|---|
 | Tablero + vistas + RAG | ✅ Prod | Resumen, P&L, Posición, Clientes, Evaluación, Proyectos, Costos, Utilización, Gob/IP, Benchmark, Alertas. |
 | Carga self-service (Excel/zip o JSON) cifrada por tenant | ✅ Prod | Botón "Cargar datos" en el Espacio. |
-| Cargar datos reales del cliente | ⏳ Pendiente | Subir Excel/zip o JSON desde la app. |
+| Cargar datos reales del cliente | ✅ Prod | Self-service: Excel/zip o JSON desde la app. **Plantilla descargable** (`GET /finance/dataset/template` + botón "Descargar plantilla") con el esquema completo para que el cliente la edite y la suba sin ayuda (auto-entregable). |
 | Comparativo de costos (CMI vs BC vs Timesheet) | 🟡 Cableado | `costo_bc` listo; `costo_cmi`/`costo_timesheet` requieren **Nómina**. |
 | **Explorador SharePoint (tipo Drive)** | ✅ Prod | En **Documentos → "Importar de SharePoint"**: navega sitios → carpetas → archivos e importa (igual que el de Google Drive). Router `/sharepoint` (sites/files/import) + componente `SharepointBrowser`. Usa la cuenta MS conectada. **Es la vía recomendada para uso manual.** |
 | Conector SharePoint (carpeta fija) | ✅ Prod (delegado) | `/datasources/sharepoint` + `SharepointPanel`: carpeta fija por URL para **imports programados/automáticos** (no navegación). Mismo backend (`integrations/sharepoint.py`). App-only ("MaestroAI-Finanzas") = alternativa futura. |
