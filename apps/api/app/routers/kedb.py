@@ -125,7 +125,13 @@ def update_error(error_id: str, body: KnownErrorIn, tenant: Tenant = Depends(get
                  user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
     _require_kedb(session, tenant)
     k = session.get(KnownError, error_id)
-    if not k or (k.tenant_id != tenant.id and k.scope != "shared"):
+    if not k:
+        raise HTTPException(status_code=404, detail="Error conocido no encontrado")
+    # Los 'shared' (cross-cliente) solo los edita el operador; los propios, su dueño.
+    if k.scope == "shared":
+        if user.role != Role.SUPER_ADMIN:
+            raise HTTPException(status_code=403, detail="Solo el operador puede editar errores compartidos.")
+    elif k.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Error conocido no encontrado")
     k.title = body.title.strip() or k.title
     k.symptom, k.cause, k.resolution = body.symptom.strip(), body.cause.strip(), body.resolution.strip()

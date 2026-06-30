@@ -398,14 +398,11 @@ def export_to_cloud(
     OneDrive (onedrive.upload), usando su cuenta conectada (toolkit Google/MS)."""
     from ..integrations import actions_exec, token_store
     prov = "microsoft" if body.provider == "microsoft" else "google"
-    conns = [c for c in token_store.list_tenant_connections(session, tenant.id) if c.provider == prov]
-    row = next((c for c in conns if c.user_id == user.id), conns[0] if conns else None)
-    if not row:
-        raise HTTPException(status_code=400,
-                            detail=f"No hay cuenta {prov} conectada. Conéctala en Integraciones.")
-    tok = token_store.access_token_for(session, tenant, row)
+    # Solo la cuenta del PROPIO usuario (no escribir en el Drive de otro del tenant).
+    tok = token_store.get_valid_access_token(session, tenant, user.id, prov)
     if not tok:
-        raise HTTPException(status_code=400, detail="No se pudo obtener el token; reconecta la cuenta.")
+        raise HTTPException(status_code=400,
+                            detail=f"Conecta TU cuenta {prov} en Integraciones para guardar ahí.")
     name = (body.title or "Reporte MaestroAI").strip()
     action = "gdocs.create" if prov == "google" else "onedrive.upload"
     params = {"title": name, "name": f"{name}.txt", "content": body.content}
