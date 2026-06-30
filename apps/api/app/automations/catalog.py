@@ -61,6 +61,24 @@ TEMPLATES: list[dict] = [
         "action_type": "workflow", "action_ref": "ingesta",
         "config": {},
     },
+    {
+        "id": "sow_generar",
+        "name": "Generar SOW (propuesta de trabajo)",
+        "description": "Redacta un SOW profesional con IA + tu metodología (RAG).",
+        "icon": "file-text",
+        "trigger": "manual", "schedule": "", "event": "",
+        "action_type": "workflow", "action_ref": "sow",
+        "config": {},
+    },
+    {
+        "id": "cyber_diag",
+        "name": "Diagnóstico de ciberseguridad",
+        "description": "Genera un diagnóstico ejecutivo de ciberseguridad con IA.",
+        "icon": "shield-alert",
+        "trigger": "manual", "schedule": "", "event": "",
+        "action_type": "workflow", "action_ref": "cyber",
+        "config": {},
+    },
 ]
 
 
