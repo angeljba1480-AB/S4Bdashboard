@@ -97,6 +97,125 @@ def test_dataset_upload_override_and_delete(client):
     _ = st0
 
 
+def _xlsx_bytes(rows_by_sheet: dict[str, list[list]]) -> bytes:
+    import io
+    import openpyxl
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    for sheet, rows in rows_by_sheet.items():
+        ws = wb.create_sheet(sheet)
+        for r in rows:
+            ws.append(r)
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def _nomina_xlsx() -> bytes:
+    """Export sintético estilo 'Lista de Raya' (sin datos reales): 2025 completo
+    (12 meses) y 2026 parcial (ene-feb)."""
+    hdr = ["Código", "Empleado", "*TOTAL* *PERCEPCIONES*", "*TOTAL* *OBLIGACIONES*"]
+    sheet_2025 = [
+        [None, "Periodo 1 al 24 Quincenal del 01/01/2025 al 31/12/2025"],
+        [],
+        hdr,
+        ["00001", "PEREZ LOPEZ JUAN", 120000, 24000],
+        ["00002", "GOMEZ DIAZ ANA", 96000, 19200],
+        ["Total Gral.", "", 216000, 43200],
+    ]
+    sheet_2026 = [
+        [None, "Periodo 1 al 4 Quincenal del 01/01/2026 al 28/02/2026"],
+        [],
+        hdr,
+        ["00001", "PEREZ LOPEZ JUAN", 22000, 4400],
+        ["00002", "GOMEZ DIAZ ANA", 17000, 3400],
+    ]
+    return _xlsx_bytes({"2025": sheet_2025, "2026": sheet_2026})
+
+
+def _timesheet_xlsx() -> bytes:
+    """Reporte de horas sintético — el nombre del archivo NO contiene 'timesheet' a
+    propósito, para probar que se detecta por columnas."""
+    hdr = ["Fecha Dia", "Empleado", "Supervisor", "Proyecto", "Tarea", "Descripción", "Total de Horas"]
+    rows = [hdr]
+    for fecha, horas_juan, horas_ana, proyecto in [
+        ("15/12/2025", 80, 70, "Cliente A - Soporte"),
+        ("20/12/2025", 40, 50, "Cliente B - SOC"),
+        ("10/01/2026", 80, 80, "Cliente A - Soporte"),
+        ("15/02/2026", 80, 80, "Cliente B - SOC"),
+    ]:
+        rows.append([fecha, "Juan Perez Lopez", "Jefe", proyecto, "Tarea", "Nota", horas_juan])
+        rows.append([fecha, "Ana Gomez Diaz", "Jefe", proyecto, "Tarea", "Nota", horas_ana])
+    return _xlsx_bytes({"Worksheet": rows})
+
+
+def test_nomina_timesheet_cost_comparison():
+    """Nómina (costo_cmi) × Timesheet (costo_timesheet), sin Resumen ni Concentrado."""
+    from app.finance.ingest_excel import build_dataset_from_files
+    files = [("nomina.xlsx", _nomina_xlsx()), ("reporte_colaborador.xlsx", _timesheet_xlsx())]
+    out = build_dataset_from_files(files)
+
+    cc = out["cost_comparison"]
+    assert set(cc["available"]) == {"costo_cmi", "costo_timesheet"}
+    assert cc["pending"] == ["costo_bc"]
+    by_key = {(r["anio"], r["mes"]): r for r in cc["by_month"]}
+    assert len(by_key) == 12 + 2  # 2025 completo + 2026 ene-feb
+
+    # costo_cmi: 2025 = (216000+43200)/12 por mes; 2026 = (39000+7800)/2 por mes
+    assert by_key[("2025", "ENE")]["costo_cmi"] == round((216000 + 43200) / 12)
+    assert by_key[("2025", "ENE")]["costo_timesheet"] is None  # sin horas ese mes
+    assert by_key[("2026", "ENE")]["costo_cmi"] == round((39000 + 7800) / 2)
+
+    # costo_timesheet solo en los meses con horas reales (dic-2025, ene/feb-2026)
+    assert by_key[("2025", "DIC")]["costo_timesheet"] is not None
+    assert by_key[("2026", "ENE")]["costo_timesheet"] is not None
+    assert by_key[("2026", "FEB")]["costo_timesheet"] is not None
+    # mismo orden de magnitud que costo_cmi del mismo periodo (no una mezcla de
+    # "costo del año completo" contra "horas de un mes")
+    dic = by_key[("2025", "DIC")]
+    assert 0.3 < dic["costo_timesheet"] / dic["costo_cmi"] < 3
+
+    # utilization se detecta por columnas aunque el archivo no se llame "timesheet*"
+    util = out["utilization"]
+    assert util["empleados"] == 2
+    assert util["horas_reales"] > 0
+    assert any(p["nombre"].startswith("Cliente") for p in util["by_project"])
+    assert out["partial_entities"] is True
+    assert "Nómina/Timesheet" in out["company"]["period"]
+
+
+def test_nomina_solo_sin_timesheet():
+    """Solo Nómina (sin Resumen/Concentrado/Timesheet) ya no debe fallar (antes
+    build_dataset_from_files exigía 'Resumen por proyecto')."""
+    from app.finance.ingest_excel import build_dataset_from_files
+    out = build_dataset_from_files([("nomina.xlsx", _nomina_xlsx())])
+    cc = out["cost_comparison"]
+    assert cc["available"] == ["costo_cmi"]
+    assert set(cc["pending"]) == {"costo_bc", "costo_timesheet"}
+    assert "utilization" not in out or out["utilization"] == _dataset_demo_utilization()
+
+
+def _dataset_demo_utilization():
+    from app.finance import dataset as _ds
+    return _ds.load().get("utilization", {})
+
+
+def test_upload_real_excel_endpoint(client):
+    """Sube Nómina + Timesheet vía /finance/dataset y verifica /finance/operations."""
+    h = _auth(client)
+    files = [("files", ("nomina.xlsx", _nomina_xlsx(),
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
+            ("files", ("reporte_colaborador.xlsx", _timesheet_xlsx(),
+                       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))]
+    r = client.post("/finance/dataset", headers=h, files=files)
+    assert r.status_code == 201 and r.json()["source"] == "excel"
+    ops = client.get("/finance/operations", headers=h).json()
+    cc = ops["cost_comparison"]
+    assert set(cc["available"]) == {"costo_cmi", "costo_timesheet"}
+    assert ops["utilization"]["empleados"] == 2
+    assert client.delete("/finance/dataset", headers=h).json()["ok"]
+
+
 def test_dataset_template_download(client):
     h = _auth(client)
     r = client.get("/finance/dataset/template", headers=h)

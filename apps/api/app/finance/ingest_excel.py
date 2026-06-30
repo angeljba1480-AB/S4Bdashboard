@@ -14,9 +14,12 @@ suba un JSON completo o se conecte la fuente (Paso 1).
 """
 from __future__ import annotations
 
+import datetime
 import io
 import json
+import re
 import zipfile
+from collections import defaultdict
 from copy import deepcopy
 
 from . import dataset as _dataset
@@ -159,9 +162,73 @@ def _concentrado(files):
     return by_year_month, costo_hora
 
 
-# ----- Timesheet + catálogo de horas: utilización -----
-def _utilizacion(files):
-    cap = {}
+# ----- Timesheet: detectado por columnas (Empleado/Proyecto/Total de Horas), no por
+# nombre de archivo — así no depende de que el cliente lo llame "timesheet*.xlsx" -----
+def _parse_fecha(v) -> tuple[str, int | None]:
+    """Acepta texto 'DD/MM/YYYY' o un date/datetime de openpyxl → (año, mes)."""
+    if isinstance(v, (datetime.date, datetime.datetime)):
+        return str(v.year), v.month
+    s = str(v or "").strip().replace("-", "/")
+    parts = s.split("/")
+    if len(parts) == 3:
+        d, m, y = parts
+        if len(y) == 4 and y.isdigit() and m.isdigit():
+            return y, int(m)
+    return "", None
+
+
+def _parse_timesheet(files):
+    """Suma horas por (año), (año,mes) y (año,mes,proyecto) + empleados/proyecto por
+    año, cruzando cualquier hoja .xlsx que tenga columnas Empleado/Proyecto/Total de
+    Horas (insensible al nombre del archivo, para soportar exports de cualquier sistema
+    de timesheet)."""
+    hours_by_year: dict[str, float] = defaultdict(float)
+    hours_by_year_month: dict[tuple[str, int], float] = defaultdict(float)
+    emps_by_year: dict[str, set] = defaultdict(set)
+    proj_by_year: dict[tuple[str, str], float] = defaultdict(float)
+    found = False
+    for name, raw in files:
+        if not name.lower().endswith(".xlsx"):
+            continue
+        try:
+            wb = _wb(raw)
+        except Exception:
+            continue
+        for sn in wb.sheetnames:
+            ws = wb[sn]
+            try:
+                hdr = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+            except StopIteration:
+                continue
+
+            def idx(label):
+                return next((i for i, h in enumerate(hdr) if h and label.lower() in str(h).lower()), None)
+            iE, iP, iH, iF = idx("Empleado"), idx("Proyecto"), idx("Total de Horas"), idx("Fecha")
+            if iE is None or iP is None or iH is None:
+                continue
+            found = True
+            for r in ws.iter_rows(min_row=2, values_only=True):
+                h = _num(r[iH]) if iH < len(r) else 0
+                if h <= 0:
+                    continue
+                emp = str(r[iE]).strip() if iE < len(r) and r[iE] else ""
+                proj = str(r[iP]).strip().split("-")[0].strip()[:24] if iP < len(r) and r[iP] else "Otros"
+                yr, mm = _parse_fecha(r[iF]) if iF is not None and iF < len(r) else ("", None)
+                if not yr:
+                    continue
+                hours_by_year[yr] += h
+                if emp:
+                    emps_by_year[yr].add(emp)
+                proj_by_year[(yr, proj)] += h
+                if mm:
+                    hours_by_year_month[(yr, mm)] += h
+        wb.close()
+    return dict(found=found, hours_by_year=hours_by_year, hours_by_year_month=hours_by_year_month,
+                emps_by_year=emps_by_year, proj_by_year=proj_by_year)
+
+
+def _capacidad_horas(files) -> dict[str, float]:
+    cap: dict[str, float] = {}
     for name, raw in files:
         if "horas laborales" in name.lower():
             try:
@@ -173,46 +240,80 @@ def _utilizacion(files):
                 if r[0] and r[2]:
                     cap[str(int(r[0]))] = cap.get(str(int(r[0])), 0) + _num(r[2])
             wb.close()
-    best = None
+    return cap
+
+
+def _utilizacion(ts: dict, cap: dict) -> dict | None:
+    """Bloque ``utilization`` (año con más horas) a partir de lo que sumó ``_parse_timesheet``."""
+    if not ts["found"] or not ts["hours_by_year"]:
+        return None
+    yr = max(ts["hours_by_year"], key=lambda y: ts["hours_by_year"][y])
+    tot = ts["hours_by_year"][yr]
+    emps = ts["emps_by_year"].get(yr, set())
+    capy = cap.get(yr) or (sum(cap.values()) / len(cap) if cap else 2000)
+    capacidad = capy * len(emps)
+    proj = {p: h for (y, p), h in ts["proj_by_year"].items() if y == yr}
+    return dict(year=yr, horas_reales=round(tot), empleados=len(emps),
+                horas_capacidad=round(capacidad), capacidad_emp=round(capy),
+                utilizacion=round(tot / capacidad, 3) if capacidad else 0,
+                by_project=[dict(nombre=n, horas=round(hh))
+                            for n, hh in sorted(proj.items(), key=lambda x: -x[1])[:8]])
+
+
+# ----- Nómina (lista de raya, p. ej. export CONTPAQi): costo_cmi -----
+_PERC_COL = "*TOTAL* *PERCEPCIONES*"
+_OBL_COL = "*TOTAL* *OBLIGACIONES*"
+_PERIODO_RE = re.compile(r"(\d{2}/\d{2}/\d{4})\s*al\s*(\d{2}/\d{2}/\d{4})")
+
+
+def _nomina(files) -> dict:
+    """Detecta hojas de Nómina por sus columnas *TOTAL* *PERCEPCIONES* / *TOTAL*
+    *OBLIGACIONES* (percepciones + obligaciones patronales = costo real a la empresa).
+    Un mismo archivo puede traer varias hojas (una por año). Devuelve
+    {año: {costo_cmi, empleados, meses: [(año, mes), ...]}}."""
+    out: dict[str, dict] = {}
     for name, raw in files:
-        low = name.lower()
-        if "timesheet" not in low or not low.endswith(".xlsx"):
+        if not name.lower().endswith(".xlsx"):
             continue
-        yr = _year_of(name)
         try:
             wb = _wb(raw)
         except Exception:
             continue
-        sh = [s for s in wb.sheetnames if "Worksheet" in s and "Tabla" not in s] or [wb.sheetnames[-1]]
-        ws = wb[sh[0]]
-        hdr = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
-
-        def idx(label):
-            return next((i for i, h in enumerate(hdr) if h and label.lower() in str(h).lower()), None)
-        iE, iP, iH = idx("Empleado"), idx("Proyecto"), idx("Total de Horas")
-        if iH is None:
-            wb.close(); continue
-        tot, emps, pj = 0.0, set(), {}
-        for r in ws.iter_rows(min_row=2, values_only=True):
-            h = _num(r[iH]) if iH < len(r) else 0
-            if h <= 0:
+        for sn in wb.sheetnames:
+            ws = wb[sn]
+            head = list(ws.iter_rows(min_row=1, max_row=12, values_only=True))
+            hdr_row = next((r for r in head if r and _PERC_COL in r and _OBL_COL in r), None)
+            if hdr_row is None:
                 continue
-            tot += h
-            if iE is not None and iE < len(r) and r[iE]:
-                emps.add(str(r[iE]).strip())
-            if iP is not None and iP < len(r) and r[iP]:
-                p = str(r[iP]).strip().split("-")[0].strip()[:24]
-                pj[p] = pj.get(p, 0) + h
+            iPerc, iObl = hdr_row.index(_PERC_COL), hdr_row.index(_OBL_COL)
+            m = _PERIODO_RE.search(" ".join(str(c) for r in head for c in r if c))
+            meses: list[tuple[str, int]] = []
+            if m:
+                d0 = datetime.datetime.strptime(m.group(1), "%d/%m/%Y")
+                d1 = datetime.datetime.strptime(m.group(2), "%d/%m/%Y")
+                yy, mm = d0.year, d0.month
+                while (yy, mm) <= (d1.year, d1.month):
+                    meses.append((str(yy), mm))
+                    mm += 1
+                    if mm > 12:
+                        mm, yy = 1, yy + 1
+            yr = (meses[0][0] if meses else "") or _year_of(sn) or _year_of(name)
+            if not yr:
+                continue
+            total, n = 0.0, 0
+            for r in ws.iter_rows(min_row=1, values_only=True):
+                cod = r[0] if r else None
+                if not isinstance(cod, str) or not cod.strip().isdigit():
+                    continue
+                total += _num(r[iPerc]) + _num(r[iObl])
+                n += 1
+            if total > 0:
+                prev = out.get(yr)
+                if not prev or total > prev["costo_cmi"]:
+                    out[yr] = dict(costo_cmi=round(total), empleados=n,
+                                   meses=meses or [(yr, mo) for mo in range(1, 13)])
         wb.close()
-        capy = cap.get(yr) or (sum(cap.values()) / len(cap) if cap else 2000)
-        capacidad = capy * len(emps)
-        if tot > 0 and (best is None or tot > best[1]):
-            best = (yr, tot, dict(year=yr, horas_reales=round(tot), empleados=len(emps),
-                                  horas_capacidad=round(capacidad), capacidad_emp=round(capy),
-                                  utilizacion=round(tot / capacidad, 3) if capacidad else 0,
-                                  by_project=[dict(nombre=n, horas=round(hh))
-                                              for n, hh in sorted(pj.items(), key=lambda x: -x[1])[:8]]))
-    return (best[2] if best else None)
+    return out
 
 
 # ----- Evaluación de clientes -----
@@ -264,58 +365,121 @@ def build_dataset_from_files(files: list[tuple[str, bytes]]) -> dict:
 
     # 2) Excel: derivar los bloques reales sobre el dataset base.
     years, projects_by_year = _resumen(flat)
-    if not years:
+    bc_months, costo_hora = _concentrado(flat)
+    nomina_by_year = _nomina(flat)
+    ts = _parse_timesheet(flat)
+    sc = _scoring(flat)
+    if not (years or bc_months or nomina_by_year or ts["found"] or sc):
         raise ValueError("No se reconoció ningún archivo válido (Resumen por proyecto, "
-                         "Concentrado BC, Timesheet, Evaluación) ni un .json del dataset.")
+                         "Concentrado BC, Nómina, Timesheet, Evaluación) ni un .json del dataset.")
     out = deepcopy(_dataset.load())
     out.pop("_origin", None); out.pop("_is_demo", None)
 
-    # Año "actual" = el de mayor venta (cierre principal), no el último del calendario
-    # (que suele ser parcial/forecast).
-    latest = max(years, key=lambda y: years[y]['venta'])
-    trend = {y: dict(venta=round(a['venta']), gob=round(a['gob']), ip=round(a['ip']),
-                     ebitda=round(a['ebitda']), ebitda_bc=round(a['ebitda_bc']),
-                     margen=round(a['margen']), proyectos=a['proyectos'],
-                     desviacion=round(a['ebitda'] - a['ebitda_bc']))
-             for y, a in years.items()}
-    a = years[latest]
-    out["projects"] = dict(
-        source=f"Cargado desde Excel ({names})",
-        totals=dict(venta=round(a['venta']), costos=round(a['costos']), margen=round(a['margen']),
-                    ebitda=round(a['ebitda']), ebitda_bc=round(a['ebitda_bc']),
-                    pct_margen=round(a['margen'] / a['venta'], 3) if a['venta'] else 0,
-                    pct_ebitda=round(a['ebitda'] / a['venta'], 3) if a['venta'] else 0,
-                    desviacion=round(a['ebitda'] - a['ebitda_bc']), proyectos=a['proyectos']),
-        trend=trend,
-        cost_mix=dict(nomina=round(a['nomina']), hw_sw=round(a['hwsw']), costo_corp=round(a['corp']),
-                      repr_viaticos=round(a['repr_viat']), otros=round(a['otros'])),
-        clients=_agg_clients(projects_by_year[latest])[:20],
-        detail=projects_by_year[latest][:30])
-    # Gob/IP real desde la tendencia
-    out["gob_ip"] = {y: dict(gob=trend[y]['gob'], ip=trend[y]['ip']) for y in trend}
+    latest = None
+    if years:
+        # Año "actual" = el de mayor venta (cierre principal), no el último del calendario
+        # (que suele ser parcial/forecast).
+        latest = max(years, key=lambda y: years[y]['venta'])
+        trend = {y: dict(venta=round(a['venta']), gob=round(a['gob']), ip=round(a['ip']),
+                         ebitda=round(a['ebitda']), ebitda_bc=round(a['ebitda_bc']),
+                         margen=round(a['margen']), proyectos=a['proyectos'],
+                         desviacion=round(a['ebitda'] - a['ebitda_bc']))
+                 for y, a in years.items()}
+        a = years[latest]
+        out["projects"] = dict(
+            source=f"Cargado desde Excel ({names})",
+            totals=dict(venta=round(a['venta']), costos=round(a['costos']), margen=round(a['margen']),
+                        ebitda=round(a['ebitda']), ebitda_bc=round(a['ebitda_bc']),
+                        pct_margen=round(a['margen'] / a['venta'], 3) if a['venta'] else 0,
+                        pct_ebitda=round(a['ebitda'] / a['venta'], 3) if a['venta'] else 0,
+                        desviacion=round(a['ebitda'] - a['ebitda_bc']), proyectos=a['proyectos']),
+            trend=trend,
+            cost_mix=dict(nomina=round(a['nomina']), hw_sw=round(a['hwsw']), costo_corp=round(a['corp']),
+                          repr_viaticos=round(a['repr_viat']), otros=round(a['otros'])),
+            clients=_agg_clients(projects_by_year[latest])[:20],
+            detail=projects_by_year[latest][:30])
+        # Gob/IP real desde la tendencia
+        out["gob_ip"] = {y: dict(gob=trend[y]['gob'], ip=trend[y]['ip']) for y in trend}
 
-    bc_months, costo_hora = _concentrado(flat)
     if costo_hora:
-        out["cost_per_hour"] = dict(year=latest, by_role=costo_hora)
-    by_month = []
+        out["cost_per_hour"] = dict(year=latest or (max(nomina_by_year) if nomina_by_year else
+                                                     out.get("cost_per_hour", {}).get("year", "")),
+                                    by_role=costo_hora)
+
+    # ----- cost_comparison: costo_bc (Concentrado) + costo_cmi (Nómina, prorrateado por
+    # mes dentro del periodo reportado) + costo_timesheet (horas reales × costo-hora
+    # promedio del periodo = costo_cmi del periodo ÷ horas del periodo) -----
+    by_month_map: dict[tuple[str, int], dict] = {}
     for yr in sorted(bc_months):
         for j, mm in enumerate(_MES):
-            by_month.append(dict(anio=yr, mes=mm, costo_bc=bc_months[yr][j],
-                                 costo_cmi=None, costo_timesheet=None))
-    if by_month:
-        out["cost_comparison"] = dict(
-            note="costo_bc derivado de Concentrado BC. costo_cmi y costo_timesheet requieren "
-                 "la tabla Nómina (cmi_consolidado) — pendientes hasta cargarla.",
-            available=["costo_bc"], pending=["costo_cmi", "costo_timesheet"], by_month=by_month)
+            by_month_map[(yr, j + 1)] = dict(anio=yr, mes=mm, costo_bc=bc_months[yr][j],
+                                             costo_cmi=None, costo_timesheet=None)
 
-    util = _utilizacion(flat)
+    def _rec(myr: str, mm: int) -> dict:
+        key = (myr, mm)
+        rec = by_month_map.get(key)
+        if rec is None:
+            rec = dict(anio=myr, mes=_MES[mm - 1], costo_bc=None, costo_cmi=None, costo_timesheet=None)
+            by_month_map[key] = rec
+        return rec
+
+    cmi_years, ts_years = [], []
+    for yr, info in nomina_by_year.items():
+        meses = info["meses"]
+        monto_mes = info["costo_cmi"] / (len(meses) or 12)
+        cmi_years.append(yr)
+        for myr, mm in meses:
+            _rec(myr, mm)["costo_cmi"] = round(monto_mes)
+
+    if ts["found"]:
+        for yr, info in nomina_by_year.items():
+            meses = info["meses"]
+            monto_mes = info["costo_cmi"] / (len(meses) or 12)
+            # Solo los meses donde el Timesheet sí registró horas (puede arrancar a
+            # mitad del periodo de Nómina) — comparar costo de esos meses contra esas
+            # horas, no el costo del año completo contra horas de unos pocos meses.
+            meses_con_horas = [(myr, mm) for myr, mm in meses if ts["hours_by_year_month"].get((myr, mm), 0) > 0]
+            horas_periodo = sum(ts["hours_by_year_month"][k] for k in meses_con_horas)
+            if not meses_con_horas or horas_periodo <= 0:
+                continue
+            costo_hora_prom = (monto_mes * len(meses_con_horas)) / horas_periodo
+            ts_years.append(yr)
+            for myr, mm in meses:
+                h = ts["hours_by_year_month"].get((myr, mm))
+                if h:
+                    _rec(myr, mm)["costo_timesheet"] = round(h * costo_hora_prom)
+
+    if by_month_map:
+        available = [k for k, on in (("costo_bc", bool(bc_months)), ("costo_cmi", bool(cmi_years)),
+                                     ("costo_timesheet", bool(ts_years))) if on]
+        pending = [k for k in ("costo_bc", "costo_cmi", "costo_timesheet") if k not in available]
+        notes = []
+        if bc_months:
+            notes.append("costo_bc derivado de Concentrado BC.")
+        if cmi_years:
+            notes.append(f"costo_cmi de Nómina ({', '.join(sorted(cmi_years))}; percepciones + "
+                         "obligaciones patronales), prorrateado por mes dentro del periodo reportado.")
+        if ts_years:
+            notes.append("costo_timesheet = horas reales del Timesheet × costo-hora promedio del "
+                         "periodo (costo_cmi del periodo ÷ horas del periodo).")
+        if pending:
+            notes.append(f"Pendiente: {', '.join(pending)}.")
+        out["cost_comparison"] = dict(note=" ".join(notes), available=available, pending=pending,
+                                      by_month=sorted(by_month_map.values(),
+                                                      key=lambda r: (r["anio"], _MES.index(r["mes"]))))
+
+    util = _utilizacion(ts, _capacidad_horas(flat))
     if util:
         out["utilization"] = util
-    sc = _scoring(flat)
     if sc:
         out["client_scoring"] = sc
 
-    out["company"] = {**out.get("company", {}), "period": f"Cargado desde Excel · cierre {latest}"}
+    if years:
+        out["company"] = {**out.get("company", {}), "period": f"Cargado desde Excel · cierre {latest}"}
+    elif nomina_by_year:
+        cierre = max(nomina_by_year)
+        out["company"] = {**out.get("company", {}),
+                          "period": f"Cargado desde Excel (Nómina/Timesheet) · cierre {cierre}"}
     out["partial_entities"] = True  # estados financieros por entidad pendientes (requieren EF/JSON)
     out["_source_files"] = names
     return out
