@@ -35,7 +35,12 @@ class QdrantVectorStore:
     """Qdrant-backed store, one collection per tenant (lazy client import)."""
 
     def __init__(self) -> None:
-        from qdrant_client import QdrantClient  # imported lazily
+        try:
+            from qdrant_client import QdrantClient  # imported lazily
+        except ImportError as exc:  # turnkey: mensaje claro si falta el cliente
+            raise RuntimeError(
+                "VECTOR_STORE=qdrant pero falta el paquete: instala 'qdrant-client' "
+                "(pip install qdrant-client) o usa VECTOR_STORE=pgvector.") from exc
 
         self._client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key or None)
         self._Distance = __import__("qdrant_client.models", fromlist=["Distance"]).Distance
@@ -44,6 +49,13 @@ class QdrantVectorStore:
 
     def _collection(self, tenant_id: str) -> str:
         return f"tenant_{tenant_id}"
+
+    @staticmethod
+    def _point_id(chunk_id: str) -> str:
+        # Qdrant exige id entero o UUID; nuestros chunk ids son 'chk_<hex>'.
+        # uuid5 determinista → re-upsert sobrescribe el mismo punto.
+        import uuid
+        return str(uuid.uuid5(uuid.NAMESPACE_OID, chunk_id))
 
     def ensure_collection(self, tenant_id: str) -> None:
         name = self._collection(tenant_id)
@@ -59,9 +71,10 @@ class QdrantVectorStore:
             self._collection(tenant_id),
             points=[
                 self._PointStruct(
-                    id=p.id,
+                    id=self._point_id(p.id),
                     vector=p.vector,
                     payload={
+                        "chunk_id": p.id,
                         "document_id": p.document_id,
                         "chunk_index": p.chunk_index,
                         "text": p.text,
