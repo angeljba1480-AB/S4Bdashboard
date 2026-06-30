@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader, Shell } from "@/components/Shell";
+import { WorkflowCanvas } from "@/components/WorkflowCanvas";
 import { api } from "@/lib/api";
 import { Clock, Play, Plus, Trash2, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -230,6 +231,9 @@ export default function AutomationsPage() {
                   </div>
                   {valid[a.id] && (
                     <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                      <div className="mb-3">
+                        <WorkflowCanvas steps={valid[a.id].steps} ready={valid[a.id].ready} />
+                      </div>
                       <div className="mb-2 text-xs font-semibold text-slate-500">
                         {valid[a.id].ready ? "✓ Todo listo para ejecutar" : "Faltan requisitos:"}
                       </div>
