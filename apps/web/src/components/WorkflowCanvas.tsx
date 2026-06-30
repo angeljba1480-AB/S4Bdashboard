@@ -4,6 +4,15 @@ import { Bell, Cpu, Database, Mail, Play, Send, Webhook, Zap } from "lucide-reac
 
 type Step = { label: string; status: "ok" | "missing"; detail: string; link?: string | null; optional?: boolean };
 
+// Nodos configurables del pipeline → clave del editor que abren al hacer clic.
+function editKeyFor(label: string): string | null {
+  const l = label.toLowerCase();
+  if (l.includes("disparador")) return "trigger";
+  if (l.includes("entrada")) return "source";
+  if (l.includes("salida")) return "delivery";
+  return null;
+}
+
 // Ícono por tipo de paso (heurística por la etiqueta que devuelve /validate).
 function iconFor(label: string) {
   const l = label.toLowerCase();
@@ -24,14 +33,19 @@ function tone(s: Step): { dot: string; ring: string; text: string } {
   return { dot: "bg-red-500", ring: "border-red-200", text: "text-red-600" };
 }
 
-/** Canvas visual (read-only) del flujo de una automatización: dibuja los pasos
- * como nodos conectados. Reusa los pasos de /validate (Disparador → … → Salida). */
-export function WorkflowCanvas({ steps, ready }: { steps: Step[]; ready: boolean }) {
+/** Canvas visual del flujo de una automatización: dibuja los pasos como nodos
+ * conectados (reusa /validate). Si se pasa `onEditNode`, los nodos configurables
+ * (Disparador/Entrada/Salida) se vuelven clicables para editarlos desde el lienzo. */
+export function WorkflowCanvas({ steps, ready, onEditNode, activeKey }: {
+  steps: Step[]; ready: boolean; onEditNode?: (key: string) => void; activeKey?: string;
+}) {
   if (!steps?.length) return null;
   return (
     <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Diagrama del flujo</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Diagrama del flujo {onEditNode && <span className="font-normal normal-case text-slate-300">· clic en un nodo para editar</span>}
+        </span>
         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
           {ready ? "Listo para ejecutar" : "Requiere atención"}
         </span>
@@ -40,18 +54,29 @@ export function WorkflowCanvas({ steps, ready }: { steps: Step[]; ready: boolean
         {steps.map((s, i) => {
           const Icon = iconFor(s.label);
           const t = tone(s);
+          const key = onEditNode ? editKeyFor(s.label) : null;
+          const active = key && key === activeKey;
+          const editable = !!key;
           return (
             <div key={i} className="flex items-stretch gap-1">
-              <div className={`flex w-40 shrink-0 flex-col rounded-xl border-2 ${t.ring} bg-white p-3 shadow-sm`}>
+              <div
+                role={editable ? "button" : undefined}
+                tabIndex={editable ? 0 : undefined}
+                onClick={editable ? () => onEditNode!(key!) : undefined}
+                onKeyDown={editable ? (e) => { if (e.key === "Enter" || e.key === " ") onEditNode!(key!); } : undefined}
+                className={`flex w-40 shrink-0 flex-col rounded-xl border-2 bg-white p-3 shadow-sm transition
+                  ${active ? "border-violet-500 ring-2 ring-violet-200" : t.ring}
+                  ${editable ? "cursor-pointer hover:border-violet-400 hover:shadow-md" : ""}`}>
                 <div className="mb-1 flex items-center gap-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100">
                     <Icon className="h-4 w-4 text-slate-600" />
                   </div>
                   <span className={`h-2 w-2 rounded-full ${t.dot}`} />
+                  {editable && <span className="ml-auto text-[10px] font-semibold text-violet-500">✎ editar</span>}
                 </div>
                 <div className="text-xs font-semibold text-slate-700">{s.label}</div>
                 <div className="mt-0.5 line-clamp-3 text-[11px] leading-tight text-slate-400">{s.detail}</div>
-                {s.status !== "ok" && s.link && (
+                {s.status !== "ok" && s.link && !editable && (
                   <a href={s.link} className={`mt-1 text-[11px] underline ${t.text}`}>configurar</a>
                 )}
               </div>
