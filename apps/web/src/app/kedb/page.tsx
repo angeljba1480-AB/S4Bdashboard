@@ -17,10 +17,31 @@ export default function KedbPage() {
   const [analysis, setAnalysis] = useState<Awaited<ReturnType<typeof api.analyzeKedb>> | null>(null);
   const [symptom, setSymptom] = useState("");
   const [msg, setMsg] = useState("");
+  const [proposals, setProposals] = useState<Awaited<ReturnType<typeof api.kedbProposals>>>([]);
+  const [isOperator, setIsOperator] = useState(false);
+  const [extractText, setExtractText] = useState("");
 
   function load() { api.kedb(q ? { q } : undefined).then(setItems).catch(() => {}); }
+  function loadProposals() { api.kedbProposals().then((p) => { setProposals(p); setIsOperator(true); }).catch(() => setIsOperator(false)); }
   useEffect(() => { api.kedbStatus().then((s) => setEnabled(s.enabled)).catch(() => setEnabled(false)); }, []);
-  useEffect(() => { if (enabled) load(); /* eslint-disable-next-line */ }, [enabled, q]);
+  useEffect(() => { if (enabled) { load(); loadProposals(); } /* eslint-disable-next-line */ }, [enabled, q]);
+
+  async function promote(id: string) {
+    setMsg("Sanitizando y proponiendo…");
+    try { await api.promoteKnownError(id); setMsg("✓ Propuesta enviada al operador para aprobación cross-cliente."); }
+    catch (e) { setMsg(e instanceof Error ? e.message : "Error"); }
+  }
+  async function approveProp(id: string) { await api.approveKedbProposal(id); loadProposals(); load(); }
+  async function rejectProp(id: string) { await api.rejectKedbProposal(id); loadProposals(); }
+  async function doExtract() {
+    if (!extractText.trim()) return;
+    setMsg("Extrayendo…");
+    try {
+      const r = await api.extractKedb(extractText);
+      setForm({ ...form, ...r.draft, tags: r.draft.tags || "" });
+      setMsg("✓ Borrador extraído — revísalo en 'Agregar error conocido' y guarda.");
+    } catch (e) { setMsg(e instanceof Error ? e.message : "Error"); }
+  }
 
   async function create() {
     if (!form.title.trim()) { setMsg("El título es obligatorio."); return; }
@@ -83,6 +104,41 @@ export default function KedbPage() {
           )}
         </div>
 
+        {/* Extraer desde texto/log */}
+        <details className="rounded-2xl border border-slate-200 bg-white p-5">
+          <summary className="cursor-pointer font-semibold text-slate-800">Extraer error desde un texto/log (IA)</summary>
+          <div className="mt-3 space-y-2">
+            <textarea value={extractText} onChange={(e) => setExtractText(e.target.value)} rows={4}
+              placeholder="Pega el texto del incidente / log…" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <button onClick={doExtract} className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white">Extraer borrador</button>
+          </div>
+        </details>
+
+        {/* Propuestas cross-cliente (solo operador / super admin) */}
+        {isOperator && proposals.length > 0 && (
+          <div className="rounded-2xl border border-violet-200 bg-violet-50/40 p-5">
+            <h2 className="mb-3 font-semibold text-slate-800">Propuestas cross-cliente (aprobar como operador)</h2>
+            <div className="space-y-2">
+              {proposals.map((p) => (
+                <div key={p.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium text-slate-800">{p.title}</div>
+                      <p className="text-xs text-slate-500"><b>Síntoma:</b> {p.symptom} · <b>Resolución:</b> {p.resolution}</p>
+                      <p className="mt-0.5 text-[11px] text-slate-400">{p.source}</p>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <button onClick={() => approveProp(p.id)} className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white">Aprobar</button>
+                      <button onClick={() => rejectProp(p.id)} className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600">Rechazar</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-400">Revisa que esté sanitizado (sin datos del cliente origen) antes de aprobar. Al aprobar, queda visible para todos los clientes con perfil cyber.</p>
+          </div>
+        )}
+
         {/* Alta */}
         <details className="rounded-2xl border border-slate-200 bg-white p-5">
           <summary className="cursor-pointer font-semibold text-slate-800">Agregar error conocido</summary>
@@ -121,7 +177,13 @@ export default function KedbPage() {
                     {k.resolution && <p className="mt-0.5 text-xs text-slate-500"><b>Resolución:</b> {k.resolution}</p>}
                     {k.tags.length > 0 && <div className="mt-1 flex flex-wrap gap-1">{k.tags.map((t) => <span key={t} className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">{t}</span>)}</div>}
                   </div>
-                  {k.scope !== "shared" && <button onClick={() => remove(k.id)} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>}
+                  {k.scope !== "shared" && (
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button onClick={() => promote(k.id)} title="Proponer como error cross-cliente (sanitizado)"
+                        className="rounded-md border border-violet-300 px-2 py-1 text-[11px] font-semibold text-violet-600 hover:bg-violet-50">Compartir</button>
+                      <button onClick={() => remove(k.id)} className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
