@@ -207,6 +207,21 @@ export const api = {
     request<{ id: string; steps: Record<string, unknown>[] }>(`/automations/${id}/steps`),
   setAutomationSteps: (id: string, steps: Record<string, unknown>[]) =>
     request<{ id: string; config: Record<string, unknown> }>(`/automations/${id}/steps`, { method: "PUT", body: JSON.stringify({ steps }) }),
+  // KEDB (base de errores conocidos, gateada por perfil cyber)
+  kedbStatus: () => request<{ enabled: boolean }>("/kedb/status"),
+  kedb: (params?: { q?: string; severity?: string; product?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.q) qs.set("q", params.q);
+    if (params?.severity) qs.set("severity", params.severity);
+    if (params?.product) qs.set("product", params.product);
+    const s = qs.toString();
+    return request<{ id: string; scope: string; title: string; symptom: string; cause: string; resolution: string; product: string; severity: string; tags: string[]; status: string; source: string; created_at: string }[]>(`/kedb${s ? `?${s}` : ""}`);
+  },
+  createKnownError: (body: { title: string; symptom?: string; cause?: string; resolution?: string; product?: string; severity?: string; tags?: string[]; scope?: string }) =>
+    request<{ id: string; title: string }>("/kedb", { method: "POST", body: JSON.stringify(body) }),
+  deleteKnownError: (id: string) => request<{ ok: boolean }>(`/kedb/${id}`, { method: "DELETE" }),
+  analyzeKedb: (symptom: string, product = "") =>
+    request<{ matches: { id: string; title: string; symptom: string; cause: string; resolution: string; product: string; severity: string }[]; is_known: boolean; suggestion: string }>("/kedb/analyze", { method: "POST", body: JSON.stringify({ symptom, product }) }),
   // App Studio
   apps: () => request<AppProject[]>("/apps"),
   createApp: (body: { name: string; description: string }) =>

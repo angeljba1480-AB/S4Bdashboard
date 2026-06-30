@@ -328,6 +328,32 @@ class SftpConnector(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class KnownError(SQLModel, table=True):
+    """KEDB — base de errores conocidos (operación de ciberseguridad/SOC).
+
+    Módulo gateado por perfil cyber. `scope`:
+    - 'tenant': error conocido propio del cliente.
+    - 'shared': error conocido cross-cliente, curado y SANITIZADO por el operador
+      (sin datos del cliente origen), visible para todos los tenants cyber.
+    """
+    __tablename__ = "known_errors"
+    id: str = Field(default_factory=lambda: _uuid("kerr"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    scope: str = "tenant"          # tenant | shared
+    title: str = ""
+    symptom: str = ""             # síntoma observado
+    cause: str = ""               # causa raíz
+    resolution: str = ""          # solución / workaround
+    product: str = ""             # sistema/herramienta afectada (firewall, SIEM, EDR…)
+    severity: str = "medium"       # low | medium | high | critical
+    tags: str = ""                # csv
+    status: str = "published"      # draft | published
+    source: str = ""              # nota de origen (sanitizada)
+    created_by: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class OdataSource(SQLModel, table=True):
     """Fuente OData de SOLO lectura (SAP S/4HANA y compatibles): hace GET a un Entity
     Set, trae las filas y las importa al repositorio + RAG. Credencial cifrada.

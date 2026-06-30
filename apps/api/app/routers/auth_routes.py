@@ -132,6 +132,7 @@ def account(user: User = Depends(get_current_user), session: Session = Depends(g
 def me(user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> MeResponse:
     tenant = session.get(Tenant, user.tenant_id)
     from ..company_profile import get_or_create, gov_enabled
+    from .kedb import kedb_enabled
     profile = get_or_create(session, user.tenant_id)
     return MeResponse(
         id=user.id, email=user.email, name=user.name, role=user.role,
@@ -144,4 +145,5 @@ def me(user: User = Depends(get_current_user), session: Session = Depends(get_se
         country=tenant.country if tenant else "MX",
         country_name=get_country(tenant.country if tenant else "MX")["name"],
         gov_enabled=gov_enabled(profile),
+        kedb_enabled=kedb_enabled(session, tenant) if tenant else False,
     )
