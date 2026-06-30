@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader, Shell } from "@/components/Shell";
+import { SharepointBrowser } from "@/components/SharepointBrowser";
 import { api } from "@/lib/api";
 import type { DocumentCategory, DocumentItem } from "@shared/types";
 import { FolderOpen, HardDrive, RefreshCw, Trash2, Upload } from "lucide-react";
@@ -314,6 +315,8 @@ export default function DocumentsPage() {
               </div>
             )}
           </div>
+
+          <SharepointBrowser area={upArea} category={upCat} />
         </div>
 
         {/* Containers by area */}
