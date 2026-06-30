@@ -83,6 +83,26 @@ def run_checks(session, tenant, user) -> dict:
                             "Importa los flujos de `integrations/n8n/` si aplica."],
                            help="webhooks", link="/integrations"))
 
+    # 4a-bis. Vector store del RAG — in-process (default) vs Qdrant/pgvector (escala).
+    vs = settings.vector_store
+    if vs in ("qdrant", "pgvector"):
+        try:
+            from .ai.vectorstore import get_vector_store
+            get_vector_store()  # construye/conecta; lanza si falta dep o no alcanza
+            checks.append(_ok("vector_store", "Vector store (escala)",
+                              f"{vs} activo (dim {settings.embeddings_dim})."))
+        except Exception as exc:
+            checks.append(_gap("vector_store", "Vector store (escala)", "missing",
+                               f"VECTOR_STORE={vs} pero no se pudo inicializar: {exc}",
+                               ["Qdrant: provisiona el servidor + `QDRANT_URL`/`QDRANT_API_KEY` e instala `qdrant-client`.",
+                                "pgvector: usa Postgres con la extensión `vector` (Supabase la trae).",
+                                "Asegura `EMBEDDINGS_DIM` igual a tu modelo (qwen3-embedding = 4096).",
+                                "Tras activarlo, **re-indexa** (`POST /documents/reindex`) para poblar el store."],
+                               help="modelos", link="/admin"))
+    else:
+        checks.append(_ok("vector_store", "Vector store (escala)",
+                          "In-process (vectores en la BD). Suficiente; sube a Qdrant/pgvector a gran escala."))
+
     # 4b. Embeddings del RAG — local (hashing) vs NaN (qwen3-embedding).
     if settings.embeddings_provider in ("open", "nan", "nanbuilders"):
         checks.append(_ok("embeddings", "Embeddings del RAG", f"Vía proveedor abierto ({settings.embeddings_model})."))
