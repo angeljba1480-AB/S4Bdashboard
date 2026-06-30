@@ -25,6 +25,12 @@ export default function AutomationsPage() {
   const [source, setSource] = useState<Record<string, { kind: string; ref: string; label: string }>>({});
   const [datasources, setDatasources] = useState<{ id: string; name: string }[]>([]);
   const [driveFolders, setDriveFolders] = useState<{ id: string; name: string }[]>([]);
+  const [editor, setEditor] = useState<Record<string, string>>({});   // nodo en edición por automatización
+
+  function editNode(aid: string, key: string) {
+    setEditor((e) => ({ ...e, [aid]: e[aid] === key ? "" : key }));
+    if (key === "source") loadDriveFolders();
+  }
 
   function load() {
     api.automations().then(setList).catch(() => {});
@@ -232,7 +238,8 @@ export default function AutomationsPage() {
                   {valid[a.id] && (
                     <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
                       <div className="mb-3">
-                        <WorkflowCanvas steps={valid[a.id].steps} ready={valid[a.id].ready} />
+                        <WorkflowCanvas steps={valid[a.id].steps} ready={valid[a.id].ready}
+                          onEditNode={(k) => editNode(a.id, k)} activeKey={editor[a.id]} />
                       </div>
                       <div className="mb-2 text-xs font-semibold text-slate-500">
                         {valid[a.id].ready ? "✓ Todo listo para ejecutar" : "Faltan requisitos:"}
@@ -251,8 +258,8 @@ export default function AutomationsPage() {
                         })}
                       </ol>
 
-                      {/* Entrada: qué procesar (solo workflows / n8n) */}
-                      {a.action_type === "workflow" && (
+                      {/* Entrada: qué procesar (solo workflows / n8n) — se abre desde el nodo "Entrada" */}
+                      {a.action_type === "workflow" && editor[a.id] === "source" && (
                         <div className="mt-3 border-t border-slate-200 pt-2">
                           <div className="mb-1.5 text-xs font-semibold text-slate-500">Entrada · qué procesar</div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -285,7 +292,8 @@ export default function AutomationsPage() {
                         </div>
                       )}
 
-                      {/* Salida: a dónde mandar el resultado */}
+                      {/* Salida: a dónde mandar el resultado — se abre desde el nodo "Salida" */}
+                      {editor[a.id] === "delivery" && (
                       <div className="mt-3 border-t border-slate-200 pt-2">
                         <div className="mb-1.5 text-xs font-semibold text-slate-500">Salida · a dónde mandar el resultado</div>
                         <div className="flex flex-wrap items-center gap-3">
@@ -302,7 +310,10 @@ export default function AutomationsPage() {
                           <button onClick={() => saveDelivery(a)} className="rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white">Guardar salida</button>
                         </div>
                       </div>
+                      )}
 
+                      {/* Disparador: programar — se abre desde el nodo "Disparador" */}
+                      {editor[a.id] === "trigger" && (
                       <div className="mt-3 flex items-center gap-2 border-t border-slate-200 pt-2">
                         <span className="text-xs text-slate-500">Programar:</span>
                         {["daily", "weekly", "monthly"].map((f) => (
@@ -312,6 +323,13 @@ export default function AutomationsPage() {
                           </button>
                         ))}
                       </div>
+                      )}
+
+                      {!editor[a.id] && (
+                        <p className="mt-3 border-t border-slate-200 pt-2 text-xs text-slate-400">
+                          Haz clic en un nodo del diagrama (Disparador / Entrada / Salida) para editarlo.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
