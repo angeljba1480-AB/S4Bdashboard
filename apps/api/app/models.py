@@ -53,6 +53,7 @@ class Tenant(SQLModel, table=True):
     brand_logo_url: str = ""
     brand_color: str = ""          # primary hex, e.g. #7c3aed
     brand_tagline: str = ""
+    custom_domain: str = ""        # dominio propio del cliente, e.g. plataforma.sucliente.com
     # Remitente de soporte por tenant: el buzón desde el que SALEN los correos de
     # las automatizaciones (no la cuenta personal de quien conectó). Vacío -> usa
     # la conexión del usuario que ejecuta.

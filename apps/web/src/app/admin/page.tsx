@@ -32,7 +32,7 @@ export default function AdminPage() {
   >([]);
   const [error, setError] = useState("");
 
-  const [brand, setBrand] = useState({ brand_name: "", brand_logo_url: "", brand_color: "", brand_tagline: "", country: "MX" });
+  const [brand, setBrand] = useState({ brand_name: "", brand_logo_url: "", brand_color: "", brand_tagline: "", custom_domain: "", country: "MX" });
   const [countries, setCountries] = useState<{ code: string; name: string }[]>([]);
   const [brandMsg, setBrandMsg] = useState("");
   const [billing, setBilling] = useState<Awaited<ReturnType<typeof api.getBilling>> | null>(null);
@@ -132,7 +132,7 @@ export default function AdminPage() {
   }
   function loadBranding() {
     api.getBranding()
-      .then((b) => setBrand({ brand_name: b.brand_name, brand_logo_url: b.brand_logo_url, brand_color: b.brand_color, brand_tagline: b.brand_tagline, country: b.country || "MX" }))
+      .then((b) => setBrand({ brand_name: b.brand_name, brand_logo_url: b.brand_logo_url, brand_color: b.brand_color, brand_tagline: b.brand_tagline, custom_domain: b.custom_domain || "", country: b.country || "MX" }))
       .catch(() => {});
   }
   async function saveBranding(e: React.FormEvent) {
@@ -331,6 +331,18 @@ export default function AdminPage() {
               placeholder="URL del logo (https://…)"
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
             />
+            <div className="sm:col-span-2">
+              <input
+                value={brand.custom_domain}
+                onChange={(e) => setBrand((b) => ({ ...b, custom_domain: e.target.value }))}
+                placeholder="Dominio propio (ej. plataforma.sucliente.com)"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                Marca blanca: apunta un <b>CNAME</b> de ese dominio a tu host (Render/Vercel) y agrégalo como dominio
+                personalizado ahí. Se usa en los enlaces y la firma de los correos.
+              </p>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 type="color"

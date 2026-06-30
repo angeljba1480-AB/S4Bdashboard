@@ -35,6 +35,7 @@ class BrandSettings(BaseModel):
     brand_logo_url: str = ""
     brand_color: str = ""
     brand_tagline: str = ""
+    custom_domain: str = ""
     country: str | None = None
 
 
@@ -45,6 +46,7 @@ def get_branding(
 ) -> dict:
     return {"brand_name": tenant.brand_name, "brand_logo_url": tenant.brand_logo_url,
             "brand_color": tenant.brand_color, "brand_tagline": tenant.brand_tagline,
+            "custom_domain": tenant.custom_domain,
             "tenant_name": tenant.name, "country": tenant.country}
 
 
@@ -59,17 +61,22 @@ def update_branding(
     color = body.brand_color.strip()
     if color and not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
         raise HTTPException(status_code=422, detail="Color inválido (usa formato #RRGGBB)")
+    domain = body.custom_domain.strip().lower().removeprefix("https://").removeprefix("http://").rstrip("/")
+    if domain and not re.fullmatch(r"[a-z0-9.-]+\.[a-z]{2,}", domain):
+        raise HTTPException(status_code=422, detail="Dominio inválido (usa formato plataforma.tudominio.com)")
     tenant.brand_name = body.brand_name.strip()
     tenant.brand_logo_url = body.brand_logo_url.strip()
     tenant.brand_color = color
     tenant.brand_tagline = body.brand_tagline.strip()
+    tenant.custom_domain = domain
     if body.country:
         from ..regional.countries import get_country
         tenant.country = get_country(body.country)["code"]
     session.add(tenant)
     session.commit()
     return {"brand_name": tenant.brand_name, "brand_logo_url": tenant.brand_logo_url,
-            "brand_color": tenant.brand_color, "brand_tagline": tenant.brand_tagline}
+            "brand_color": tenant.brand_color, "brand_tagline": tenant.brand_tagline,
+            "custom_domain": tenant.custom_domain}
 
 
 def _user_out(u: User) -> dict:
