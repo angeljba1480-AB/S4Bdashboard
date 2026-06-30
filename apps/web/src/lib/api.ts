@@ -498,6 +498,8 @@ export const api = {
   },
   financeDeleteDataset: () =>
     request<{ ok: boolean }>("/finance/dataset", { method: "DELETE" }),
+  downloadFinanceTemplate: () =>
+    api.download("/finance/dataset/template", "plantilla-finanzas.json"),
   financeOperations: () =>
     request<{
       utilization: { year: string; horas_reales: number; horas_capacidad: number; utilizacion: number; empleados: number; capacidad_emp: number; by_project: { nombre: string; horas: number }[] };

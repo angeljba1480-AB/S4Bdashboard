@@ -112,6 +112,27 @@ def dataset_status(tenant: Tenant = Depends(get_current_tenant),
     return st
 
 
+@router.get("/dataset/template")
+def dataset_template(_: User = Depends(get_current_user)):
+    """Plantilla descargable (JSON) con el esquema completo del Tablero, lista para
+    que el cliente la edite con sus cifras y la vuelva a subir (auto-servicio)."""
+    import json
+
+    from fastapi.responses import Response
+
+    from ..finance import dataset as _ds
+    base = _ds.load()
+    base.pop("_is_demo", None)
+    base = {"_instrucciones": (
+        "Edita los valores con tus cifras reales y vuelve a subir este archivo en "
+        "Tablero Financiero → Cargar datos. Mantén las claves (company, monthly[12 meses], "
+        "segments, projects, top_clients, gob_ip, benchmarks, alerts…). Lo que no tengas, "
+        "déjalo como está; el comparativo de costos CMI/Timesheet requiere Nómina."), **base}
+    data = json.dumps(base, ensure_ascii=False, indent=2).encode("utf-8")
+    return Response(content=data, media_type="application/json",
+                    headers={"Content-Disposition": 'attachment; filename="plantilla-finanzas.json"'})
+
+
 @router.post("/dataset", status_code=201)
 async def upload_dataset(files: list[UploadFile] = File(...),
                          tenant: Tenant = Depends(get_current_tenant),

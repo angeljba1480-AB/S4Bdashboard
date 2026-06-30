@@ -97,6 +97,16 @@ def test_dataset_upload_override_and_delete(client):
     _ = st0
 
 
+def test_dataset_template_download(client):
+    h = _auth(client)
+    r = client.get("/finance/dataset/template", headers=h)
+    assert r.status_code == 200
+    assert "attachment" in r.headers.get("content-disposition", "")
+    body = r.json()
+    assert "_instrucciones" in body and "company" in body and "monthly" in body
+    assert "_is_demo" not in body
+
+
 def test_ask_grounded(client, monkeypatch):
     h = _auth(client)
     captured = {}
