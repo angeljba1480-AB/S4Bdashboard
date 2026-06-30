@@ -165,6 +165,25 @@ def _run_ingesta(session: Session, tenant: Tenant, owner_id: str | None,
     return "completed", f"ingesta · {n_docs} documentos indexados ({n_chunks} fragmentos){extra}"
 
 
+def _content_from_response(resp) -> str:
+    """Saca SOLO el resultado útil de la respuesta de n8n, sin volcar el JSON crudo.
+    El nodo Webhook de n8n envuelve el cuerpo bajo `body`, así que se busca arriba y
+    dentro de `body` por campos de texto conocidos. Si no hay ninguno, devuelve ''."""
+    if not resp:
+        return ""
+    if not isinstance(resp, dict):
+        return str(resp)
+    sources = [resp]
+    if isinstance(resp.get("body"), dict):
+        sources.append(resp["body"])
+    for src in sources:
+        for k in ("text", "summary", "result", "output", "message"):
+            v = src.get(k)
+            if v:
+                return v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
+    return ""
+
+
 def _run_mando(session: Session, tenant: Tenant) -> str:
     """Centro de mando: arma un reporte ejecutivo con KPIs REALES de la operación
     (casos, tokens, costo, apps) + insights de IA. MaestroAI lo calcula y lo pasa
@@ -185,10 +204,12 @@ def _run_mando(session: Session, tenant: Tenant) -> str:
         f"Costo IA acumulado: ${cost['total']}.\n"
         f"Apps: {apps['built']} construidas, {apps['deployed']} desplegadas."
     )
-    system = ("Eres el centro de mando operativo de la empresa. Con los KPIs provistos, redacta en "
-              "español un reporte ejecutivo BREVE con: 1) Resumen del día, 2) KPIs clave, 3) Alertas "
-              "o riesgos si los datos los sugieren, 4) Recomendaciones accionables. Usa SOLO los datos "
-              "provistos; no inventes cifras.")
+    system = ("Eres el centro de mando operativo de la empresa. Con los KPIs provistos redacta en "
+              "español un reporte ejecutivo BREVE, en TEXTO PLANO legible (NADA de markdown: sin **, "
+              "sin #, sin tablas). Usa estas secciones EXACTAS en MAYÚSCULAS, separadas por una línea "
+              "en blanco, y viñetas con '• ':\n"
+              "RESUMEN DEL DÍA\nKPIS CLAVE\nALERTAS\nRECOMENDACIONES\n"
+              "Cada viñeta en su propia línea. Usa SOLO los datos provistos; no inventes cifras.")
     prompt = f"KPIs de operación:\n{ctx}\n\nGenera el reporte del centro de mando."
     try:
         decision = route_request(tenant, None, prompt, [ctx], task="recipe")
@@ -229,15 +250,9 @@ def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
             mando_report = _run_mando(session, tenant)
             payload_out["text"] = mando_report
         run = trigger_workflow(cfg, a.action_ref, payload_out)
-        resp = run.response or {}
-        content = ""
-        if isinstance(resp, dict) and resp:
-            content = str(resp.get("text") or resp.get("summary") or resp.get("result")
-                          or resp.get("output") or json.dumps(resp, ensure_ascii=False))
-        elif resp:
-            content = str(resp)
-        if not content and mando_report:
-            content = mando_report
+        # mando: entrega el reporte LIMPIO calculado localmente (no el eco de n8n).
+        # Otros workflows: extrae solo el campo útil de la respuesta (sin volcar JSON).
+        content = mando_report or _content_from_response(run.response)
         delivered = _deliver_result(session, tenant, uid, a.name, content, config)
         extra = f" → enviado a {delivered}" if delivered else ""
         return run.status, f"workflow {a.action_ref} · n8n:{run.source} · {run.detail}{extra}"
