@@ -220,12 +220,117 @@ def _run_mando(session: Session, tenant: Tenant) -> str:
     return report or f"Reporte de operación (KPIs):\n{ctx}"
 
 
+# --- Motor multi-paso ------------------------------------------------------
+# Una automatización puede ser un PIPELINE de pasos encadenados; el resultado de
+# un paso (`ctx['content']`) alimenta al siguiente. Tipos: fetch (entrada),
+# workflow (n8n/nativo), recipe (caso), ai (transforma con IA), connector, notify,
+# deliver (salida). Compatible hacia atrás: sin `steps`, corre la acción única.
+_STEP_TYPES = ("fetch", "workflow", "recipe", "ai", "connector", "notify", "deliver")
+
+
+def _run_step(session: Session, tenant: Tenant, uid: str | None, a: Automation,
+              step: dict, ctx: dict) -> tuple[bool, str]:
+    stype = step.get("type")
+    cfg = {**(ctx.get("config") or {}), **(step.get("config") or {})}
+
+    if stype == "fetch":
+        ctx["source"] = {"kind": step.get("kind", "new_documents"),
+                         "ref": step.get("ref", ""), "label": step.get("label", "")}
+        if ctx["source"]["kind"] == "new_documents":
+            ctx["source"]["since"] = a.last_run or ""
+        return True, f"fuente: {_SOURCE_LABELS.get(ctx['source']['kind'], ctx['source']['kind'])}"
+
+    if stype == "workflow":
+        ref = step.get("ref", "")
+        if ref == "ingesta":
+            st, detail = _run_ingesta(session, tenant, uid, ctx.get("source") or {})
+            ctx["content"] = detail
+            return st != "failed", detail
+        if ref == "mando":
+            ctx["content"] = _run_mando(session, tenant)
+            return True, "centro de mando"
+        n8n = resolve_n8n(tenant)
+        run = trigger_workflow(n8n, ref, {
+            "automation_id": a.id, "tenant_id": tenant.id, "user_id": uid,
+            "source": ctx.get("source") or {}, "text": ctx.get("content", ""), **cfg})
+        ctx["content"] = _content_from_response(run.response) or ctx.get("content", "")
+        return run.status != "failed", f"workflow {ref} · n8n:{run.source} · {run.detail}"
+
+    if stype == "recipe":
+        from ..recipes.catalog import execute, prefill
+        from .recipes import _resolve
+        recipe = _resolve(session, tenant.id, step.get("ref", ""))
+        if not recipe:
+            return False, f"receta '{step.get('ref')}' no encontrada"
+        draft = prefill(recipe, session, tenant, cfg, user_id=uid)
+        result = execute(recipe, session, tenant.id, cfg, draft, user_id=uid)
+        ctx["content"] = (result.get("documento")
+                          or (result.get("output") if isinstance(result.get("output"), str) else "")
+                          or ctx.get("content", ""))
+        return True, f"caso {recipe['name']}"
+
+    if stype == "ai":
+        from ..ai.resilience import generate_with_fallback
+        from ..ai.router import route_request
+        base = ctx.get("content", "")
+        instr = step.get("prompt") or "Resume y mejora el siguiente contenido en español."
+        prompt = f"{instr}\n\nContenido:\n{base}" if base else instr
+        try:
+            decision = route_request(tenant, None, prompt, [base] if base else [], task="recipe")
+            gen = generate_with_fallback(
+                decision.route, "Eres un asistente que transforma contenido en español, claro y útil.",
+                prompt, decision.context or ([base] if base else []))
+            ctx["content"] = (gen.response.content or "").strip() or base
+            return True, "IA aplicada"
+        except Exception as exc:
+            return False, f"IA error: {exc}"
+
+    if stype == "connector":
+        from .integrations import send_to_connector
+        st, d = send_to_connector(session, tenant, step.get("ref", ""), {
+            "automation": a.name, "tenant_id": tenant.id, "text": ctx.get("content", ""), **cfg})
+        return st != "failed", d
+
+    if stype == "notify":
+        ctx["content"] = step.get("message") or ctx.get("content", "")
+        return True, "nota"
+
+    if stype == "deliver":
+        dcfg = {"deliver": [c for c in (step.get("channels") or ["notify"]) if c in _CHANNELS] or ["notify"],
+                "email_to": step.get("email_to", "")}
+        delivered = _deliver_result(session, tenant, uid, step.get("label") or a.name, ctx.get("content", ""), dcfg)
+        return True, (f"enviado a {delivered}" if delivered else "sin entrega (sin contenido o canal)")
+
+    return True, f"paso '{stype}' ignorado"
+
+
+def _run_steps(session: Session, tenant: Tenant, user: User | None, a: Automation,
+               steps: list, config: dict) -> tuple[str, str]:
+    uid = (user.id if user else None) or a.user_id
+    ctx = {"content": "", "source": dict(config.get("source") or {}), "config": config}
+    results: list[str] = []
+    ok_all = True
+    for i, step in enumerate(steps, 1):
+        try:
+            ok, detail = _run_step(session, tenant, uid, a, step, ctx)
+        except Exception as exc:  # un paso roto no tumba el resto del registro
+            ok, detail = False, f"error: {exc}"
+        ok_all = ok_all and ok
+        results.append(f"{i}. {step.get('label') or step.get('type')}: {detail}")
+    return ("completed" if ok_all else "failed"), " | ".join(results)[:400]
+
+
 def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
          payload: dict | None = None) -> tuple[str, str]:
     """Execute the action. Returns (status, detail)."""
     config = json.loads(a.config or "{}")
     if payload:
         config = {**config, **payload}
+    # Pipeline multi-paso: si la automatización define `steps`, corre el motor que
+    # los ejecuta en orden encadenando el resultado. Si no, acción única (legado).
+    steps = config.get("steps")
+    if isinstance(steps, list) and steps:
+        return _run_steps(session, tenant, user, a, steps, config)
     # Usuario efectivo: quien ejecuta, o el dueño de la automatización (corridas
     # programadas/por evento no traen usuario, pero la cuenta conectada es del dueño).
     uid = (user.id if user else None) or a.user_id
@@ -560,6 +665,39 @@ def set_delivery(automation_id: str, body: DeliveryIn, tenant: Tenant = Depends(
     cfg["deliver"] = [c for c in body.channels if c in _CHANNELS] or ["notify"]
     if body.email_to.strip():
         cfg["email_to"] = body.email_to.strip()
+    a.config = json.dumps(cfg)
+    session.add(a)
+    session.commit()
+    session.refresh(a)
+    return _out(a)
+
+
+class StepsIn(BaseModel):
+    steps: list[dict] = []
+
+
+@router.get("/{automation_id}/steps")
+def get_steps(automation_id: str, tenant: Tenant = Depends(get_current_tenant),
+              user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    a = _load(session, tenant, user, automation_id)
+    return {"id": a.id, "steps": json.loads(a.config or "{}").get("steps", [])}
+
+
+@router.put("/{automation_id}/steps")
+def set_steps(automation_id: str, body: StepsIn, tenant: Tenant = Depends(get_current_tenant),
+              user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    """Define el pipeline multi-paso de la automatización (el canvas envía el
+    arreglo completo y ordenado). Pasos válidos: fetch/workflow/recipe/ai/connector/notify/deliver."""
+    a = _load(session, tenant, user, automation_id)
+    norm: list[dict] = []
+    for i, s in enumerate(body.steps):
+        if not isinstance(s, dict) or s.get("type") not in _STEP_TYPES:
+            continue
+        s = dict(s)
+        s["id"] = s.get("id") or f"s{i + 1}"
+        norm.append(s)
+    cfg = json.loads(a.config or "{}")
+    cfg["steps"] = norm
     a.config = json.dumps(cfg)
     session.add(a)
     session.commit()

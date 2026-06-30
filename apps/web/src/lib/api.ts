@@ -203,6 +203,10 @@ export const api = {
     request<{ id: string; config: Record<string, unknown> }>(`/automations/${id}/delivery`, { method: "POST", body: JSON.stringify({ channels, email_to: emailTo }) }),
   setAutomationSource: (id: string, body: { kind: string; ref?: string; label?: string }) =>
     request<{ id: string; config: Record<string, unknown> }>(`/automations/${id}/source`, { method: "POST", body: JSON.stringify(body) }),
+  automationSteps: (id: string) =>
+    request<{ id: string; steps: Record<string, unknown>[] }>(`/automations/${id}/steps`),
+  setAutomationSteps: (id: string, steps: Record<string, unknown>[]) =>
+    request<{ id: string; config: Record<string, unknown> }>(`/automations/${id}/steps`, { method: "PUT", body: JSON.stringify({ steps }) }),
   // App Studio
   apps: () => request<AppProject[]>("/apps"),
   createApp: (body: { name: string; description: string }) =>
