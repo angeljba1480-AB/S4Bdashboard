@@ -2,7 +2,7 @@
 
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
-import { AlertTriangle, ChevronLeft, RefreshCw, Send, Sparkles, Upload } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Download, RefreshCw, Send, Sparkles, Upload } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -119,6 +119,10 @@ export default function TableroFinancieroPage() {
           <button onClick={() => fileRef.current?.click()} disabled={uploading}
             className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50">
             <Upload className="h-4 w-4" /> {uploading ? "Cargando…" : "Cargar datos"}
+          </button>
+          <button onClick={() => api.downloadFinanceTemplate()}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+            <Download className="h-4 w-4" /> Descargar plantilla
           </button>
           {ov.is_demo
             ? <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">Demo · carga tus Excel o JSON para ver tus cifras</span>
