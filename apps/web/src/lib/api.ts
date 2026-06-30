@@ -323,9 +323,10 @@ export const api = {
     if (meta?.sensitivity) fd.append("sensitivity", meta.sensitivity);
     return request<DocumentItem>("/documents/upload", { method: "POST", body: fd });
   },
-  uploadFile: (file: File, meta?: { area?: string; category?: string; sensitivity?: string }) => {
+  uploadFile: (file: File, meta?: { area?: string; category?: string; sensitivity?: string; name?: string }) => {
     const fd = new FormData();
     fd.append("file", file);
+    if (meta?.name) fd.append("filename", meta.name);   // nombre editado por el usuario (gana sobre el del archivo)
     if (meta?.area) fd.append("area", meta.area);
     if (meta?.category) fd.append("category", meta.category);
     if (meta?.sensitivity) fd.append("sensitivity", meta.sensitivity);
