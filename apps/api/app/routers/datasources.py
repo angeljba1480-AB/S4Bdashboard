@@ -21,9 +21,10 @@ from .. import doc_categories
 from ..ai.rag import index_document
 from ..auth import get_current_tenant, get_current_user, require_roles
 from ..db import get_session
+from ..integrations import odata as odata_client
 from ..integrations import sftp as sftp_conn
 from ..ingest import extract_text
-from ..models import AuditEvent, DataSource, Document, Role, SftpConnector, Tenant, User
+from ..models import AuditEvent, DataSource, Document, OdataSource, Role, SftpConnector, Tenant, User
 from ..security.crypto import decrypt, encrypt
 
 router = APIRouter(prefix="/datasources", tags=["datasources"])
@@ -379,6 +380,120 @@ def reveal_source(
     ))
     session.commit()
     return {"dsn": dsn}
+
+
+# --- OData (SAP S/4HANA y compatibles) — solo lectura → repositorio + RAG -----
+def _owned_odata(session: Session, tenant: Tenant, oid: str) -> OdataSource:
+    o = session.get(OdataSource, oid)
+    if not o or o.tenant_id != tenant.id:
+        raise HTTPException(status_code=404, detail="Fuente OData no encontrada")
+    return o
+
+
+def _odata_out(o: OdataSource) -> dict:
+    return {"id": o.id, "name": o.name, "base_url": o.base_url, "auth_type": o.auth_type,
+            "username": o.username, "odata_filter": o.odata_filter, "select": o.select,
+            "top": o.top, "area": o.area, "category": o.category}
+
+
+class OdataIn(BaseModel):
+    name: str
+    base_url: str
+    auth_type: str = "basic"       # basic | bearer
+    username: str = ""
+    secret: str = ""              # password o token
+    odata_filter: str = ""
+    select: str = ""
+    top: int = 0
+    area: str = ""
+    category: str = ""
+
+
+@router.get("/odata")
+def list_odata(_: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+               tenant: Tenant = Depends(get_current_tenant),
+               session: Session = Depends(get_session)) -> list[dict]:
+    rows = session.exec(select(OdataSource).where(OdataSource.tenant_id == tenant.id)).all()
+    return [_odata_out(o) for o in rows]
+
+
+@router.post("/odata", status_code=201)
+def create_odata(body: OdataIn, _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+                 tenant: Tenant = Depends(get_current_tenant),
+                 session: Session = Depends(get_session)) -> dict:
+    if not body.name.strip() or not body.base_url.strip():
+        raise HTTPException(status_code=422, detail="Nombre y URL del Entity Set son obligatorios")
+    auth = body.auth_type if body.auth_type in ("basic", "bearer") else "basic"
+    o = OdataSource(
+        tenant_id=tenant.id, name=body.name.strip(), base_url=body.base_url.strip(), auth_type=auth,
+        username=body.username.strip(), secret_enc=encrypt(body.secret, tenant.kms_key_id) if body.secret else "",
+        odata_filter=body.odata_filter.strip(), select=body.select.strip(), top=max(0, body.top),
+        area=body.area.strip(), category=body.category.strip())
+    session.add(o)
+    session.commit()
+    session.refresh(o)
+    return _odata_out(o)
+
+
+@router.post("/odata/{oid}/test")
+def test_odata(oid: str, _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+               tenant: Tenant = Depends(get_current_tenant),
+               session: Session = Depends(get_session)) -> dict:
+    """Lee una muestra pequeña para validar conexión/credenciales y ver columnas."""
+    o = _owned_odata(session, tenant, oid)
+    try:
+        cols, rows = odata_client.fetch(
+            o.base_url, auth_type=o.auth_type, username=o.username,
+            secret=decrypt(o.secret_enc, tenant.kms_key_id) if o.secret_enc else "",
+            odata_filter=o.odata_filter, select=o.select, top=5, max_rows=5)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"No se pudo leer OData: {exc}")
+    return {"ok": True, "columns": cols, "total_preview": len(rows)}
+
+
+@router.post("/odata/{oid}/import", status_code=201)
+def import_odata(oid: str, user: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+                 tenant: Tenant = Depends(get_current_tenant),
+                 session: Session = Depends(get_session)) -> dict:
+    """Lee el Entity Set completo (hasta el tope) y lo importa al repositorio + RAG."""
+    o = _owned_odata(session, tenant, oid)
+    try:
+        cols, rows = odata_client.fetch(
+            o.base_url, auth_type=o.auth_type, username=o.username,
+            secret=decrypt(o.secret_enc, tenant.kms_key_id) if o.secret_enc else "",
+            odata_filter=o.odata_filter, select=o.select, top=o.top)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"No se pudo leer OData: {exc}")
+    if not rows:
+        raise HTTPException(status_code=422, detail="La consulta OData no devolvió filas.")
+    doc = _import_as_document(
+        session, tenant, user, name=o.name, content=_as_text(cols, rows),
+        area=o.area or "", category=o.category or "", storage_uri=f"odata://{o.id}",
+        rows=len(rows), source_label=f"OData '{o.name}'")
+    return {"id": doc["id"], "filename": doc["filename"], "rows": len(rows)}
+
+
+@router.get("/odata/{oid}/reveal")
+def reveal_odata(oid: str, user: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+                 tenant: Tenant = Depends(get_current_tenant),
+                 session: Session = Depends(get_session)) -> dict:
+    o = _owned_odata(session, tenant, oid)
+    secret = decrypt(o.secret_enc, tenant.kms_key_id) if o.secret_enc else ""
+    session.add(AuditEvent(
+        tenant_id=tenant.id, user_id=user.id, event_type="reveal", object_type="odata",
+        object_id=o.id, risk_level="med", reason=f"reveló la credencial OData de '{o.name}'"))
+    session.commit()
+    return {"auth_type": o.auth_type, "username": o.username, "secret": secret}
+
+
+@router.delete("/odata/{oid}")
+def delete_odata(oid: str, _: User = Depends(require_roles(Role.ADMIN, Role.DEVOPS)),
+                 tenant: Tenant = Depends(get_current_tenant),
+                 session: Session = Depends(get_session)) -> dict:
+    o = _owned_odata(session, tenant, oid)
+    session.delete(o)
+    session.commit()
+    return {"ok": True}
 
 
 @router.delete("/{ds_id}")

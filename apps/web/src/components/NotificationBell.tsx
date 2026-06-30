@@ -65,7 +65,7 @@ export function NotificationBell() {
                       </button>
                     )}
                   </div>
-                  {n.body && <p className="mt-0.5 text-xs text-slate-500">{n.body}</p>}
+                  {n.body && <p className="mt-0.5 max-h-60 overflow-y-auto whitespace-pre-wrap text-xs text-slate-500">{n.body}</p>}
                 </div>
               ))}
             </div>
