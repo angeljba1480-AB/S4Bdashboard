@@ -103,8 +103,10 @@ def _deliver_result(session: Session, tenant: Tenant, owner_id: str | None,
                 tok = token_store.access_token_for(session, tenant, row) if row else None
             to = (config.get("email_to") or (owner.email if owner else "") or (row.identifier if row else "")).strip()
             if row and tok and to:
+                from ..branding import with_signature
                 action = "outlook.send" if row.provider == "microsoft" else "gmail.send"
-                actions_exec.execute(action, tok, {"to": to, "subject": name, "body": content[:6000]})
+                body = with_signature(tenant, content[:6000])  # pie de marca blanca
+                actions_exec.execute(action, tok, {"to": to, "subject": name, "body": body})
                 sent.append(f"correo→{to}")
         except Exception:
             sent.append("correo✗")
