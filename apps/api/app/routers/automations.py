@@ -220,6 +220,59 @@ def _run_mando(session: Session, tenant: Tenant) -> str:
     return report or f"Reporte de operación (KPIs):\n{ctx}"
 
 
+_DOC_SPECS = {
+    "sow": {
+        "name": "SOW (Statement of Work)",
+        "system": ("Eres consultor que redacta SOW (Statement of Work) en español, en TEXTO PLANO "
+                   "legible (sin markdown). Secciones EN MAYÚSCULAS separadas por línea en blanco: "
+                   "OBJETIVO, ALCANCE, ENTREGABLES, SUPUESTOS, CRONOGRAMA, INVERSIÓN ESTIMADA. "
+                   "Usa la metodología y el contexto provistos; no inventes precios si no hay datos."),
+    },
+    "cyber": {
+        "name": "Diagnóstico de ciberseguridad",
+        "system": ("Eres consultor de ciberseguridad. Redacta un diagnóstico ejecutivo en español, "
+                   "TEXTO PLANO (sin markdown). Secciones EN MAYÚSCULAS separadas por línea en blanco: "
+                   "RESUMEN EJECUTIVO, HALLAZGOS Y RIESGOS, NIVEL DE MADUREZ, CONTROLES RECOMENDADOS, "
+                   "ROADMAP. Básate en el contexto provisto; no inventes datos del cliente."),
+    },
+}
+
+
+def _run_ai_doc(session: Session, tenant: Tenant, kind: str, config: dict) -> str:
+    """Genera un documento (SOW / diagnóstico cyber) con IA + grounding RAG, en
+    texto plano listo para entregar. Igual de 'real' que el centro de mando."""
+    from ..ai.resilience import generate_with_fallback
+    from ..ai.router import route_request
+    from .tramites import layered_search
+
+    spec = _DOC_SPECS[kind]
+    cliente = config.get("cliente") or config.get("empresa") or "(sin especificar)"
+    tema = config.get("alcance") or config.get("servicio") or config.get("sector") or config.get("tema") or ""
+    try:
+        matches = layered_search(session, tenant, q=f"{spec['name']} {tema} {cliente}", include_rag=True)[:5]
+    except Exception:
+        matches = []
+    ctx = [f"{m.get('title', '')}: {m.get('snippet', '')}" for m in matches if m.get("snippet")]
+    extra = f" Notas: {config.get('notas')}." if config.get("notas") else ""
+    prompt = f"Cliente/empresa: {cliente}. Tema/alcance/sector: {tema}.{extra}\n\nGenera el documento."
+    try:
+        decision = route_request(tenant, None, prompt, ctx, task="recipe")
+        gen = generate_with_fallback(decision.route, spec["system"], prompt, decision.context or ctx)
+        doc = (gen.response.content or "").strip()
+    except Exception as exc:
+        doc = f"{spec['name']} (borrador):\n\n{prompt}\n\n(No se pudo generar con IA: {exc})"
+    return doc or f"{spec['name']}: sin contenido"
+
+
+def _native_workflow_text(session: Session, tenant: Tenant, ref: str, config: dict) -> str:
+    """Workflows que MaestroAI resuelve de forma NATIVA (texto a entregar)."""
+    if ref == "mando":
+        return _run_mando(session, tenant)
+    if ref in _DOC_SPECS:
+        return _run_ai_doc(session, tenant, ref, config)
+    return ""
+
+
 # --- Motor multi-paso ------------------------------------------------------
 # Una automatización puede ser un PIPELINE de pasos encadenados; el resultado de
 # un paso (`ctx['content']`) alimenta al siguiente. Tipos: fetch (entrada),
@@ -246,9 +299,10 @@ def _run_step(session: Session, tenant: Tenant, uid: str | None, a: Automation,
             st, detail = _run_ingesta(session, tenant, uid, ctx.get("source") or {})
             ctx["content"] = detail
             return st != "failed", detail
-        if ref == "mando":
-            ctx["content"] = _run_mando(session, tenant)
-            return True, "centro de mando"
+        native = _native_workflow_text(session, tenant, ref, cfg)
+        if native:
+            ctx["content"] = native
+            return True, f"{ref} (nativo)"
         n8n = resolve_n8n(tenant)
         run = trigger_workflow(n8n, ref, {
             "automation_id": a.id, "tenant_id": tenant.id, "user_id": uid,
@@ -348,16 +402,15 @@ def _run(session: Session, tenant: Tenant, user: User | None, a: Automation,
             src["since"] = a.last_run or ""
         payload_out = {"automation_id": a.id, "tenant_id": tenant.id, "user_id": uid,
                        "source": src, **config}
-        # Centro de mando: MaestroAI calcula el reporte real y lo pasa a n8n (el
-        # canvas puede enrutarlo); si n8n no lo devuelve, se entrega este mismo.
-        mando_report = ""
-        if a.action_ref == "mando":
-            mando_report = _run_mando(session, tenant)
-            payload_out["text"] = mando_report
+        # Workflows nativos (mando/sow/cyber): MaestroAI calcula el contenido real y
+        # lo pasa a n8n (el canvas puede enrutarlo); si n8n no lo devuelve, se entrega este.
+        native_text = _native_workflow_text(session, tenant, a.action_ref, config)
+        if native_text:
+            payload_out["text"] = native_text
         run = trigger_workflow(cfg, a.action_ref, payload_out)
-        # mando: entrega el reporte LIMPIO calculado localmente (no el eco de n8n).
+        # Nativos: entrega el contenido LIMPIO calculado localmente (no el eco de n8n).
         # Otros workflows: extrae solo el campo útil de la respuesta (sin volcar JSON).
-        content = mando_report or _content_from_response(run.response)
+        content = native_text or _content_from_response(run.response)
         delivered = _deliver_result(session, tenant, uid, a.name, content, config)
         extra = f" → enviado a {delivered}" if delivered else ""
         return run.status, f"workflow {a.action_ref} · n8n:{run.source} · {run.detail}{extra}"

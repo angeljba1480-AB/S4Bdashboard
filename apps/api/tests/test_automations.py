@@ -68,6 +68,19 @@ def test_workflow_automation_runs_simulated(client):
     assert any(n["event_type"] == "automation" for n in notifs)
 
 
+def test_native_sow_cyber_generate_and_deliver(client):
+    """sow/cyber son workflows NATIVOS: generan documento con IA y lo entregan."""
+    h = _auth(client)
+    for ref, name in (("sow", "Generar SOW"), ("cyber", "Diag cyber")):
+        a = client.post("/automations", headers=h, json={
+            "name": name, "trigger": "manual", "action_type": "workflow", "action_ref": ref,
+            "config": {"cliente": "ACME", "alcance": "SOC gestionado"}}).json()
+        run = client.post(f"/automations/{a['id']}/run", headers=h).json()
+        assert run["status"] in ("completed", "simulated")
+        # entregó contenido nativo (no el eco JSON de n8n)
+        assert "enviado a" in run["detail"]
+
+
 def test_multistep_pipeline_runs_in_order_and_delivers(client):
     """Pipeline multi-paso: notify (genera contenido) → ai (transforma) → deliver."""
     h = _auth(client)
