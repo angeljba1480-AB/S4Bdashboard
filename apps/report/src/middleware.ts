@@ -25,5 +25,5 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   // Protege todo menos assets estáticos y las rutas de API de login/logout.
-  matcher: ["/((?!api/login|api/logout|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api/login|api/logout|api/health|_next/static|_next/image|favicon.ico).*)"],
 };

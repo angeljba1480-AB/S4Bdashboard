@@ -72,12 +72,14 @@ export async function verifyToken(token: string | undefined): Promise<boolean> {
   return timingSafeEqual(expected, given);
 }
 
-/** Compara la contraseña enviada con la configurada (constante en tiempo). */
+/** Compara la contraseña enviada con la configurada (constante en tiempo).
+ * Recorta espacios/saltos de línea a los extremos: al pegar el valor en Vercel es
+ * común que quede un "\n" o un espacio final que haría fallar la comparación. */
 export async function passwordMatches(input: string): Promise<boolean> {
-  const expected = process.env.REPORT_PASSWORD || "";
+  const expected = (process.env.REPORT_PASSWORD || "").trim();
   if (!expected) return false;
   // Comparación por HMAC para no filtrar longitud/contenido por tiempo.
-  const a = await hmac(input);
+  const a = await hmac(input.trim());
   const b = await hmac(expected);
   return timingSafeEqual(a, b);
 }
