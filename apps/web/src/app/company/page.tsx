@@ -4,6 +4,7 @@ import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
 import type { CompanyArea, CompanyProfile, Me } from "@shared/types";
 import { Building2, CheckCircle2, Plus, Save, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const SIZES = ["Micro (1-10)", "Pequeña (11-50)", "Mediana (51-250)", "Grande (250+)"];
@@ -14,6 +15,7 @@ export default function CompanyPage() {
   const [p, setP] = useState<CompanyProfile | null>(null);
   const [tech, setTech] = useState("");
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
@@ -57,10 +59,15 @@ export default function CompanyPage() {
     try {
       const tech_stack = tech.split(",").map((t) => t.trim()).filter(Boolean);
       const completed = !!(p.industry && p.description && p.audience);
+      const wasComplete = p.required_complete;
       const updated = await api.saveCompanyProfile({ ...p, tech_stack, completed });
       setP(updated);
       setTech((updated.tech_stack || []).join(", "));
       setSaved(true);
+      // Onboarding recién completado → abrir el Mapa de Procesos (el hub) para arrancar.
+      if (updated.required_complete && !wasComplete) {
+        setTimeout(() => router.push("/procesos?onboarding=1"), 700);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar");
     } finally {
