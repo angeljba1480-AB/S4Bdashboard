@@ -828,4 +828,13 @@ export const api = {
   updateStep: (id: string, body: { process_id: string; name: string; description?: string; order?: number; automation_state?: string }) =>
     request<{ id: string }>(`/processes/steps/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteStep: (id: string) => request<{ ok: boolean }>(`/processes/steps/${id}`, { method: "DELETE" }),
+  // Fase 3: trazabilidad + ROI
+  stepLinks: (stepId: string) => request<import("@shared/types").StepLinkDto[]>(`/processes/steps/${stepId}/links`),
+  addStepLink: (stepId: string, body: { target_type: string; target_name: string; target_id?: string }) =>
+    request<import("@shared/types").StepLinkDto>(`/processes/steps/${stepId}/links`, { method: "POST", body: JSON.stringify(body) }),
+  deleteStepLink: (linkId: string) => request<{ ok: boolean }>(`/processes/links/${linkId}`, { method: "DELETE" }),
+  stepMetrics: (stepId: string) => request<import("@shared/types").StepMetrics>(`/processes/steps/${stepId}/metrics`),
+  saveStepMetric: (stepId: string, body: { phase: "baseline" | "after"; hours_per_cycle?: number; role?: string; cost_per_cycle?: number; cycle_time_hours?: number; errors?: number; volume_month?: number }) =>
+    request<import("@shared/types").StepMetricDto>(`/processes/steps/${stepId}/metrics`, { method: "PUT", body: JSON.stringify(body) }),
+  roi: () => request<import("@shared/types").RoiSummary>("/processes/roi"),
 };

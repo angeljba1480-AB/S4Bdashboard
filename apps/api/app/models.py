@@ -851,3 +851,33 @@ class ProcessStep(SQLModel, table=True):
     order: int = 0
     automation_state: str = "manual"   # manual | candidate | automated
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# --- Procesos de Negocio Fase 3: trazabilidad (step→agente/automatización) y ROI ---
+class StepLink(SQLModel, table=True):
+    """Liga un paso a un recurso de IA que lo automatiza (agente/automatización/caso)."""
+    __tablename__ = "step_links"
+    id: str = Field(default_factory=lambda: _uuid("slink"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    step_id: str = Field(index=True, foreign_key="process_steps.id")
+    target_type: str = "agent"     # agent | automation | recipe
+    target_id: str = ""
+    target_name: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class StepMetric(SQLModel, table=True):
+    """Métrica de un paso, fase 'baseline' (antes) o 'after' (después de automatizar).
+    Con esto se calcula el ahorro real usando el costo de la empresa."""
+    __tablename__ = "step_metrics"
+    id: str = Field(default_factory=lambda: _uuid("smetric"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    step_id: str = Field(index=True, foreign_key="process_steps.id")
+    phase: str = "baseline"        # baseline | after
+    hours_per_cycle: float = 0.0
+    role: str = ""                # rol (para tomar costo-hora del Tablero)
+    cost_per_cycle: float = 0.0    # si 0 y hay rol+horas, se deriva del costo-hora
+    cycle_time_hours: float = 0.0  # tiempo de ciclo (calendario)
+    errors: float = 0.0            # % o # de errores/retrabajo
+    volume_month: float = 0.0      # ciclos por mes
+    captured_at: datetime = Field(default_factory=datetime.utcnow)
