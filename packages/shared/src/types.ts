@@ -314,6 +314,34 @@ export interface ProcessTree {
   lines: LineNode[];
 }
 
+export interface StepLinkDto {
+  id: string;
+  target_type: "agent" | "automation" | "recipe";
+  target_id: string;
+  target_name: string;
+}
+export interface StepMetricDto {
+  phase: "baseline" | "after";
+  hours_per_cycle: number;
+  role: string;
+  cost_per_cycle: number;
+  cycle_time_hours: number;
+  errors: number;
+  volume_month: number;
+}
+export interface StepMetrics {
+  baseline: StepMetricDto | null;
+  after: StepMetricDto | null;
+}
+export interface RoiSummary {
+  total: { savings_month: number; savings_year: number; hours_saved_month: number; steps_measured: number; steps_automated: number };
+  by_service: { id: string; name: string; kind: string; savings_month: number; clients: string[] }[];
+  by_line: { id: string; name: string; savings_month: number }[];
+  by_client: { name: string; savings_month: number }[];
+  step_savings: Record<string, { savings_per_cycle: number; savings_month: number; hours_saved_month: number; volume_month: number; has_after: boolean }>;
+  roles: string[];
+}
+
 export interface UsageSummary {
   total_messages: number;
   total_tokens: number;

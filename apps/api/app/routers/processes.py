@@ -20,6 +20,8 @@ from ..models import (
     BusinessService,
     ProcessStep,
     ServiceClient,
+    StepLink,
+    StepMetric,
     Tenant,
     User,
 )
@@ -341,3 +343,195 @@ def tree(tenant: Tenant = Depends(get_current_tenant), _: User = Depends(get_cur
         svcs_by_line.setdefault(x.line_id, []).append(
             {**_service_out(x, cl_by_svc.get(x.id, [])), "processes": procs_by_svc.get(x.id, [])})
     return {"lines": [{**_line_out(ln), "services": svcs_by_line.get(ln.id, [])} for ln in lines]}
+
+
+# =============================================================================
+# Fase 3 — Trazabilidad (paso ↔ agente/automatización) y ROI real
+# =============================================================================
+_LINK_TYPES = {"agent", "automation", "recipe"}
+_PHASES = {"baseline", "after"}
+
+
+def _role_rate(role: str) -> float:
+    """Costo-hora del rol tomado del Tablero Financiero (Concentrado BC), si existe."""
+    if not role:
+        return 0.0
+    try:
+        from ..finance import seed as _fseed
+        for r in (_fseed.cost_per_hour().get("by_role") or []):
+            if str(r.get("rol", "")).strip().lower() == role.strip().lower():
+                return float(r.get("costo_hora") or 0)
+    except Exception:
+        pass
+    return 0.0
+
+
+# ----------------------------- Links (trazabilidad) -------------------------
+class LinkIn(BaseModel):
+    target_type: str = "agent"
+    target_id: str = ""
+    target_name: str
+
+
+@router.get("/steps/{step_id}/links")
+def list_links(step_id: str, tenant: Tenant = Depends(get_current_tenant),
+               _: User = Depends(get_current_user), session: Session = Depends(get_session)) -> list[dict]:
+    _owned(session, ProcessStep, step_id, tenant)
+    rows = session.exec(select(StepLink).where(StepLink.step_id == step_id)).all()
+    return [{"id": x.id, "target_type": x.target_type, "target_id": x.target_id,
+             "target_name": x.target_name} for x in rows]
+
+
+@router.post("/steps/{step_id}/links", status_code=201)
+def add_link(step_id: str, body: LinkIn, tenant: Tenant = Depends(get_current_tenant),
+             user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    step = _owned(session, ProcessStep, step_id, tenant)
+    if body.target_type not in _LINK_TYPES:
+        raise HTTPException(status_code=422, detail="target_type inválido")
+    if not body.target_name.strip():
+        raise HTTPException(status_code=422, detail="target_name es obligatorio")
+    x = StepLink(tenant_id=tenant.id, step_id=step_id, target_type=body.target_type,
+                 target_id=body.target_id, target_name=body.target_name.strip())
+    session.add(x)
+    # ligar un recurso marca el paso como automatizado
+    if step.automation_state != "automated":
+        step.automation_state = "automated"
+        session.add(step)
+    _audit(session, tenant, user, "process_step_link", "process_step", step_id,
+           f"paso ligado a {body.target_type}: {body.target_name}")
+    session.commit(); session.refresh(x)
+    return {"id": x.id, "target_type": x.target_type, "target_id": x.target_id, "target_name": x.target_name}
+
+
+@router.delete("/links/{link_id}")
+def delete_link(link_id: str, tenant: Tenant = Depends(get_current_tenant),
+                _: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    x = _owned(session, StepLink, link_id, tenant)
+    session.delete(x); session.commit()
+    return {"ok": True}
+
+
+# ----------------------------- Métricas (baseline/after) --------------------
+class MetricIn(BaseModel):
+    phase: str = "baseline"
+    hours_per_cycle: float = 0.0
+    role: str = ""
+    cost_per_cycle: float = 0.0
+    cycle_time_hours: float = 0.0
+    errors: float = 0.0
+    volume_month: float = 0.0
+
+
+def _metric_out(m: StepMetric) -> dict:
+    return {"id": m.id, "phase": m.phase, "hours_per_cycle": m.hours_per_cycle, "role": m.role,
+            "cost_per_cycle": m.cost_per_cycle, "cycle_time_hours": m.cycle_time_hours,
+            "errors": m.errors, "volume_month": m.volume_month}
+
+
+@router.get("/steps/{step_id}/metrics")
+def list_metrics(step_id: str, tenant: Tenant = Depends(get_current_tenant),
+                 _: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    _owned(session, ProcessStep, step_id, tenant)
+    rows = session.exec(select(StepMetric).where(StepMetric.step_id == step_id)).all()
+    out = {m.phase: _metric_out(m) for m in rows}
+    return {"baseline": out.get("baseline"), "after": out.get("after")}
+
+
+@router.put("/steps/{step_id}/metrics")
+def upsert_metric(step_id: str, body: MetricIn, tenant: Tenant = Depends(get_current_tenant),
+                  _: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    _owned(session, ProcessStep, step_id, tenant)
+    if body.phase not in _PHASES:
+        raise HTTPException(status_code=422, detail="phase debe ser 'baseline' u 'after'")
+    # Costo por ciclo: si no se da, se deriva de horas × costo-hora del rol (Tablero).
+    cost = body.cost_per_cycle
+    if cost <= 0 and body.hours_per_cycle > 0 and body.role:
+        cost = round(body.hours_per_cycle * _role_rate(body.role), 2)
+    row = session.exec(select(StepMetric).where(StepMetric.step_id == step_id,
+                                                StepMetric.phase == body.phase)).first()
+    if row is None:
+        row = StepMetric(tenant_id=tenant.id, step_id=step_id, phase=body.phase)
+    row.hours_per_cycle = body.hours_per_cycle
+    row.role = body.role.strip()
+    row.cost_per_cycle = cost
+    row.cycle_time_hours = body.cycle_time_hours
+    row.errors = body.errors
+    row.volume_month = body.volume_month
+    session.add(row); session.commit(); session.refresh(row)
+    return _metric_out(row)
+
+
+# ----------------------------- ROI ------------------------------------------
+def _step_savings(session, step_id: str) -> dict | None:
+    """Ahorro mensual de un paso = (costo_antes − costo_después) × volumen."""
+    rows = {m.phase: m for m in session.exec(select(StepMetric).where(StepMetric.step_id == step_id)).all()}
+    b, a = rows.get("baseline"), rows.get("after")
+    if not b:
+        return None
+    vol = (a.volume_month if a and a.volume_month else b.volume_month) or 0
+    cost_after = a.cost_per_cycle if a else 0.0
+    hours_after = a.hours_per_cycle if a else 0.0
+    save_cycle = b.cost_per_cycle - cost_after
+    save_month = round(save_cycle * vol, 2)
+    hours_month = round((b.hours_per_cycle - hours_after) * vol, 2)
+    return {"savings_per_cycle": round(save_cycle, 2), "savings_month": save_month,
+            "hours_saved_month": hours_month, "volume_month": vol,
+            "has_after": a is not None}
+
+
+@router.get("/roi")
+def roi(tenant: Tenant = Depends(get_current_tenant), _: User = Depends(get_current_user),
+        session: Session = Depends(get_session)) -> dict:
+    """Rollup de ahorro por paso → servicio → línea (y por cliente en externos)."""
+    lines = {x.id: x for x in session.exec(select(BusinessLine).where(BusinessLine.tenant_id == tenant.id)).all()}
+    services = {x.id: x for x in session.exec(select(BusinessService).where(BusinessService.tenant_id == tenant.id)).all()}
+    procs = {x.id: x for x in session.exec(select(BusinessProcess).where(BusinessProcess.tenant_id == tenant.id)).all()}
+    steps = session.exec(select(ProcessStep).where(ProcessStep.tenant_id == tenant.id)).all()
+    clients = session.exec(select(ServiceClient).where(ServiceClient.tenant_id == tenant.id)).all()
+    cl_by_svc: dict[str, list[str]] = {}
+    for c in clients:
+        cl_by_svc.setdefault(c.service_id, []).append(c.client_name)
+
+    by_service: dict[str, dict] = {}
+    by_line: dict[str, dict] = {}
+    by_client: dict[str, dict] = {}
+    total = {"savings_month": 0.0, "hours_saved_month": 0.0, "steps_measured": 0, "steps_automated": 0}
+    step_savings: dict[str, dict] = {}
+
+    for st in steps:
+        sv = _step_savings(session, st.id)
+        if not sv:
+            continue
+        step_savings[st.id] = sv
+        total["steps_measured"] += 1
+        if sv["has_after"]:
+            total["steps_automated"] += 1
+        total["savings_month"] += sv["savings_month"]
+        total["hours_saved_month"] += sv["hours_saved_month"]
+        proc = procs.get(st.process_id)
+        svc = services.get(proc.service_id) if proc else None
+        if not svc:
+            continue
+        s = by_service.setdefault(svc.id, {"name": svc.name, "kind": svc.kind, "savings_month": 0.0,
+                                           "clients": cl_by_svc.get(svc.id, [])})
+        s["savings_month"] += sv["savings_month"]
+        ln = lines.get(svc.line_id)
+        if ln:
+            lentry = by_line.setdefault(ln.id, {"name": ln.name, "savings_month": 0.0})
+            lentry["savings_month"] += sv["savings_month"]
+        for cname in cl_by_svc.get(svc.id, []):
+            centry = by_client.setdefault(cname, {"name": cname, "savings_month": 0.0})
+            centry["savings_month"] += sv["savings_month"]
+
+    total["savings_month"] = round(total["savings_month"], 2)
+    total["hours_saved_month"] = round(total["hours_saved_month"], 2)
+    total["savings_year"] = round(total["savings_month"] * 12, 2)
+    _round = lambda d: {k: (round(v, 2) if isinstance(v, float) else v) for k, v in d.items()}
+    return {
+        "total": total,
+        "by_service": [{"id": k, **_round(v)} for k, v in sorted(by_service.items(), key=lambda x: -x[1]["savings_month"])],
+        "by_line": [{"id": k, **_round(v)} for k, v in sorted(by_line.items(), key=lambda x: -x[1]["savings_month"])],
+        "by_client": [{**_round(v)} for v in sorted(by_client.values(), key=lambda x: -x["savings_month"])],
+        "step_savings": step_savings,
+        "roles": [r.get("rol") for r in (__import__("app.finance.seed", fromlist=["cost_per_hour"]).cost_per_hour().get("by_role") or [])],
+    }
