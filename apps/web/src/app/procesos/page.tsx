@@ -19,7 +19,16 @@ export default function ProcesosPage() {
   const [roi, setRoi] = useState<RoiSummary | null>(null);
   const [active, setActive] = useState<ProcessStepNode | null>(null);
   const [view, setView] = useState<"list" | "canvas">("list");
+  const [welcome, setWelcome] = useState(false);
   const [err, setErr] = useState("");
+
+  // Llegada desde el onboarding recién completado: abrir el lienzo y dar la bienvenida.
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("onboarding") === "1") {
+      setWelcome(true);
+      setView("canvas");
+    }
+  }, []);
 
   const load = useCallback(() => {
     api.processTree().then(setTree).catch((e) => setErr(e instanceof Error ? e.message : "Error"));
@@ -52,6 +61,17 @@ export default function ProcesosPage() {
         subtitle="Línea → Servicio (interno OLA / externo SLA) → Proceso → Paso. Liga cada paso a un agente/automatización y mide el ahorro real con tus costos." />
       <div className="p-6">
         {err && <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{err}</div>}
+
+        {welcome && (
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
+            <Workflow className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
+            <div className="flex-1 text-sm text-violet-900">
+              <p className="font-semibold">¡Empresa configurada! Este es tu Mapa de Procesos.</p>
+              <p className="mt-0.5 text-violet-700">Dibuja aquí tus líneas de negocio → servicios (interno OLA / externo SLA) → procesos → pasos. Liga cada paso a un agente o automatización para medir el ahorro real. Empieza creando tu primera línea de negocio.</p>
+            </div>
+            <button onClick={() => setWelcome(false)} className="rounded-md p-1 text-violet-400 hover:bg-violet-100 hover:text-violet-700"><X className="h-4 w-4" /></button>
+          </div>
+        )}
 
         {roi && <RoiBar roi={roi} />}
 
