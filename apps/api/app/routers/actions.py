@@ -18,10 +18,9 @@ from ..ai.agent_planner import plan_steps, resolve_refs
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
 from ..integrations import actions_exec, token_store
-from ..models import (ActionGrant, ActionRequest, AgentPlaybook, AuditEvent,
-                      ModelRoute, Tenant, User)
-from .workflows import (CATALOG as WORKFLOW_CATALOG, list_recipe_rows,
-                       trigger_workflow_or_recipe)
+from ..models import ActionGrant, ActionRequest, AgentPlaybook, AuditEvent, ModelRoute, Tenant, User
+from .workflows import CATALOG as WORKFLOW_CATALOG
+from .workflows import list_recipe_rows, trigger_workflow_or_recipe
 
 router = APIRouter(prefix="/actions", tags=["actions"])
 

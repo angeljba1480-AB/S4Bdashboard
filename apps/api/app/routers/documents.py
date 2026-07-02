@@ -15,8 +15,7 @@ from .. import doc_categories
 from ..ai.rag import index_document
 from ..auth import get_current_tenant, get_current_user, require_roles
 from ..db import get_session
-from ..models import (AuditEvent, Document, DocumentCategory, DocumentChunk, Role,
-                      Sensitivity, Tenant, User)
+from ..models import AuditEvent, Document, DocumentCategory, DocumentChunk, Role, Sensitivity, Tenant, User
 from ..permissions import can_view_area
 from ..schemas import DocumentCategoryCreate, DocumentCategoryOut, DocumentOut, DocumentUpdate
 from ..security.classifier import classify_data

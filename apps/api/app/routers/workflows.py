@@ -15,6 +15,8 @@ from ..db import get_session
 from ..integrations.n8n import resolve_n8n, trigger_workflow
 from ..integrations.n8n_provision import (
     ensure_tenant_workflows,
+)
+from ..integrations.n8n_provision import (
     is_available as is_provision_available,
 )
 from ..models import AuditEvent, N8nRecipe, Role, Tenant, User

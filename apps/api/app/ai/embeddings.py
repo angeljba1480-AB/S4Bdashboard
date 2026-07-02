@@ -7,7 +7,6 @@ setting EMBEDDINGS_PROVIDER and implementing the same `embed()` signature.
 from __future__ import annotations
 
 import hashlib
-import math
 import re
 
 import numpy as np

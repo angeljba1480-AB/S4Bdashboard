@@ -7,11 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from ..auth import get_current_tenant, get_current_user, require_roles
+from ..auth import get_current_tenant, require_roles
 from ..config import settings
 from ..db import get_session
 from ..integrations.n8n import resolve_n8n
-from ..integrations.n8n_provision import ensure_tenant_workflows, is_available as is_provision_available
+from ..integrations.n8n_provision import ensure_tenant_workflows
+from ..integrations.n8n_provision import is_available as is_provision_available
 from ..models import AuditEvent, ModelRoute, Role, Tenant, User
 from ..security.crypto import encrypt
 

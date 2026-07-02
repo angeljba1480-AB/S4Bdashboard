@@ -30,9 +30,9 @@ def is_configured() -> bool:
 
 def tts(text: str, voice: str = "", fmt: str = "mp3") -> tuple[bytes, str]:  # pragma: no cover - network
     """Texto → audio. Devuelve (bytes, mime). PII redactada antes de enviar."""
-    from ..security.dlp import redact
-
     import httpx
+
+    from ..security.dlp import redact
 
     prov = open_provider_config()
     if not prov:

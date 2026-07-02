@@ -41,6 +41,7 @@ def test_rows_from_payload_v2_and_v4():
 def test_fetch_flattens_and_paginates(monkeypatch):
     """fetch sigue __next y aplana columnas (omite __metadata / objetos anidados)."""
     import httpx
+
     from app.integrations import odata
 
     pages = [

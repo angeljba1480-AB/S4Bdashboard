@@ -15,11 +15,10 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from .. import finetune as ft
-from ..auth import get_current_tenant, get_current_user, require_roles
+from ..auth import get_current_tenant, require_roles
 from ..config import settings
 from ..db import get_session
-from ..models import (AuditEvent, FineTuneDataset, FineTuneExample, FineTuneJob,
-                      MemoryItem, Role, Tenant, User)
+from ..models import AuditEvent, FineTuneDataset, FineTuneExample, FineTuneJob, MemoryItem, Role, Tenant, User
 
 router = APIRouter(prefix="/finetune", tags=["finetune"])
 

@@ -12,10 +12,11 @@ from .routers import (
     actions,
     admin,
     agents,
+    alerts,
     apps,
-    automations,
     audit,
     auth_routes,
+    automations,
     chat,
     company,
     dashboards,
@@ -27,13 +28,12 @@ from .routers import (
     finetune,
     flowcharts,
     images,
+    integrations,
     kedb,
     mail_digest,
     memory,
     notebooks,
-    integrations,
     oauth,
-    alerts,
     recipes,
     regional,
     runbooks,
@@ -41,10 +41,10 @@ from .routers import (
     sharepoint,
     spaces,
     sso,
-    voice,
     tramites,
     usage,
     v1,
+    voice,
     whatsapp,
     workflows,
 )
@@ -71,9 +71,9 @@ async def lifespan(app: FastAPI):
     seed()
     ensure_super_admin()
     # Load admin-configured external providers into the adapter runtime cache.
+    from . import runtime_config
     from .ai.adapters import load_overrides
     from .db import get_session as _gs
-    from . import runtime_config
     _s = next(_gs())
     try:
         load_overrides(_s)

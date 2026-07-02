@@ -99,6 +99,7 @@ def test_dataset_upload_override_and_delete(client):
 
 def _xlsx_bytes(rows_by_sheet: dict[str, list[list]]) -> bytes:
     import io
+
     import openpyxl
     wb = openpyxl.Workbook()
     wb.remove(wb.active)

@@ -1,8 +1,8 @@
 """Unit tests for the security core: PII, classification and the router."""
 from __future__ import annotations
 
-from app.models import ModelRoute, Sensitivity, Tenant
 from app.ai.router import route_request
+from app.models import ModelRoute, Sensitivity, Tenant
 from app.security.classifier import classify_data
 from app.security.pii import detect_pii
 
