@@ -271,9 +271,11 @@ export interface AppProject {
   name: string;
   description: string;
   spec: string;
-  status: "draft" | "built" | "pending_payment" | "deployed";
+  status: "draft" | "built" | "pending_payment" | "deployed" | "simulado";
   paid: boolean;
   deploy_url: string | null;
+  simulated?: boolean;
+  note?: string | null;
 }
 
 export interface UsageSummary {

@@ -185,6 +185,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </span>
           </div>
         )}
+        {me && !me.demo_mode && me.embeddings_semantic === false && (
+          <div className="flex items-start gap-2 border-b border-slate-200 bg-slate-50 px-8 py-2 text-xs text-slate-500">
+            <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              La búsqueda en documentos usa <b>coincidencia léxica</b> (no semántica): configura un
+              proveedor de embeddings en <a href="/admin" className="underline">Admin</a> para
+              resultados por significado.
+            </span>
+          </div>
+        )}
         {children}
       </main>
     </div>
