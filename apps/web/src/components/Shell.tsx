@@ -11,6 +11,8 @@ import {
   Bot,
   Brain,
   Building2,
+  ChevronDown,
+  ChevronRight,
   FileText,
   Cpu,
   Factory,
@@ -42,6 +44,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+// Sidebar recortado y unificado (ver docs/DISENO-PROCESOS-NEGOCIO.md §12). Lo esencial
+// vive en PLATAFORMA; lo fusionado/en-demostración se agrupa en AVANZADO (colapsable, para
+// no borrar rutas ni perder acceso). Nada se elimina: solo se ordena la navegación.
 const NAV = [
   {
     group: "GENERAL",
@@ -55,26 +60,32 @@ const NAV = [
     group: "PLATAFORMA",
     items: [
       { href: "/procesos", label: "Mapa de Procesos", icon: Workflow },
-      { href: "/espacios", label: "Espacios", icon: FolderKanban },
       { href: "/recipes", label: "Casos de uso", icon: Sparkles },
-      { href: "/runbooks", label: "Runbooks", icon: Factory },
-      { href: "/flowcharts", label: "Flujogramas", icon: GitBranch },
-      { href: "/dashboards", label: "Tableros", icon: LayoutGrid },
-      { href: "/regional", label: "Trámites y casos", icon: MapPin },
-      { href: "/apps", label: "App Studio", icon: Rocket },
       { href: "/automations", label: "Automatizaciones", icon: Zap },
-      { href: "/integrations", label: "Integraciones", icon: Plug },
-      { href: "/actions", label: "Acciones", icon: Wand2 },
       { href: "/agents", label: "Agentes", icon: Bot },
-      { href: "/kedb", label: "Errores conocidos (KEDB)", icon: ShieldAlert },
+      { href: "/integrations", label: "Integraciones", icon: Plug },
       { href: "/documents", label: "Documentos", icon: FileText },
       { href: "/chat", label: "Chat con fuentes", icon: MessageSquare },
-      { href: "/mail-digest", label: "Resumen de correo", icon: MailCheck },
       { href: "/notebooks", label: "Notebooks", icon: NotebookPen },
       { href: "/generate", label: "Generar imágenes", icon: ImagePlus },
-      { href: "/finetune", label: "Fine-tuning", icon: Cpu },
-      { href: "/memory", label: "Memoria", icon: Brain },
+      { href: "/dashboards", label: "Tableros", icon: LayoutGrid },
+      { href: "/regional", label: "Trámites y casos", icon: MapPin },
+      { href: "/kedb", label: "Errores conocidos (KEDB)", icon: ShieldAlert },
+    ],
+  },
+  {
+    group: "AVANZADO",
+    collapsible: true,   // colapsado por defecto: módulos fusionados o en demostración
+    items: [
+      { href: "/flowcharts", label: "Flujogramas", icon: GitBranch },
       { href: "/workflows", label: "Workflows", icon: Workflow },
+      { href: "/actions", label: "Acciones", icon: Wand2 },
+      { href: "/runbooks", label: "Runbooks", icon: Factory },
+      { href: "/espacios", label: "Espacios", icon: FolderKanban },
+      { href: "/mail-digest", label: "Resumen de correo", icon: MailCheck },
+      { href: "/memory", label: "Memoria", icon: Brain },
+      { href: "/apps", label: "App Studio", icon: Rocket },
+      { href: "/finetune", label: "Fine-tuning", icon: Cpu },
     ],
   },
   {
@@ -95,6 +106,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [logoError, setLogoError] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     api.me().then(setMe).catch(() => router.push("/login"));
@@ -131,32 +143,43 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <nav className="flex-1 space-y-6 px-3 py-5">
-          {NAV.map((g) => (
-            <div key={g.group}>
-              <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {g.group}
+          {NAV.map((g) => {
+            const collapsible = "collapsible" in g && g.collapsible;
+            // Un grupo colapsable se abre solo si contiene la ruta activa, o si el usuario lo abrió.
+            const hasActive = g.items.some((it) => it.href === pathname);
+            const open = !collapsible || showAdvanced || hasActive;
+            return (
+              <div key={g.group}>
+                {collapsible ? (
+                  <button onClick={() => setShowAdvanced((v) => !v)}
+                    className="flex w-full items-center gap-1 px-2 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600">
+                    {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />} {g.group}
+                  </button>
+                ) : (
+                  <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">{g.group}</div>
+                )}
+                {open && g.items
+                  .filter((it) => it.href !== "/regional" || me?.gov_enabled)
+                  .filter((it) => it.href !== "/kedb" || me?.kedb_enabled)
+                  .map((it) => {
+                    const Icon = it.icon;
+                    const active = pathname === it.href;
+                    return (
+                      <Link
+                        key={it.href}
+                        href={it.href}
+                        style={active ? { background: `${brand}14`, color: brand } : undefined}
+                        className={`mb-0.5 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                          active ? "" : "text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" /> {it.label}
+                      </Link>
+                    );
+                  })}
               </div>
-              {g.items
-                .filter((it) => it.href !== "/regional" || me?.gov_enabled)
-                .filter((it) => it.href !== "/kedb" || me?.kedb_enabled)
-                .map((it) => {
-                const Icon = it.icon;
-                const active = pathname === it.href;
-                return (
-                  <Link
-                    key={it.href}
-                    href={it.href}
-                    style={active ? { background: `${brand}14`, color: brand } : undefined}
-                    className={`mb-0.5 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                      active ? "" : "text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" /> {it.label}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+            );
+          })}
         </nav>
         <div className="border-t border-slate-200 p-4">
           {me && (
