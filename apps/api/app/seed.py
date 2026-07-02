@@ -11,6 +11,13 @@ DEMO_PASSWORD = "demo1234"
 
 
 def seed() -> None:
+    from .config import settings
+
+    # En producción no sembramos credenciales demo conocidas (admin@maestroai.mx /
+    # demo1234) salvo que se active explícitamente con SEED_DEMO_DATA=true.
+    if not settings.should_seed_demo:
+        return
+
     with Session(engine) as session:
         if session.exec(select(Tenant)).first():
             return  # already seeded
