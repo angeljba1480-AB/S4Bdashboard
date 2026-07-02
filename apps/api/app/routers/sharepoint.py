@@ -16,9 +16,9 @@ from .. import doc_categories
 from ..ai.rag import index_document
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
+from ..ingest import extract_text
 from ..integrations import sharepoint as sp
 from ..integrations import token_store
-from ..ingest import extract_text
 from ..models import AuditEvent, Document, Tenant, User
 from ..security.classifier import classify_data
 

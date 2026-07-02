@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from ..models import FinanceDataset, Tenant
 from ..security.crypto import decrypt, encrypt

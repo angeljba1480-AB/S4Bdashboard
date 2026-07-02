@@ -12,7 +12,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_db_path}"
 from fastapi.testclient import TestClient  # noqa: E402
 
 import app.integrations.n8n as n8n  # noqa: E402
-from app.integrations.n8n import N8nConfig, resolve_n8n  # noqa: E402
+from app.integrations.n8n import resolve_n8n  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Tenant  # noqa: E402
 from app.security.crypto import encrypt  # noqa: E402

@@ -123,7 +123,6 @@ def update_support_sender(
     session: Session = Depends(get_session),
 ) -> dict:
     """Fija el buzón desde el que salen los correos de las automatizaciones."""
-    from datetime import datetime
 
     from ..integrations import token_store
     acc = body.account_id.strip()

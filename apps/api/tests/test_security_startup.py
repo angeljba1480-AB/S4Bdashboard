@@ -6,9 +6,6 @@ pasa, y (c) el seed demo no siembra credenciales conocidas en producción salvo 
 """
 from __future__ import annotations
 
-import os
-import tempfile
-
 from app.config import Settings
 
 _STRONG = "x" * 48  # secreto propio de >=32 chars

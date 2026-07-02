@@ -124,7 +124,6 @@ def retrieve(
         document_ids = ids
 
     # How many candidates to pull before reranking down to top_k.
-    from .. import runtime_config
     from .rerank import is_enabled as rerank_on
     use_rerank = rerank_on()
     fetch_k = max(top_k, settings.rerank_candidates) if use_rerank else top_k

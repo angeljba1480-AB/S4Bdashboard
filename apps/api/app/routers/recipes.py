@@ -6,11 +6,9 @@ Everything is tenant-scoped and audited.
 """
 from __future__ import annotations
 
-import io
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -31,7 +29,6 @@ from ..recipes.catalog import (
     RECIPES,
     db_recipe_to_dict,
     execute,
-    get_recipe,
     prefill,
     public_recipe,
     validate_inputs,

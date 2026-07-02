@@ -160,9 +160,10 @@ def set_runtime_override(route_value: str, cfg: dict | None) -> None:
 
 def load_overrides(session) -> None:
     """Load admin-configured external providers from the DB into the runtime cache."""
+    from sqlmodel import select
+
     from ..models import ProviderSetting
     from ..security.crypto import decrypt
-    from sqlmodel import select
 
     _RUNTIME.clear()
     for row in session.exec(select(ProviderSetting)).all():
