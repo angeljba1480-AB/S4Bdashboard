@@ -278,6 +278,42 @@ export interface AppProject {
   note?: string | null;
 }
 
+// --- Procesos de Negocio (BPM ligero) ---
+export interface ProcessStepNode {
+  id: string;
+  process_id: string;
+  name: string;
+  description: string;
+  order: number;
+  automation_state: "manual" | "candidate" | "automated";
+}
+export interface ProcessNode {
+  id: string;
+  service_id: string;
+  name: string;
+  description: string;
+  steps: ProcessStepNode[];
+}
+export interface ServiceNode {
+  id: string;
+  line_id: string;
+  name: string;
+  kind: "internal" | "external";
+  sla_ola: string;
+  description: string;
+  clients: string[];
+  processes: ProcessNode[];
+}
+export interface LineNode {
+  id: string;
+  name: string;
+  description: string;
+  services: ServiceNode[];
+}
+export interface ProcessTree {
+  lines: LineNode[];
+}
+
 export interface UsageSummary {
   total_messages: number;
   total_tokens: number;

@@ -54,6 +54,7 @@ const NAV = [
   {
     group: "PLATAFORMA",
     items: [
+      { href: "/procesos", label: "Mapa de Procesos", icon: Workflow },
       { href: "/espacios", label: "Espacios", icon: FolderKanban },
       { href: "/recipes", label: "Casos de uso", icon: Sparkles },
       { href: "/runbooks", label: "Runbooks", icon: Factory },
