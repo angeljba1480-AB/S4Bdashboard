@@ -172,7 +172,31 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto"><GlobalSearch /><NotificationBell />{children}</main>
+      <main className="flex-1 overflow-auto">
+        <GlobalSearch />
+        <NotificationBell />
+        {me?.demo_mode && (
+          <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-8 py-2.5 text-sm text-amber-800">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <b>Modo demostración.</b> No hay un proveedor de IA configurado, así que las
+              respuestas de IA (chat, casos de uso, agentes) son <b>simuladas</b>. Un administrador
+              puede conectar un modelo real en <a href="/admin" className="underline">Admin → Modelos</a>.
+            </span>
+          </div>
+        )}
+        {me && !me.demo_mode && me.embeddings_semantic === false && (
+          <div className="flex items-start gap-2 border-b border-slate-200 bg-slate-50 px-8 py-2 text-xs text-slate-500">
+            <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              La búsqueda en documentos usa <b>coincidencia léxica</b> (no semántica): configura un
+              proveedor de embeddings en <a href="/admin" className="underline">Admin</a> para
+              resultados por significado.
+            </span>
+          </div>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

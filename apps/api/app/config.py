@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     # producción NO se siembran credenciales conocidas salvo que se active a propósito.
     seed_demo_data: bool = True
 
+    # Pasarela de pago (App Studio pay-to-prod). Sin proveedor real (Stripe/MercadoPago)
+    # NO se cobra ni se simula un cobro: la publicación queda como "simulada".
+    payments_enabled: bool = False
+
     database_url: str = "sqlite:///./privateai.db"
     cors_origins: str = ("http://localhost:3000,http://127.0.0.1:3000,"
                          "https://plataforma.maestroai.mx")
