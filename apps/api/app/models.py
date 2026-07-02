@@ -881,3 +881,11 @@ class StepMetric(SQLModel, table=True):
     errors: float = 0.0            # % o # de errores/retrabajo
     volume_month: float = 0.0      # ciclos por mes
     captured_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CanvasLayout(SQLModel, table=True):
+    """Posiciones (x,y) de los nodos del Mapa de Procesos por tenant, para el lienzo."""
+    __tablename__ = "canvas_layouts"
+    tenant_id: str = Field(primary_key=True, foreign_key="tenants.id")
+    data: str = "{}"               # JSON {node_id: {"x": int, "y": int}}
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
