@@ -139,3 +139,14 @@ def test_roi_calcula_ahorro():
         # el total y por-cliente incluyen al menos este ahorro
         assert roi["total"]["savings_month"] >= 8000.0
         assert any(cl["name"] == "Banjercito" and cl["savings_month"] >= 8000.0 for cl in roi["by_client"])
+
+
+def test_canvas_layout_guarda_y_carga():
+    with TestClient(app) as c:
+        h = _auth(c)
+        assert c.get("/processes/canvas-layout", headers=h).json()["positions"] == {}
+        r = c.put("/processes/canvas-layout", headers=h,
+                  json={"positions": {"bl_1": {"x": 10, "y": 20}, "bad": {"x": 1}, "z": "nope"}})
+        assert r.json()["ok"] and r.json()["count"] == 1  # solo el nodo válido
+        pos = c.get("/processes/canvas-layout", headers=h).json()["positions"]
+        assert pos == {"bl_1": {"x": 10, "y": 20}}
