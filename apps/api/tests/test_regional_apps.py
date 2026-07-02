@@ -45,8 +45,9 @@ def test_procedure_to_proposal_feeds_curation(client):
     assert proc["title"] in titles
 
 
-# --- app studio (pay-to-prod) ----------------------------------------------
-def test_app_build_then_paywalled_deploy(client):
+# --- app studio: publicación honesta ---------------------------------------
+def test_app_deploy_sin_pago_es_simulado(client):
+    """Sin pasarela (por defecto): publicar NO cobra ni despliega real → simulado."""
     h = _auth(client)
     appp = client.post("/apps", headers=h, json={
         "name": "Citas Barbería", "description": "agenda de citas con recordatorios por WhatsApp",
@@ -54,17 +55,32 @@ def test_app_build_then_paywalled_deploy(client):
     assert appp["status"] == "built"
     assert appp["paid"] is False
 
-    # deploy without paying -> 402 with checkout
+    out = client.post(f"/apps/{appp['id']}/deploy", headers=h)
+    assert out.status_code == 200
+    j = out.json()
+    assert j["status"] == "simulado" and j["simulated"] is True
+    assert not j["deploy_url"]  # no se fabrica una URL muerta
+    assert "simulad" in (j["note"] or "").lower()
+
+    # el checkout no cobra: responde 409 (pagos no habilitados)
+    ck = client.post(f"/apps/{appp['id']}/checkout", headers=h)
+    assert ck.status_code == 409
+
+
+def test_app_deploy_con_pasarela_es_paywalled(client, monkeypatch):
+    """Con PAYMENTS_ENABLED sí es pay-to-prod: 402 → checkout → deployed."""
+    import app.config as cfg
+    monkeypatch.setattr(cfg.settings, "payments_enabled", True)
+    h = _auth(client)
+    appp = client.post("/apps", headers=h, json={
+        "name": "Citas 2", "description": "agenda con recordatorios",
+    }).json()
     blocked = client.post(f"/apps/{appp['id']}/deploy", headers=h)
     assert blocked.status_code == 402
-    detail = blocked.json()["detail"]
-    assert detail["checkout"]["amount"] > 0
-
-    # confirm payment (stub) then deploy succeeds
+    assert blocked.json()["detail"]["checkout"]["amount"] > 0
     client.post(f"/apps/{appp['id']}/checkout", headers=h)
     deployed = client.post(f"/apps/{appp['id']}/deploy", headers=h).json()
-    assert deployed["status"] == "deployed"
-    assert deployed["deploy_url"]
+    assert deployed["status"] == "deployed" and deployed["deploy_url"]
 
 
 def test_app_requires_name(client):

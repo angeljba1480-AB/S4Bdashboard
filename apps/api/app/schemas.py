@@ -36,6 +36,11 @@ class MeResponse(BaseModel):
     country_name: str = "México"
     gov_enabled: bool = False      # ¿mostrar contenido de gobierno (Trámites/recetas públicas)?
     kedb_enabled: bool = False     # ¿perfil de ciberseguridad? → módulo KEDB
+    # Modo de la plataforma (honestidad "modo demo"): si no hay proveedor de IA real
+    # configurado, las respuestas de IA son simuladas (MockAdapter).
+    ai_live: bool = False          # hay al menos un proveedor de chat real
+    demo_mode: bool = True         # sin IA real → respuestas simuladas
+    embeddings_semantic: bool = False  # embeddings reales (no hashing local)
 
 
 # --- Agents -----------------------------------------------------------------

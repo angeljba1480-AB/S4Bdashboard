@@ -20,6 +20,9 @@ export interface Me {
   country_name?: string;
   gov_enabled?: boolean;
   kedb_enabled?: boolean;
+  ai_live?: boolean;            // hay un proveedor de IA real configurado
+  demo_mode?: boolean;          // sin IA real → respuestas simuladas
+  embeddings_semantic?: boolean; // embeddings reales (no hashing local)
 }
 
 export interface Agent {
@@ -268,9 +271,11 @@ export interface AppProject {
   name: string;
   description: string;
   spec: string;
-  status: "draft" | "built" | "pending_payment" | "deployed";
+  status: "draft" | "built" | "pending_payment" | "deployed" | "simulado";
   paid: boolean;
   deploy_url: string | null;
+  simulated?: boolean;
+  note?: string | null;
 }
 
 export interface UsageSummary {

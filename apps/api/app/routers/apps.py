@@ -1,10 +1,12 @@
-"""/apps — App Studio. Build apps/automations with AI for free; pay to deploy
-to production (pay-to-prod gate).
+"""/apps — App Studio. Genera apps con IA (plan por el router de privacidad, auditado).
 
-The build plan is generated through the privacy router (governed, audited). The
-deploy step is gated by payment: until paid, /deploy returns 402 with checkout
-details. A real payment provider (Stripe/MercadoPago) confirms via /checkout,
-and a real prod pipeline replaces the stub deploy — both wire in later.
+Publicación honesta:
+- Sin pasarela de pago (PAYMENTS_ENABLED=false, por defecto): la publicación es
+  **simulada** — no se cobra nada ni se despliega a un servidor real; el estado queda
+  "simulado". Así no presentamos una transacción/URL falsa como real.
+- Con pasarela (PAYMENTS_ENABLED=true): pay-to-prod real — /deploy responde 402 con
+  checkout hasta pagar; un proveedor real (Stripe/MercadoPago) confirma vía /checkout y
+  un pipeline real reemplaza el stub de deploy.
 """
 from __future__ import annotations
 
@@ -39,8 +41,12 @@ def _now():
 
 
 def _out(p: AppProject) -> dict:
+    simulated = p.status == "simulado"
     return {"id": p.id, "name": p.name, "description": p.description, "spec": p.spec,
-            "status": p.status, "paid": p.paid, "deploy_url": p.deploy_url or None}
+            "status": p.status, "paid": p.paid, "deploy_url": p.deploy_url or None,
+            "simulated": simulated,
+            "note": ("Publicación simulada: no hay pasarela de pago configurada, no se realizó "
+                     "ningún cargo y no se desplegó a un servidor real." if simulated else None)}
 
 
 def _load(session, tenant, user, app_id) -> AppProject:
@@ -119,8 +125,27 @@ def deploy_app(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> dict:
-    """Push to production — gated by payment. Returns 402 with checkout if unpaid."""
+    """Publica la app. Si hay pasarela de pago (PAYMENTS_ENABLED) es pay-to-prod
+    (402 si no está pagado). Sin pasarela: publicación **simulada, sin cargo** —
+    no se cobra ni se despliega a un servidor real (honestidad de modo demo)."""
     p = _load(session, tenant, user, app_id)
+
+    if not settings.payments_enabled:
+        # Sin pago: no cobramos ni fabricamos una URL muerta. Se marca como simulada.
+        p.status = "simulado"
+        p.deploy_url = ""
+        p.updated_at = _now()
+        session.add(p)
+        session.add(AuditEvent(
+            tenant_id=tenant.id, user_id=user.id, event_type="app_deploy_simulado",
+            object_type="app", object_id=p.id, risk_level="low",
+            reason=f"publicación simulada (App Studio sin pasarela de pago): {p.name}",
+        ))
+        session.commit()
+        session.refresh(p)
+        return _out(p)
+
+    # Con pasarela: gate de pago real.
     if not p.paid:
         p.status = "pending_payment"
         session.add(p)
@@ -156,6 +181,10 @@ def confirm_checkout(
     """Confirm payment (stub). A real provider webhook (Stripe/MercadoPago) sets
     `paid` here. After this, /deploy succeeds."""
     p = _load(session, tenant, user, app_id)
+    if not settings.payments_enabled:
+        raise HTTPException(status_code=409, detail=(
+            "Pagos no habilitados en esta instancia (modo demo). No se realizó ningún cargo; "
+            "publica en modo simulado desde /deploy."))
     p.paid = True
     session.add(p)
     session.add(AuditEvent(
