@@ -18,6 +18,7 @@ from ..models import (
     BusinessLine,
     BusinessProcess,
     BusinessService,
+    CanvasLayout,
     ProcessStep,
     ServiceClient,
     StepLink,
@@ -535,3 +536,41 @@ def roi(tenant: Tenant = Depends(get_current_tenant), _: User = Depends(get_curr
         "step_savings": step_savings,
         "roles": [r.get("rol") for r in (__import__("app.finance.seed", fromlist=["cost_per_hour"]).cost_per_hour().get("by_role") or [])],
     }
+
+
+# ----------------------------- Lienzo: posiciones ---------------------------
+class LayoutIn(BaseModel):
+    positions: dict
+
+
+@router.get("/canvas-layout")
+def get_layout(tenant: Tenant = Depends(get_current_tenant), _: User = Depends(get_current_user),
+               session: Session = Depends(get_session)) -> dict:
+    import json
+    row = session.get(CanvasLayout, tenant.id)
+    try:
+        return {"positions": json.loads(row.data) if row and row.data else {}}
+    except Exception:
+        return {"positions": {}}
+
+
+@router.put("/canvas-layout")
+def save_layout(body: LayoutIn, tenant: Tenant = Depends(get_current_tenant),
+                _: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict:
+    import json
+    from datetime import datetime
+    # Sanitiza: solo {id: {x:int, y:int}}
+    clean: dict[str, dict] = {}
+    for k, v in (body.positions or {}).items():
+        if isinstance(v, dict) and "x" in v and "y" in v:
+            try:
+                clean[str(k)] = {"x": round(float(v["x"])), "y": round(float(v["y"]))}
+            except (ValueError, TypeError):
+                continue
+    row = session.get(CanvasLayout, tenant.id)
+    if row is None:
+        row = CanvasLayout(tenant_id=tenant.id)
+    row.data = json.dumps(clean)
+    row.updated_at = datetime.utcnow()
+    session.add(row); session.commit()
+    return {"ok": True, "count": len(clean)}

@@ -837,4 +837,7 @@ export const api = {
   saveStepMetric: (stepId: string, body: { phase: "baseline" | "after"; hours_per_cycle?: number; role?: string; cost_per_cycle?: number; cycle_time_hours?: number; errors?: number; volume_month?: number }) =>
     request<import("@shared/types").StepMetricDto>(`/processes/steps/${stepId}/metrics`, { method: "PUT", body: JSON.stringify(body) }),
   roi: () => request<import("@shared/types").RoiSummary>("/processes/roi"),
+  canvasLayout: () => request<{ positions: Record<string, { x: number; y: number }> }>("/processes/canvas-layout"),
+  saveCanvasLayout: (positions: Record<string, { x: number; y: number }>) =>
+    request<{ ok: boolean; count: number }>("/processes/canvas-layout", { method: "PUT", body: JSON.stringify({ positions }) }),
 };

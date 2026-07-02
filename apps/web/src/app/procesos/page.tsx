@@ -3,8 +3,9 @@
 import { PageHeader, Shell } from "@/components/Shell";
 import { api } from "@/lib/api";
 import type { LineNode, ProcessStepNode, ProcessTree, RoiSummary, ServiceNode, StepLinkDto, StepMetrics } from "@shared/types";
-import { Building2, Gauge, Link2, Plus, Trash2, TrendingUp, Wand2, Workflow, X } from "lucide-react";
+import { Building2, Gauge, LayoutGrid, Link2, List, Plus, Trash2, TrendingUp, Wand2, Workflow, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { ProcessCanvas } from "./ProcessCanvas";
 
 type StepStateT = "manual" | "candidate" | "automated";
 const STATE_LABEL: Record<StepStateT, string> = { manual: "Manual", candidate: "Candidato", automated: "Automatizado" };
@@ -17,6 +18,7 @@ export default function ProcesosPage() {
   const [tree, setTree] = useState<ProcessTree | null>(null);
   const [roi, setRoi] = useState<RoiSummary | null>(null);
   const [active, setActive] = useState<ProcessStepNode | null>(null);
+  const [view, setView] = useState<"list" | "canvas">("list");
   const [err, setErr] = useState("");
 
   const load = useCallback(() => {
@@ -53,10 +55,14 @@ export default function ProcesosPage() {
 
         {roi && <RoiBar roi={roi} />}
 
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <button onClick={addLine} className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-700">
             <Plus className="h-4 w-4" /> Nueva línea de negocio
           </button>
+          <div className="flex rounded-lg bg-slate-100 p-1">
+            <button onClick={() => setView("list")} className={`flex items-center gap-1 rounded-md px-3 py-1 text-sm font-semibold ${view === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}><List className="h-3.5 w-3.5" /> Lista</button>
+            <button onClick={() => setView("canvas")} className={`flex items-center gap-1 rounded-md px-3 py-1 text-sm font-semibold ${view === "canvas" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}><LayoutGrid className="h-3.5 w-3.5" /> Lienzo</button>
+          </div>
           <span className="text-xs text-slate-400">Interno = OLA · Externo = SLA (cliente que paga). Clic en un paso para ligar IA y medir ROI.</span>
         </div>
 
@@ -65,6 +71,8 @@ export default function ProcesosPage() {
             <Building2 className="mx-auto mb-3 h-8 w-8 text-slate-300" />
             <p className="text-sm text-slate-500">Aún no hay líneas de negocio. Crea la primera para empezar a mapear.</p>
           </div>
+        ) : view === "canvas" ? (
+          <ProcessCanvas tree={tree} savings={roi?.step_savings || {}} onOpenStep={setActive} />
         ) : (
           <div className="space-y-5">
             {tree.lines.map((line) => (
