@@ -8,3 +8,8 @@ next-env.d.ts
 .env.local
 # Datos reales del reporte — NUNCA se commitean (se inyectan por env var en Vercel).
 src/data/real_bundle.json
+# Artefactos de pruebas E2E (Playwright)
+/test-results
+/playwright-report
+/blob-report
+/.playwright
