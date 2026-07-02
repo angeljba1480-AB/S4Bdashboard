@@ -15,7 +15,7 @@ from ..ai.embeddings import cosine, embed
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
 from ..models import MemoryItem, Tenant, User
-from ..permissions import can_view_area, visible_areas
+from ..permissions import can_view_area
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -58,7 +58,6 @@ def recall(session: Session, tenant_id: str, user: User, query: str, top_k: int 
     rows = session.exec(
         select(MemoryItem).where(MemoryItem.tenant_id == tenant_id, MemoryItem.user_id == user.id)
     ).all()
-    areas = visible_areas(user)
     rows = [m for m in rows if can_view_area(user, m.area or "")]
     if not rows or not query.strip():
         return rows[:top_k]

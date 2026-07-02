@@ -234,6 +234,11 @@ class Settings(BaseSettings):
             errs.append("La llave de cifrado (MASTER_KMS_KEY/SECRET_KEY) es el valor por defecto.")
         if len(self.secret_key) < 32:
             errs.append("SECRET_KEY debe tener al menos 32 caracteres.")
+        # Persistencia: SQLite no es apto para producción multi-tenant (un solo escritor,
+        # sin pgvector). Se exige Postgres.
+        if self.database_url.startswith("sqlite"):
+            errs.append("DATABASE_URL usa SQLite — en producción configura Postgres "
+                        "(postgresql://...). SQLite no soporta concurrencia ni pgvector.")
         return errs
 
     def security_warnings(self) -> list[str]:
@@ -242,8 +247,9 @@ class Settings(BaseSettings):
         if "vercel.app" in (self.cors_origin_regex or ""):
             warns.append("CORS_ORIGIN_REGEX permite cualquier *.vercel.app con credenciales — "
                          "acótalo a tus dominios (CORS_ORIGIN_REGEX / CORS_ORIGINS).")
-        if self.database_url.startswith("sqlite"):
-            warns.append("DATABASE_URL usa SQLite — en producción usa Postgres (+pgvector).")
+        if self.vector_store == "inprocess":
+            warns.append("VECTOR_STORE=inprocess (coseno en Python, O(n) en RAM por consulta) — "
+                         "en producción usa 'pgvector' o 'qdrant' para escalar el RAG.")
         if self.should_seed_demo:
             warns.append("Se sembrarán credenciales demo conocidas (admin@maestroai.mx / demo1234).")
         return warns

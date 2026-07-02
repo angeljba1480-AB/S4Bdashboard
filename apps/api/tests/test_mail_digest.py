@@ -21,6 +21,7 @@ def client():
         yield c
     # Limpia las conexiones OAuth creadas (el DB se comparte entre archivos en CI).
     from sqlmodel import Session, select
+
     from app.db import engine
     from app.models import OAuthToken
     with Session(engine) as s:
@@ -37,6 +38,7 @@ def _auth(client) -> dict:
 def _connect_mailbox(client, h):
     """Crea una conexión OAuth activa para el usuario (para resolve_connection)."""
     from sqlmodel import Session
+
     from app.db import engine
     from app.models import OAuthToken, Tenant
     from app.security.crypto import encrypt
@@ -82,6 +84,7 @@ def test_preview_classifies_and_learns(client, monkeypatch):
     assert "Escuela" in r["text"] and "Pendientes" in r["text"] and "propaganda" in r["text"].lower()
     # aprendió el remitente
     from sqlmodel import Session, select
+
     from app.db import engine
     from app.models import MailDigestConfig
     with Session(engine) as s:

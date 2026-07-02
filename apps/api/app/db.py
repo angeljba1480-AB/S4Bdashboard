@@ -54,10 +54,43 @@ def _ensure_columns() -> None:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} VARCHAR DEFAULT {default}"))
 
 
+def _alembic_upgrade() -> None:
+    """Producción: Alembic es la fuente de verdad del esquema.
+
+    - BD nueva (sin tablas): aplica todas las migraciones.
+    - BD legacy (tablas creadas con create_all, sin control de versión): la sella en el
+      baseline y luego aplica lo pendiente, sin recrear tablas existentes.
+    """
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+    from sqlalchemy import inspect
+
+    api_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cfg = Config(os.path.join(api_dir, "alembic.ini"))
+    cfg.set_main_option("script_location", os.path.join(api_dir, "migrations"))
+    cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+
+    insp = inspect(engine)
+    tables = set(insp.get_table_names())
+    if tables and "alembic_version" not in tables:
+        # Esquema legacy (creado con create_all, ~= baseline) → sellarlo EN el baseline
+        # (revisión raíz) para no recrear tablas; luego aplicar migraciones posteriores.
+        base_rev = ScriptDirectory.from_config(cfg).get_bases()[0]
+        command.stamp(cfg, base_rev)
+    command.upgrade(cfg, "head")
+
+
 def init_db() -> None:
-    # Import models so SQLModel registers the tables before create_all.
+    # Import models so SQLModel registers the tables.
     from . import models  # noqa: F401
 
+    if settings.is_production:
+        _alembic_upgrade()
+        return
+    # Dev/tests: create_all es rápido y suficiente (Alembic se prueba aparte).
     SQLModel.metadata.create_all(engine)
     _ensure_columns()
 

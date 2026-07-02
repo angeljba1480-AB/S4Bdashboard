@@ -62,7 +62,7 @@ def test_only_super_admin_lists_tenants(client):
 
 def test_plain_admin_cannot_grant_super_admin(client):
     su = _login(client, "admin@maestroai.mx")
-    admin2 = client.post("/admin/users", headers=su, json={
+    client.post("/admin/users", headers=su, json={
         "email": "admin2@maestroai.mx", "name": "Admin Dos", "role": "admin"}).json()
     target = client.post("/admin/users", headers=su, json={
         "email": "target@maestroai.mx", "name": "Objetivo", "role": "user"}).json()

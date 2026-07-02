@@ -12,13 +12,13 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_db_path}"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app.main import app  # noqa: E402
 from app.ingest import extract_text  # noqa: E402
+from app.main import app  # noqa: E402
 
 
 def _make_pdf(text: str) -> bytes:
-    from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import LETTER
+    from reportlab.pdfgen import canvas
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=LETTER)
     c.drawString(72, 720, text)

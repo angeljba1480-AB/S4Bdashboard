@@ -47,8 +47,8 @@ def _build_prompt(messages: list[dict], cfg: MailDigestConfig, profile: dict) ->
               "(literal) y luego inglés.\n" if cfg.language == "bilingue" else "")
     descarta = ("Descarta la propaganda/publicidad/newsletters/spam: NO la incluyas en items, solo cuéntala "
                 "en num_descartados.\n" if cfg.discard_propaganda else "")
-    pend = (f"Marca en 'pendiente' los correos que parecen esperar TU respuesta (preguntas, solicitudes) "
-            f"de remitentes no automáticos.\n" if cfg.pending_enabled else "")
+    pend = ("Marca en 'pendiente' los correos que parecen esperar TU respuesta (preguntas, solicitudes) "
+            "de remitentes no automáticos.\n" if cfg.pending_enabled else "")
     return (
         "Eres un asistente que revisa el correo del día. Te paso los correos recibidos.\n"
         f"{bloque_notas}{bloque_ctx}\n"

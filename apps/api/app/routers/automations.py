@@ -13,11 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from ..automations.catalog import TEMPLATES, get_template
 from ..auth import get_current_tenant, get_current_user
+from ..automations.catalog import TEMPLATES, get_template
 from ..db import get_session
 from ..integrations.n8n import resolve_n8n, trigger_workflow
-from ..models import Automation, AuditEvent, Notification, Tenant, User
+from ..models import AuditEvent, Automation, Notification, Tenant, User
 
 router = APIRouter(prefix="/automations", tags=["automations"])
 

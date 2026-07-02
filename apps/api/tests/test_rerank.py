@@ -12,8 +12,8 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_db_path}"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app.main import app  # noqa: E402
 from app.ai.rag import Citation, _maybe_rerank  # noqa: E402
+from app.main import app  # noqa: E402
 from app.models import Sensitivity  # noqa: E402
 
 

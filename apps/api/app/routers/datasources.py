@@ -19,15 +19,14 @@ from sqlmodel import Session, select
 
 from .. import doc_categories
 from ..ai.rag import index_document
-from ..auth import get_current_tenant, get_current_user, require_roles
+from ..auth import get_current_tenant, require_roles
 from ..db import get_session
+from ..ingest import extract_text
 from ..integrations import odata as odata_client
 from ..integrations import sftp as sftp_conn
 from ..integrations import sharepoint as sp_client
 from ..integrations import token_store
-from ..ingest import extract_text
-from ..models import (AuditEvent, DataSource, Document, OdataSource, Role,
-                      SftpConnector, SharepointSource, Tenant, User)
+from ..models import AuditEvent, DataSource, Document, OdataSource, Role, SftpConnector, SharepointSource, Tenant, User
 from ..security.crypto import decrypt, encrypt
 
 router = APIRouter(prefix="/datasources", tags=["datasources"])

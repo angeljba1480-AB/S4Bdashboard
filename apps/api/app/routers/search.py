@@ -13,8 +13,15 @@ from sqlmodel import Session, select
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
 from ..models import (
-    AgentPlaybook, Automation, Document, GeneratedImage, MemoryItem, N8nRecipe,
-    Notebook, Tenant, User,
+    AgentPlaybook,
+    Automation,
+    Document,
+    GeneratedImage,
+    MemoryItem,
+    N8nRecipe,
+    Notebook,
+    Tenant,
+    User,
 )
 from ..permissions import can_view_area
 

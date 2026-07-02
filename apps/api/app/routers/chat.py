@@ -10,14 +10,13 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
+from ..ai.cascade import maybe_refine
 from ..ai.cost import estimate_cost, estimate_tokens
 from ..ai.rag import retrieve
-from ..ai.cascade import maybe_refine
 from ..ai.resilience import generate_with_fallback
 from ..ai.router import route_request
 from ..auth import get_current_tenant, get_current_user
 from ..db import get_session
-from ..permissions import visible_areas
 from ..models import (
     Agent,
     AuditEvent,
@@ -27,6 +26,7 @@ from ..models import (
     Tenant,
     User,
 )
+from ..permissions import visible_areas
 from ..schemas import ChatRequest, ChatResponse, CitationOut, RoutePreview
 
 router = APIRouter(prefix="/chat", tags=["chat"])
