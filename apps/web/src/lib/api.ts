@@ -16,6 +16,7 @@ import type {
   NotebookAnswer,
   Me,
   Procedure,
+  ProcessTree,
   Recipe,
   RecipeRun,
   UsageSummary,
@@ -802,4 +803,29 @@ export const api = {
   deleteConversation: (id: string) =>
     request<{ ok: boolean }>(`/chat/conversations/${id}`, { method: "DELETE" }),
   exportAudit: () => api.download("/audit/export", "audit.jsonl"),
+
+  // --- Procesos de Negocio (BPM ligero) ---
+  processTree: () => request<ProcessTree>("/processes/tree"),
+  createLine: (body: { name: string; description?: string }) =>
+    request<{ id: string }>("/processes/lines", { method: "POST", body: JSON.stringify(body) }),
+  updateLine: (id: string, body: { name: string; description?: string }) =>
+    request<{ id: string }>(`/processes/lines/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteLine: (id: string) => request<{ ok: boolean }>(`/processes/lines/${id}`, { method: "DELETE" }),
+  createService: (body: { line_id: string; name: string; kind: "internal" | "external"; sla_ola?: string; description?: string }) =>
+    request<{ id: string }>("/processes/services", { method: "POST", body: JSON.stringify(body) }),
+  updateService: (id: string, body: { line_id: string; name: string; kind: "internal" | "external"; sla_ola?: string; description?: string }) =>
+    request<{ id: string }>(`/processes/services/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteService: (id: string) => request<{ ok: boolean }>(`/processes/services/${id}`, { method: "DELETE" }),
+  addServiceClient: (serviceId: string, client_name: string) =>
+    request<{ clients: string[] }>(`/processes/services/${serviceId}/clients`, { method: "POST", body: JSON.stringify({ client_name }) }),
+  removeServiceClient: (serviceId: string, clientName: string) =>
+    request<{ ok: boolean }>(`/processes/services/${serviceId}/clients/${encodeURIComponent(clientName)}`, { method: "DELETE" }),
+  createProcess: (body: { service_id: string; name: string; description?: string }) =>
+    request<{ id: string }>("/processes/processes", { method: "POST", body: JSON.stringify(body) }),
+  deleteProcess: (id: string) => request<{ ok: boolean }>(`/processes/processes/${id}`, { method: "DELETE" }),
+  createStep: (body: { process_id: string; name: string; description?: string; order?: number; automation_state?: string }) =>
+    request<{ id: string }>("/processes/steps", { method: "POST", body: JSON.stringify(body) }),
+  updateStep: (id: string, body: { process_id: string; name: string; description?: string; order?: number; automation_state?: string }) =>
+    request<{ id: string }>(`/processes/steps/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteStep: (id: string) => request<{ ok: boolean }>(`/processes/steps/${id}`, { method: "DELETE" }),
 };

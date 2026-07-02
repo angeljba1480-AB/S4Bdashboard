@@ -791,3 +791,63 @@ class MailDigestConfig(SQLModel, table=True):
     sender_profile: str = "{}"     # JSON {email: {categoria, propaganda}} aprendido
     last_run_at: str = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# --- Procesos de Negocio (BPM ligero: Línea → Servicio → Proceso → Paso) -----
+class BusinessLine(SQLModel, table=True):
+    """Línea de negocio: agrupador comercial de lo que la empresa ofrece (p. ej. SOC,
+    Consultoría, Licenciamiento)."""
+    __tablename__ = "business_lines"
+    id: str = Field(default_factory=lambda: _uuid("bl"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    name: str = ""
+    description: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class BusinessService(SQLModel, table=True):
+    """Servicio entregable dentro de una línea. `kind`: 'internal' (con OLA, sirve a áreas
+    internas) o 'external' (con SLA, se ofrece a clientes que pagan)."""
+    __tablename__ = "business_services"
+    id: str = Field(default_factory=lambda: _uuid("bsvc"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    line_id: str = Field(index=True, foreign_key="business_lines.id")
+    name: str = ""
+    kind: str = "external"          # internal (OLA) | external (SLA)
+    sla_ola: str = ""              # texto del acuerdo (SLA si externo, OLA si interno)
+    description: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ServiceClient(SQLModel, table=True):
+    """Liga un servicio externo a un cliente final (referencia a Evaluación de Clientes)."""
+    __tablename__ = "service_clients"
+    id: str = Field(default_factory=lambda: _uuid("scl"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    service_id: str = Field(index=True, foreign_key="business_services.id")
+    client_name: str = ""          # nombre del cliente (referencia libre por ahora)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class BusinessProcess(SQLModel, table=True):
+    """Proceso: secuencia de pasos que produce un servicio."""
+    __tablename__ = "business_processes"
+    id: str = Field(default_factory=lambda: _uuid("bproc"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    service_id: str = Field(index=True, foreign_key="business_services.id")
+    name: str = ""
+    description: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ProcessStep(SQLModel, table=True):
+    """Paso/actividad de un proceso. `automation_state`: manual | candidate | automated."""
+    __tablename__ = "process_steps"
+    id: str = Field(default_factory=lambda: _uuid("pstep"), primary_key=True)
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    process_id: str = Field(index=True, foreign_key="business_processes.id")
+    name: str = ""
+    description: str = ""
+    order: int = 0
+    automation_state: str = "manual"   # manual | candidate | automated
+    created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -34,6 +34,7 @@ from .routers import (
     memory,
     notebooks,
     oauth,
+    processes,
     recipes,
     regional,
     runbooks,
@@ -141,6 +142,7 @@ app.include_router(whatsapp.router)
 app.include_router(mail_digest.router)
 app.include_router(finance.router)
 app.include_router(spaces.router)
+app.include_router(processes.router)
 app.include_router(kedb.router)
 app.include_router(sharepoint.router)
 
