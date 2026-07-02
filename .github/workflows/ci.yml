@@ -43,3 +43,25 @@ jobs:
         run: npx tsc --noEmit
       - name: Build
         run: npm run build
+
+  report-build-e2e:
+    name: Report · build + E2E
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/report
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
+      - name: Instalar navegador de Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Pruebas E2E (gate de contraseña, navegador real)
+        run: npx playwright test
