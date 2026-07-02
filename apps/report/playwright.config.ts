@@ -1,26 +1,28 @@
+import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 
 /**
  * E2E real (navegador Chromium de verdad) contra el gate del reporte. Levanta la app
- * Next real con una contraseña conocida y usa el Chromium preinstalado del entorno
- * (no descarga navegador). Ver README para correr localmente.
+ * Next real con una contraseña conocida.
+ * - En este entorno usa el Chromium preinstalado (executablePath), sin descargar nada.
+ * - En CI (donde no existe ese binario) usa el Chromium que instala `playwright install`.
  */
 const PORT = 3020;
 const PASSWORD = "e2e-pass-123";
-const CHROME =
-  process.env.PW_CHROME ||
-  "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const LOCAL_CHROME =
+  process.env.PW_CHROME || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const useLocalChrome = !!LOCAL_CHROME && existsSync(LOCAL_CHROME);
 
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "off",
-    launchOptions: { executablePath: CHROME },
+    launchOptions: useLocalChrome ? { executablePath: LOCAL_CHROME } : {},
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {

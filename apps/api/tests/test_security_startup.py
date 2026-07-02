@@ -39,6 +39,23 @@ def test_seed_demo_gate():
                     seed_demo_data=True).should_seed_demo is True
 
 
+def test_cors_solo_permite_maestroai_no_vercel_ni_lookalikes():
+    import re
+    s = Settings()
+    rx = re.compile(s.cors_origin_regex)
+    def allowed(o: str) -> bool:
+        return bool(rx.fullmatch(o))
+    # Permitidos: el portal y subdominios de maestroai.mx
+    assert allowed("https://plataforma.maestroai.mx")
+    assert allowed("https://maestroai.mx")
+    # Rechazados: cualquier *.vercel.app (el agujero P0) y lookalikes
+    assert not allowed("https://evil.vercel.app")
+    assert not allowed("https://maestroai.mx.attacker.com")
+    assert not allowed("https://evilmaestroai.mx")
+    assert "vercel.app" not in s.cors_origin_regex
+    assert "https://plataforma.maestroai.mx" in s.cors_origin_list
+
+
 def test_seed_no_toca_bd_en_produccion(monkeypatch):
     """Con APP_ENV=production y sin opt-in, seed() corta ANTES de abrir la BD:
     si intentara sembrar, la sesión-centinela lanzaría."""

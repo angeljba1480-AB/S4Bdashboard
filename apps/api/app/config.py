@@ -18,11 +18,13 @@ class Settings(BaseSettings):
     seed_demo_data: bool = True
 
     database_url: str = "sqlite:///./privateai.db"
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
-    # Regex of allowed origins (in addition to cors_origins). Defaults to any
-    # Vercel deployment (prod + preview) and any maestroai.mx subdomain so the
-    # portal connects from its custom domain too. Set to "" to disable.
-    cors_origin_regex: str = r"https://(.*\.)?(vercel\.app|maestroai\.mx)"
+    cors_origins: str = ("http://localhost:3000,http://127.0.0.1:3000,"
+                         "https://plataforma.maestroai.mx")
+    # Regex de orígenes permitidos (además de cors_origins). Por defecto SOLO
+    # subdominios https de maestroai.mx (el portal en plataforma.maestroai.mx). NO se
+    # permite cualquier *.vercel.app con credenciales (riesgo). Para habilitar previews
+    # de Vercel, define CORS_ORIGIN_REGEX con el patrón acotado a tu proyecto. "" desactiva.
+    cors_origin_regex: str = r"https://([a-z0-9-]+\.)*maestroai\.mx"
 
     # Premium external (OpenAI / Claude / Gemini compatible)
     premium_enabled: bool = False
