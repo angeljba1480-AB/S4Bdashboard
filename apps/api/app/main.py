@@ -52,6 +52,19 @@ from .routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Compuerta de seguridad de producción: aborta el arranque si el secreto/llave de
+    # cifrado siguen en el valor por defecto (serían llave maestra de tokens y datos).
+    import logging
+
+    _log = logging.getLogger("uvicorn.error")
+    if settings.is_production:
+        errs = settings.security_errors()
+        if errs:
+            raise RuntimeError(
+                "Arranque abortado por seguridad (APP_ENV=production):\n- " + "\n- ".join(errs))
+    for w in settings.security_warnings():
+        _log.warning("[seguridad] %s", w)
+
     init_db()
     from .seed import ensure_super_admin, seed
 

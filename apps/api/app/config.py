@@ -13,12 +13,18 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-change-me-please-32-characters-min"
     access_token_expire_minutes: int = 720
 
+    # Seed de datos demo (tenant MaestroAI + admin@maestroai.mx / demo1234). En
+    # producción NO se siembran credenciales conocidas salvo que se active a propósito.
+    seed_demo_data: bool = True
+
     database_url: str = "sqlite:///./privateai.db"
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
-    # Regex of allowed origins (in addition to cors_origins). Defaults to any
-    # Vercel deployment (prod + preview) and any maestroai.mx subdomain so the
-    # portal connects from its custom domain too. Set to "" to disable.
-    cors_origin_regex: str = r"https://(.*\.)?(vercel\.app|maestroai\.mx)"
+    cors_origins: str = ("http://localhost:3000,http://127.0.0.1:3000,"
+                         "https://plataforma.maestroai.mx")
+    # Regex de orígenes permitidos (además de cors_origins). Por defecto SOLO
+    # subdominios https de maestroai.mx (el portal en plataforma.maestroai.mx). NO se
+    # permite cualquier *.vercel.app con credenciales (riesgo). Para habilitar previews
+    # de Vercel, define CORS_ORIGIN_REGEX con el patrón acotado a tu proyecto. "" desactiva.
+    cors_origin_regex: str = r"https://([a-z0-9-]+\.)*maestroai\.mx"
 
     # Premium external (OpenAI / Claude / Gemini compatible)
     premium_enabled: bool = False
@@ -199,6 +205,44 @@ class Settings(BaseSettings):
     @property
     def effective_kms_key(self) -> str:
         return self.master_kms_key or self.secret_key
+
+    _DEFAULT_SECRET = "dev-secret-change-me-please-32-characters-min"
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.strip().lower() in ("production", "prod")
+
+    @property
+    def should_seed_demo(self) -> bool:
+        """Sembrar demo en dev siempre; en producción solo si se activó a propósito
+        (SEED_DEMO_DATA presente en el entorno), nunca por el default."""
+        if not self.is_production:
+            return True
+        return self.seed_demo_data and ("seed_demo_data" in self.model_fields_set)
+
+    def security_errors(self) -> list[str]:
+        """Problemas que DEBEN abortar el arranque en producción (llave maestra por
+        defecto = compromiso total de tokens y datos cifrados)."""
+        errs: list[str] = []
+        if self.secret_key == self._DEFAULT_SECRET:
+            errs.append("SECRET_KEY sigue en el valor por defecto — genera uno con `openssl rand -hex 32`.")
+        if self.effective_kms_key == self._DEFAULT_SECRET:
+            errs.append("La llave de cifrado (MASTER_KMS_KEY/SECRET_KEY) es el valor por defecto.")
+        if len(self.secret_key) < 32:
+            errs.append("SECRET_KEY debe tener al menos 32 caracteres.")
+        return errs
+
+    def security_warnings(self) -> list[str]:
+        """Riesgos a revisar en producción (no bloquean el arranque)."""
+        warns: list[str] = []
+        if "vercel.app" in (self.cors_origin_regex or ""):
+            warns.append("CORS_ORIGIN_REGEX permite cualquier *.vercel.app con credenciales — "
+                         "acótalo a tus dominios (CORS_ORIGIN_REGEX / CORS_ORIGINS).")
+        if self.database_url.startswith("sqlite"):
+            warns.append("DATABASE_URL usa SQLite — en producción usa Postgres (+pgvector).")
+        if self.should_seed_demo:
+            warns.append("Se sembrarán credenciales demo conocidas (admin@maestroai.mx / demo1234).")
+        return warns
 
 
 @lru_cache
