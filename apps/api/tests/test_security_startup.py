@@ -21,8 +21,17 @@ def test_secret_por_defecto_bloquea_en_produccion():
 
 
 def test_secreto_propio_pasa_en_produccion():
-    s = Settings(app_env="production", secret_key=_STRONG, master_kms_key=_STRONG)
+    # Con secreto propio Y Postgres, no hay errores de arranque.
+    s = Settings(app_env="production", secret_key=_STRONG, master_kms_key=_STRONG,
+                 database_url="postgresql://u:p@db:5432/app")
     assert s.security_errors() == []
+
+
+def test_sqlite_bloquea_en_produccion():
+    s = Settings(app_env="production", secret_key=_STRONG, master_kms_key=_STRONG,
+                 database_url="sqlite:///./x.db")
+    errs = s.security_errors()
+    assert any("SQLite" in e for e in errs)
 
 
 def test_dev_no_exige_secreto():

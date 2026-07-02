@@ -21,9 +21,10 @@ services:
           property: connectionString
       - key: CORS_ORIGINS
         sync: false                     # set to https://tu-app.vercel.app
-      # Vector store: "pgvector" reuses Postgres (run infra/supabase/001_pgvector.sql)
+      # Vector store: "pgvector" reutiliza Postgres para el RAG a escala. Requiere la
+      # extensión (infra/supabase/001_pgvector.sql). "inprocess" no escala (ver backlog).
       - key: VECTOR_STORE
-        value: inprocess
+        value: pgvector
       # ---- Model providers (enable when ready) ----
       - key: OPEN_ENABLED
         value: "false"
