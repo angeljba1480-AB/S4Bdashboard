@@ -146,4 +146,12 @@ def me(user: User = Depends(get_current_user), session: Session = Depends(get_se
         country_name=get_country(tenant.country if tenant else "MX")["name"],
         gov_enabled=gov_enabled(profile),
         kedb_enabled=kedb_enabled(session, tenant) if tenant else False,
+        **_mode_flags(),
     )
+
+
+def _mode_flags() -> dict:
+    from ..ai.adapters import platform_mode
+    m = platform_mode()
+    return {"ai_live": m["ai_live"], "demo_mode": m["demo_mode"],
+            "embeddings_semantic": m["embeddings_semantic"]}

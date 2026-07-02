@@ -171,6 +171,38 @@ def load_overrides(session) -> None:
                                "model": row.model, "api_key": key}
 
 
+def _route_is_live(route: ModelRoute) -> bool:
+    """¿La ruta resuelve a un proveedor REAL (no MOCK)? Override del admin → env."""
+    ov = _RUNTIME.get(route.value)
+    if ov and ov.get("enabled") and ov.get("base_url"):
+        return True
+    cfg = {
+        ModelRoute.PREMIUM: (settings.premium_enabled, settings.premium_base_url),
+        ModelRoute.OPEN: (settings.open_enabled, settings.open_base_url),
+        ModelRoute.VPC: (settings.vpc_enabled, settings.vpc_base_url),
+        ModelRoute.LOCAL: (settings.local_enabled, settings.local_base_url),
+    }.get(route)
+    return bool(cfg and cfg[0] and cfg[1])
+
+
+def platform_mode() -> dict:
+    """Estado real de capacidades de IA para ser honestos en la UI (modo demo).
+
+    - ai_live: hay al menos un proveedor de chat real configurado (no MOCK).
+    - demo_mode: NO hay IA real → las respuestas son simuladas (MockAdapter).
+    - embeddings_semantic: los embeddings son de un proveedor real (no el hashing local).
+    """
+    live = [r.value for r in (ModelRoute.PREMIUM, ModelRoute.OPEN, ModelRoute.VPC, ModelRoute.LOCAL)
+            if _route_is_live(r)]
+    ai_live = bool(live)
+    return {
+        "ai_live": ai_live,
+        "demo_mode": not ai_live,
+        "embeddings_semantic": settings.embeddings_provider != "local",
+        "live_routes": live,
+    }
+
+
 def get_adapter(route: ModelRoute) -> ModelAdapter:
     """Resolve the configured adapter for a route, falling back to MOCK.
 

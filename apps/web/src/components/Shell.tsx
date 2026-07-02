@@ -172,7 +172,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto"><GlobalSearch /><NotificationBell />{children}</main>
+      <main className="flex-1 overflow-auto">
+        <GlobalSearch />
+        <NotificationBell />
+        {me?.demo_mode && (
+          <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-8 py-2.5 text-sm text-amber-800">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <b>Modo demostración.</b> No hay un proveedor de IA configurado, así que las
+              respuestas de IA (chat, casos de uso, agentes) son <b>simuladas</b>. Un administrador
+              puede conectar un modelo real en <a href="/admin" className="underline">Admin → Modelos</a>.
+            </span>
+          </div>
+        )}
+        {children}
+      </main>
     </div>
   );
 }
